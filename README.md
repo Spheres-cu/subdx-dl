@@ -100,13 +100,20 @@ $ sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.
 ## Some Captures
 
 - _Performing search:_
-
+  
+(https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot01.png)
 
 - _Navigable searches results:_
 
+(https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot02.png)
 
 - _Subtitle description:_
 
+(https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot03.png)
 
 - _User comments:_
+
+  (https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot04.png)
+
+
  
