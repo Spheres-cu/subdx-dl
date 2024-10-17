@@ -67,7 +67,7 @@ def subtitle_renamer(filepath, inf_sub):
               exit(1)
 
 def main():
-    parser = argparse.ArgumentParser(prog='subdx-dl', 
+    parser = argparse.ArgumentParser(prog='sdx-dl', 
                                      description='A cli tool for download subtitle from\
                                        www.subdivx.com with the better possible matching results.',
                                        epilog='Project site: https://github.com/Spheres-cu/subdx-dl')
