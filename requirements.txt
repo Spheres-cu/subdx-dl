@@ -1,0 +1,10 @@
+beautifulsoup4 >= 4.12.3
+html5lib >= 1.1
+tvnamer >= 3.0.4
+guessit >= 3.8.0
+rarfile >= 4.2
+urllib3 >= 2.2.3
+certifi >= 2024.8.30
+rich >= 13.9.2
+readchar >= 4.2.0
+html2text >= 2024.2.26

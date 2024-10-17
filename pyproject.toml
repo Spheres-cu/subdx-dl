@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "subdx-dl"
+dynamic = ["version"]
+
+authors = [
+  { name ="Spheres-cu", email="sasuke.pc@gmail.com" },
+]
+
+maintainers = [
+  {name = "C. S. M.", email = "sasuke.pc@gmail.com"}
+]
+
+description = "A command line tool to download the best matching subtitle from subdivx.com"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["cli-tool", "subdivx", "subdivx-downloader", "subtitles"]
+
+dependencies = [
+    "beautifulsoup4", "html5lib", "tvnamer", "guessit", "rarfile", "urllib3", "certifi", "rich", "readchar", "html2text",
+    'importlib-metadata; python_version<"3.10"',
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+	"Development Status :: 4 - Beta",
+	"Environment :: Console",
+    "License :: OSI Approved :: GNU GPLv3",
+    "Operating System :: OS Independent",
+]
+
+license = {file = "LICENSE"}
+
+[project.urls]
+Homepage = "https://github.com/Spheres-cu/subdx-dl"
+Issues = "https://github.com/Spheres-cu/subdx-dl/issues"
+
+[tool.setuptools]
+packages = ["sdx_dl"]
+
+[project.scripts]
+sdx-dl = "sdx_dl:cli.main"
+
+[tool.setuptools.dynamic]
+version = {attr = "sdx_dl.__version__"}
