@@ -7,10 +7,6 @@ A cli tool for download subtitle from www.subdivx.com with the better possible m
 git clone https://github.com/Spheres-cu/subdx-dl.git
 cd subdx-dl
 python3 -m pip install .
- 
- OR
-
-pip install subdx-dl
 
 ```
 
