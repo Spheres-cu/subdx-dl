@@ -75,7 +75,7 @@ def main():
                         help="file, directory or movie/series title or IMDB Id to retrieve subtitles")
     parser.add_argument('--quiet', '-q', action='store_true',
                         default=False, help="No verbose mode")
-    parser.add_argument('--verbose', '-v', action='version',
+    parser.add_argument('--verbose', '-v', action='store_true',
                         default=False, help="Be in verbose mode")
     parser.add_argument('--no-choose', '-nc', action='store_true',
                         default=False, help="No Choose sub manually")
@@ -84,7 +84,7 @@ def main():
     parser.add_argument('--force', '-f', action='store_true',
                         default=False, help="override existing file")
     parser.add_argument('--version', '-V', action='version',
-                        version=f" subdx-dl {version('subdx-dl')}", help="Show program version")
+                        version=f'subdx-dl {version("subdx-dl")}', help="Show program version")
     parser.add_argument('--keyword','-k',type=str,help="Add keyword to search among subtitles")
     parser.add_argument('--title','-t',type=str,help="Set the title of the show")
    
@@ -182,7 +182,7 @@ def main():
         filename = os.path.basename(filepath)
         
         try:
-            title, number, inf_sub = guess_search(lst_args['search'])
+            title, number, inf_sub = guess_search(filename)
 
             metadata = extract_meta_data(filename, lst_args['keyword'])
 
