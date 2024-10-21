@@ -51,7 +51,7 @@ def subtitle_renamer(filepath, inf_sub):
            if os.path.exists(filename + new_ext):
                continue
            else:
-                if inf_sub['type'] == "episode" :
+                if inf_sub['type'] == "episode" and inf_sub['season']:
                     info = guessit(new_file)
                     number = f"s{info['season']:02}e{info['episode']:02}" if "season" in info and "episode" in info else None
                     if number == inf_sub['number']:
