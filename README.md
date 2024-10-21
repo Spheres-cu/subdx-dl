@@ -8,6 +8,10 @@ git clone https://github.com/Spheres-cu/subdx-dl.git
 cd subdx-dl
 python3 -m pip install .
 
+OR
+
+pip install -U subdx-dl
+
 ```
 
 ### My recomendation is to use a virtual env and install it there:
