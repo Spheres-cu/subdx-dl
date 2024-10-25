@@ -148,13 +148,15 @@ def extract_meta_data(filename, kword):
     """Extract metadata from a filename based in matchs of keywords
     the lists of keywords includen quality and codec for videos.""" 
 
-    f = filename.lower()[:-4]
+    f = filename.lower()[:-4] if os.path.isfile(filename) else filename.lower()
+
     def _match(options):
         try:
             matches = [option for option in options if option in f]
         except IndexError:
             matches = []
         return matches
+    
     keywords = _match(_keywords)
     quality = _match(_qualities)
     codec = _match(_codecs)
