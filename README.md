@@ -49,7 +49,7 @@ _optional arguments_:
   --force, -f           Override existing subtitle file.
   --version -V          Show program version.
   --title -t "<string>" _ Set the title to search instead of getting it from the file name. This option is invalid if --imdb is setting. 
-  --keyword -k "<string>" _ Add the <string> to the list of keywords. Keywords are used when you have.
+  --keyword -k "<strings>" _ Add an <strings> to the list of keywords separated by spaces. Keywords are used when you have.
 
 ```
 
@@ -95,7 +95,7 @@ $ sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.
 
 - Try to pass the *_IMDB ID_* of the movies(not for TV Show www.subdivx.com site have not implement it yet).
 
-- Pass keywords (```--keyword -k "<string>"```) of the subtitle   you are searching for better ordered results.
+- Pass keywords (```--keyword -k "<str1 str2 str3 ...>"```) of the subtitle   you are searching for better ordered results.
 
 ## Some Captures
 
