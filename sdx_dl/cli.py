@@ -145,7 +145,7 @@ def main():
     if not os.path.exists(lst_args['search']):
         try:
             title, number, inf_sub = guess_search(lst_args['search'])
-            metadata = extract_meta_data("", lst_args['keyword'])
+            metadata = extract_meta_data(lst_args['search'], lst_args['keyword'])
             
             url = get_subtitle_url(
                 title, number, metadata,
