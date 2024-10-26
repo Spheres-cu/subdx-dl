@@ -43,6 +43,7 @@ _optional arguments_:
 ```
   -h, --help            Show this help message and exit.
   --quiet, -q           No verbose mode and very quiet. Applies even in verbose mode (-v).
+  --path, -p            Path to download subtitles.
   --verbose -v          Be in verbose mode.
   --no-choose, -nc      Download the default match subtitle avaible. Now show all the available subtitle to download is de default behavior.
   --Season, -S          Search for Season.
