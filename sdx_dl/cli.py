@@ -112,7 +112,7 @@ def main():
     def guess_search(search):
         """ Parse search parameter. """
         
-        info = guessit(search, "--exclude release_group --exclude other")
+        info = guessit(search, "--exclude release_group --exclude other --exclude country")
         if info["type"] == "episode" :
             number = f"s{info['season']:02}e{info['episode']:02}" if "episode" in info and not lst_args['Season'] else f"s{info['season']:02}" 
         else:
