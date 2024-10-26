@@ -6,7 +6,7 @@ import os
 import sys
 import argparse
 from .sdxlib import *
-from .sdxutils import _sub_extensions
+from .sdxutils import _sub_extensions, console as rconsole
 from guessit import guessit
 from rich.logging import RichHandler
 from tvnamer.utils import FileFinder
@@ -73,6 +73,8 @@ def main():
                                        epilog='Project site: https://github.com/Spheres-cu/subdx-dl')
     parser.add_argument('search', type=str,
                         help="file, directory or movie/series title or IMDB Id to retrieve subtitles")
+    parser.add_argument('--path', '-p', type=str,
+                        help="Path to download subtitles")
     parser.add_argument('--quiet', '-q', action='store_true',
                         default=False, help="No verbose mode")
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -91,7 +93,8 @@ def main():
     args = parser.parse_args()
 
     lst_args = {
-        "search" :args.search,
+        "search" : args.search,
+        "path" : args.path,
         "quiet" : args.quiet,
         "verbose" : args.verbose,
         "no_choose": args.no_choose,
@@ -142,6 +145,13 @@ def main():
         console.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
         logger.addHandler(console)
 
+    if lst_args['path'] and not os.path.isdir(lst_args['path']):
+        if lst_args['quiet']:
+            rconsole.print(":no_entry:[bold red] Directory:[yellow] " + lst_args['path'] + "[bold red] do not exists[/]",
+                           new_line_start=True, emoji=True)
+        logger.error(f'Directory {lst_args["path"]} do not exists')
+        exit(1)
+                     
     if not os.path.exists(lst_args['search']):
         try:
             title, number, inf_sub = guess_search(lst_args['search'])
@@ -157,7 +167,7 @@ def main():
             url = None
             
         if (url is not None):
-            topath = os.getcwd()
+            topath = os.getcwd() if lst_args['path'] is None else lst_args['path']
             get_subtitle(url, topath)
 
     elif os.path.exists(lst_args['search']):
@@ -196,7 +206,10 @@ def main():
             logger.error(str(e))
             url = None
         
-        topath = os.path.dirname(filepath) if os.path.isfile(filepath) else filepath 
+        if lst_args['path'] is None:
+            topath = os.path.dirname(filepath) if os.path.isfile(filepath) else filepath
+        else:
+            topath = lst_args['path']
 
         if (url is not None):
             with subtitle_renamer(filepath, inf_sub=inf_sub):
