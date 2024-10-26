@@ -188,16 +188,16 @@ def match_text(title, number, inf_sub, text):
   # Perform searches
   r = True if re_full_match.search(text.strip()) else False
   match_type = 'full' if r else None
-  logger.debug(f'FullMatch text: {text} Found: {match_type} {r}')
+  if not r: logger.debug(f'FullMatch text: {text} Found: {match_type} {r}')
 
   if not r:
     r = True if re_full_pattern.search(text.strip()) else False
     match_type = 'pattern' if r else None 
-    logger.debug(f'FullPattern text: {text} Found:{match_type} {r}')
+    if not r: logger.debug(f'FullPattern text: {text} Found:{match_type} {r}')
 
   if not r :
     rtitle = True if re_title_pattern.search(text.strip()) else False
-    logger.debug(f'Title Match: {title} Found: {rtitle}')
+    if not rtitle: logger.debug(f'Title Match: {title} Found: {rtitle}')
 
     for num in number.split(" "):
         if not inf_sub['season']:
@@ -205,36 +205,37 @@ def match_text(title, number, inf_sub, text):
         else:
            rnumber = True if re.search(rf"\b{num}.*\b", text, re.I) else False
     
-    logger.debug(f'Number Match: {number} Found: {rnumber}')
+    if not rnumber: logger.debug(f'Number Match: {number} Found: {rnumber}')
 
-    if inf_sub['type'] == "movie" :
-        raka = True if re.search(rf"\b{aka}\b", text, re.I) else False
-        if not raka: logger.debug(f'Search Match: aka Found: {raka}')
+    raka = True if re.search(rf"\b{aka}\b", text, re.I) else False
+    if not raka: logger.debug(f'Search Match: aka Found: {raka}')
+
+    if raka :
         r = True if rtitle and rnumber and raka else False
         match_type = 'partial' if r else None
     else:
         r = True if rtitle and rnumber else False
         match_type = 'partial' if r else None
 
-    logger.debug(f'Partial Match text: {text}:{match_type} {r}')
+    if not r: logger.debug(f'Partial Match text: {text}:{match_type} {r}')
 
   if not r:
     if all(re.search(rf"\b{word}\b", text, re.I) for word in search.split()) :
         r = True if rnumber and raka else False
         match_type = 'partial' if r else None
-    logger.debug(f'All Words Match Search: {search.split()} in {text}:{match_type} {r}')
+    if not r: logger.debug(f'All Words Match Search: {search.split()} in {text}:{match_type} {r}')
 
   if not r:
     if all(re.search(rf"\b{word}\b", text, re.I) for word in title.split()) :
         r = True if rnumber else False
         match_type = 'partial' if r else None
-    logger.debug(f'All Words Match title and number: {title.split()} in {text}: {match_type} {r}')
+    if not r: logger.debug(f'All Words Match title and number: {title.split()} in {text}: {match_type} {r}')
 
   if not r:
     if any(re.search(rf"\b{word}\b", text, re.I) for word in title.split()) :
         r = True if rnumber else False
         match_type = 'any' if r else None
-    logger.debug(f'Any Words Match title and number: {title.split()} in {text}: {match_type} {r}')
+    if not r: logger.debug(f'Any Words Match title and number: {title.split()} in {text}: {match_type} {r}')
        
   return match_type 
 
