@@ -93,9 +93,11 @@ $ sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.
 - Search by filename reference.
   > Search in this way have advantage because the results are filtered and ordered by the metadata of the filename.
 
-- Try to pass the *_IMDB ID_* of the movies(not for TV Show www.subdivx.com site have not implement it yet).
+- Try to pass the *_IMDB ID_* of the movie or TV Show.
 
 - Pass keywords (```--keyword -k "<str1 str2 str3 ...>"```) of the subtitle   you are searching for better ordered results.
+
+- If the search not found any records by a single chapter number (exe. S01E02) try search by the complete Seasson with ``` --Seasson -S ``` parameter.
 
 ## Some Captures
 
