@@ -3,7 +3,6 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
-import sys
 import argparse
 from .sdxlib import *
 from .sdxutils import _sub_extensions, console as rconsole
