@@ -320,6 +320,7 @@ def highlight_text(text,  metadata):
 def backoff_delay(backoff_factor = 2, attempts = 2):
     """ backoff algorithm: backoff_factor * (2 ** attempts)."""
     delay = backoff_factor * (2 ** attempts)
+    time.sleep(delay)
     return delay
 
 def convert_datetime(string_datetime:str):
@@ -418,11 +419,9 @@ def get_aadata(search):
         if not page: 
             logger.debug('Could not load page!')
             attempts = 2
-            backoff_factor = 2
-            delay = backoff_delay(backoff_factor, attempts)
             for _ in range(attempts):
                 logger.debug(f'Request Attempts #: {_}')
-                time.sleep(delay)
+                backoff_delay(2, attempts)
                 page = s.request('POST', SUBDIVX_SEARCH_URL, headers=headers, fields=fields).data
                 if not page : 
                     continue
@@ -460,7 +459,7 @@ def make_layout() -> Layout:
     layout = Layout(name="results")
 
     layout.split_column(
-        Layout(name="table"),
+        Layout(name="table")
     )
     return layout
 
@@ -728,29 +727,25 @@ def get_selected_subtitle_id(table_title, results, metadata):
                 
                 if ch in ["C", "c"]:
                     cpage = 0
-                    show_comments = True
                     subtitle_selected =  results_pages['pages'][page][selected]['titulo']
                     layout_comments = make_layout()
                     title ="Subtítulo: " + html2text.html2text(subtitle_selected).strip()
+                    show_comments = True if results_pages['pages'][page][selected]['comentarios'] != 0 else False
+                    comment_msg = ":neutral_face: [bold red][i]¡No hay comentarios para este subtítulo![/]" if not show_comments else "" 
 
-                    if results_pages['pages'][page][selected]['comentarios'] != 0:
-                        subid = int(results_pages['pages'][page][selected]['id'])
-                        aaData = get_comments_data(subid)
-                        if aaData is not None:
-                            comments = get_list_Dict(aaData['aaData'])
+                    with console.screen(hide_cursor=True) as screen_comments:
+                        if show_comments:
+                            subid = int(results_pages['pages'][page][selected]['id'])
+                            with console.status("[bold yellow][i]CARGANDO COMENTARIOS...[/]", spinner='aesthetic'):
+                              aaData = get_comments_data(subid)
+                            comments = get_list_Dict(aaData['aaData']) if aaData is not None else None
                             comments = parse_list_comments(comments) if comments is not None else None
                             comments = paginate(comments, 5) if comments is not None else None
+                            
                             if comments is None:
                                 show_comments = False
                                 comment_msg = ":neutral_face: [bold red][i]¡No se pudieron cargar los comentarios![/]"
-                        else:
-                            show_comments = False
-                            comment_msg = ":neutral_face: [bold red][i]¡No se pudieron cargar los comentarios![/]"
-                    else:
-                        show_comments = False
-                        comment_msg = ":neutral_face: [bold red][i]¡No hay comentarios para este subtítulo![/]"
-
-                    with console.screen(hide_cursor=True) as screen_comments:
+                        
                         while True:
                             if show_comments :
                                 layout_comments['table'].update(Align.center(
