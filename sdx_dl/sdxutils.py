@@ -429,16 +429,19 @@ def get_aadata(search):
                     json_aaData = json.loads(page)
                     break
 
-        console.clear()
-        if not page : 
+        if not page :
+            console.clear()
             console.print(":no_entry: [bold red]Couldn't load results page. Try later![/]", emoji=True, new_line_start=True)
             logger.debug('Could not load results page')
             exit(1)
         else :
-            sEcho = json.loads(page)['sEcho']
-            if sEcho == "0":
-                site_msg = str(json.loads(page)['mensaje'])
-                raise NoResultsError(f'Site message: {site_msg}')
+            if json.loads(page)['sEcho'] == "0":
+                backoff_delay()
+                page = s.request('POST', SUBDIVX_SEARCH_URL, headers=headers, fields=fields).data
+                json_aaData = json.loads(page) if page else None
+                if json.loads(page)['sEcho'] == "0":
+                    site_msg = str(json.loads(page)['mensaje'])
+                    raise NoResultsError(f'Site message: {site_msg}')
             else:
                 json_aaData = json.loads(page)
                 # For testing
