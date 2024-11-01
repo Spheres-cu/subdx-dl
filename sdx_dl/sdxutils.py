@@ -11,7 +11,8 @@ import urllib3
 import tempfile
 import logging.handlers
 import html2text
-from .sdxclasses import HTML2BBCode, NoResultsError
+import random
+from .sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
@@ -58,9 +59,9 @@ SUBDIVX_DOWNLOAD_PAGE = 'https://www.subdivx.com/'
 Metadata = namedtuple('Metadata', 'keywords quality codec')
 
 # Configure connections
-
-headers={"user-agent" : 
-         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML%2C like Gecko) Chrome/88.0.4324.182 Safari/537.36"}
+lst_ua = GenerateUserAgent.generate_all()
+ua = random.choice(lst_ua)
+headers={"user-agent" : ua}
 
 s = urllib3.PoolManager(num_pools=1, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
 
@@ -91,10 +92,21 @@ def check_Cookie_Status():
     if cookie is None or exp_time_Cookie is True: 
         cookie = get_Cookie()
         stor_Cookie(cookie)
-        cookie = load_Cookie()
-        logger.debug('Cookie Loaded')
+    try:
+        _f_rtk = _keywords[12][:-3] + _keywords[37][:-12]
+        _f_tk = SUBDIVX_SEARCH_URL[:-8] + _f_rtk + '.php?' + _f_rtk + "=" + str(1**0.5)[:-2]
+        _r_ftoken = s.request('GET', _f_tk, headers={"Cookie":cookie},preload_content=False).data
+        _f_token = json.loads(_r_ftoken)['token']
+    
+    except HTTPError as e:
+        HTTPErrorsMessageException(e)
+        exit(1)
 
-    return cookie
+    except JSONDecodeError as e:
+        console.print(":no_entry: [bold red]Couldn't load results page![/]: " + e.__str__(), emoji=True, new_line_start=True)
+        exit(1)
+    
+    return cookie, _f_token
 
 def exp_time_Cookie():
     """Compare modified time and return `True` if is expired."""
@@ -112,9 +124,8 @@ def exp_time_Cookie():
 
 def get_Cookie():
     """ Retrieve sdx cookie."""
-    logger.debug('Get cookie from %s', SUBDIVX_SEARCH_URL)
     try:
-        cookie_sdx = s.request('GET', SUBDIVX_SEARCH_URL, timeout=10).headers.get('Set-Cookie').split(';')[0]
+        cookie_sdx = s.request('GET', SUBDIVX_DOWNLOAD_PAGE, timeout=10).headers.get('Set-Cookie').split(';')[0]
     except HTTPError as e:
         HTTPErrorsMessageException(e)
         exit(1)
@@ -129,7 +140,6 @@ def stor_Cookie(sdx_cookie):
     with open(cookiesdx_path, 'w') as file:
         file.write(sdx_cookie)
         file.close()
-    logger.debug('Store cookie')
     
 def load_Cookie():
     """ Load stored sdx cookies return ``None`` if not exists."""
@@ -399,15 +409,10 @@ def HTTPErrorsMessageException(e: HTTPError):
 
 def get_aadata(search):
     """Get a json data with the ``search`` results."""
-    
     try:
         _vpage = s.request('GET', SUBDIVX_DOWNLOAD_PAGE, preload_content=False).data
         _vdata = BeautifulSoup(_vpage, 'html5lib')
         _f_search = _vdata('div', id="vs")[0].text.replace("v", "").replace(".", "")
-        _f_rtk = _keywords[12][:-2]
-        _f_tk = SUBDIVX_SEARCH_URL[:-8] + _f_rtk + '.php?' + _f_rtk + "=" + str(1**0.5)[:-2]
-        _r_ftoken = s.request('GET', _f_tk, preload_content=False).data
-        _f_token = json.loads(_r_ftoken)['token']
         fields={'buscar'+ _f_search: search, 'filtros': '', 'tabla': 'resultados', 'token': _f_token}
         page = s.request(
             'POST',
@@ -452,8 +457,8 @@ def get_aadata(search):
         exit(1)
 
     except JSONDecodeError as msg:
-        logger.debug(f'Error JSONDecodeError: "{msg}"')
-        raise NoResultsError(f'Error JSONDecodeError: "{msg}"')
+        logger.debug(f'Error JSONDecodeError: "{msg.__str__()}"')
+        console.print(":no_entry: [bold red]Couldn't load results page![/]", emoji=True, new_line_start=True)
     
     return json_aaData
 
@@ -659,7 +664,7 @@ def paginate(items, per_page):
         'pages': pages
     }
 
-def get_selected_subtitle_id(table_title, results, metadata):
+def get_selected_subtitle_id(table_title, results, metadata, quiet):
     """Show subtitles search results for obtain download id."""
     results_pages = paginate(results, 10)
     try:
@@ -789,34 +794,36 @@ def get_selected_subtitle_id(table_title, results, metadata):
                 if ch == key.ENTER:
                     live.stop()
                     res = results_pages['pages'][page][selected]['id']
-                    clean_screen()
+                    if not quiet: clean_screen()
                     break
 
                 if ch in ["S", "s"]:
                     live.stop()
                     res = -1
-                    clean_screen()
+                    if not quiet: clean_screen()
                     break
                 live.update(generate_results(table_title, results_pages, page, selected), refresh=True)
 
     except KeyboardInterrupt:
         logger.debug('Interrupted by user')
-        console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
-        time.sleep(0.8)
-        clean_screen()
+        if not quiet:
+            console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
+            time.sleep(0.8)
+            clean_screen()
         exit(1)
 
     if (res == -1):
         logger.debug('Download Canceled')
-        console.print("\r\n" + ":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
-        time.sleep(0.8)
-        clean_screen()
+        if not quiet:
+            console.print("\r\n" + ":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
+            time.sleep(0.8)
+            clean_screen()
         exit(0)
 
     return res
 
 ### Extract Subtitles ###
-def extract_subtitles(compressed_sub_file, temp_file, topath):
+def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
 
     # In case of existence of various subtitles choose which to download
@@ -850,20 +857,22 @@ def extract_subtitles(compressed_sub_file, temp_file, topath):
                         show_choices=False, show_default=True, choices=choices, default=0)
         except KeyboardInterrupt:
             logger.debug('Interrupted by user')
-            console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
+            if not quiet: console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
             temp_file.close()
             os.unlink(temp_file.name)
-            time.sleep(0.5)
-            clean_screen()
+            if not quiet:
+                time.sleep(0.5)
+                clean_screen()
             exit(1)
     
         if (res == count + 1):
             logger.debug('Canceled Download Subtitle')
-            console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
+            if not quiet: console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
             temp_file.close()
             os.unlink(temp_file.name)
-            time.sleep(2)
-            clean_screen()
+            if not quiet:
+                time.sleep(2)
+                clean_screen()
             exit(0)
 
         logger.debug('Decompressing files')
@@ -888,7 +897,7 @@ def extract_subtitles(compressed_sub_file, temp_file, topath):
                                 break
             compressed_sub_file.close()
         logger.debug(f"Done extract subtitles!")
-        console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
+        if not quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
     else:
         for name in compressed_sub_file.infolist():
             # don't unzip stub __MACOSX folders
@@ -897,10 +906,10 @@ def extract_subtitles(compressed_sub_file, temp_file, topath):
                 compressed_sub_file.extract(name, topath)
         compressed_sub_file.close()
         logger.debug(f"Done extract subtitle!")
-        console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
+        if not quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
 
 ### Checking cookie ###
-headers['Cookie'] = check_Cookie_Status()
+headers['Cookie'], _f_token = check_Cookie_Status()
 
 ### Store aadata test ###
 def store_aadata(aadata):

@@ -10,7 +10,7 @@ from rarfile import is_rarfile, RarFile, RarCannotExec, RarExecError
 
 from .sdxutils import *
 
-def get_subtitle_url(title, number, metadata, no_choose, inf_sub):
+def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
     
     """Get a page with a list of subtitles searched by ``title`` and season/episode
         ``number`` of series or movies.
@@ -23,12 +23,15 @@ def get_subtitle_url(title, number, metadata, no_choose, inf_sub):
 
     buscar = f"{title} {number}"
 
-    console.print("\r")
+    if not lst_arg['quiet']:console.print("\r")
     logger.debug(f'Searching subtitles for: ' + str(title) + " " + str(number).upper())
+    
+    if not lst_arg['quiet']:
+        with console.status(f'Searching subtitles for: ' + str(title) + " " + str(number).upper()):
+           json_aaData = get_aadata(buscar)
+    else:
+          json_aaData = get_aadata(buscar)
 
-    with console.status(f'Searching subtitles for: ' + str(title) + " " + str(number).upper()):
-        json_aaData = get_aadata(buscar)
-        
     if json_aaData["iTotalRecords"] == 0 :
         raise NoResultsError(f'Not subtitles records found for: {buscar}')
 
@@ -97,33 +100,38 @@ def get_subtitle_url(title, number, metadata, no_choose, inf_sub):
     table_title = str(title) + " " + str(number).upper()
     results_pages = paginate(results, 10)
 
-    if (no_choose==False):
-        res = get_selected_subtitle_id(table_title, results, metadata)
+    if (lst_arg['no_choose'] == False):
+        res = get_selected_subtitle_id(table_title, results, metadata, lst_arg['quiet'])
         url = SUBDIVX_DOWNLOAD_PAGE + str(res)
     else:
         # get first subtitle
         url = SUBDIVX_DOWNLOAD_PAGE + str(results_pages['pages'][0][0]['id'])
-    print("\r")
-    # get download page
-    with console.status("Checking download url... ", spinner="earth"):
-        try:
+    
+    if not lst_arg['quiet']: print("\r")
+    # check download page
+    try:
+        with console.status("Checking download url... ", spinner="earth") as status:
+            if lst_arg['quiet']: status.stop()
+            else: status.start()
             if (s.request("GET", url).status == 200):
                 logger.debug(f"Getting url from: {url}")
                 return url
-        except HTTPError as e:
-            HTTPErrorsMessageException(e)
-            exit(1)
+    except HTTPError as e:
+        HTTPErrorsMessageException(e)
+        exit(1)
 
-def get_subtitle(url, topath):
+def get_subtitle(url, topath, quiet):
     """Download subtitles from ``url`` to a destination ``path``."""
     
-    clean_screen()
+    if not quiet: clean_screen()
     temp_file = NamedTemporaryFile(delete=False)
     SUCCESS = False
 
     # get direct download link
     try:
-        with console.status("Downloading Subtitle... ", spinner="dots4"):
+        with console.status("Downloading Subtitle... ", spinner="dots4") as status:
+            if quiet: status.stop()
+            else: status.start()
             # Download file
             for i in range ( 9, 0, -1 ):
                 logger.debug(f"Trying Download from link: {SUBDIVX_DOWNLOAD_PAGE + 'sub' + str(i) + '/' + url[24:]}")
@@ -151,7 +159,7 @@ def get_subtitle(url, topath):
             logger.error(f'No suitable subtitle download for : "{url}"')
             exit(1)
 
-        extract_subtitles(compressed_sub_file, temp_file, topath)
+        extract_subtitles(compressed_sub_file, temp_file, topath, quiet)
         
     except (RarCannotExec, RarExecError):
             console.clear()
@@ -167,4 +175,4 @@ def get_subtitle(url, topath):
     temp_file.close()
     os.unlink(temp_file.name)
     time.sleep(2)
-    clean_screen()
+    if not quiet: clean_screen()

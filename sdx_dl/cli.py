@@ -90,7 +90,7 @@ def main():
     parser.add_argument('--title','-t',type=str,help="Set the title of the show")
    
     args = parser.parse_args()
-
+  
     lst_args = {
         "search" : args.search,
         "path" : args.path,
@@ -120,7 +120,6 @@ def main():
         else:
             number = f"({info['year']})" if "year" in info  else  ""
 
-
         if (lst_args['title']):
             title=lst_args['title']
         else:
@@ -138,7 +137,6 @@ def main():
         return title, number, inf_sub
 
     if not args.quiet:
-        # console = logging.StreamHandler()
         console = RichHandler(rich_tracebacks=True, tracebacks_show_locals=True)
         console.setFormatter(LOGGER_FORMATTER_SHORT)
         console.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
@@ -158,7 +156,7 @@ def main():
             
             url = get_subtitle_url(
                 title, number, metadata,
-                no_choose=lst_args['no_choose'], 
+                lst_args, 
                 inf_sub = inf_sub )
         
         except NoResultsError as e:
@@ -167,7 +165,7 @@ def main():
             
         if (url is not None):
             topath = os.getcwd() if lst_args['path'] is None else lst_args['path']
-            get_subtitle(url, topath)
+            get_subtitle(url, topath, lst_args['quiet'])
 
     elif os.path.exists(lst_args['search']):
       cursor = FileFinder(lst_args['search'], with_extension=_extensions)
@@ -198,7 +196,7 @@ def main():
             url = get_subtitle_url(
                 title, number,
                 metadata,
-                no_choose=lst_args['no_choose'],
+                lst_args,
                 inf_sub=inf_sub)
 
         except NoResultsError as e:
@@ -212,7 +210,7 @@ def main():
 
         if (url is not None):
             with subtitle_renamer(filepath, inf_sub=inf_sub):
-                get_subtitle(url, topath)
+                get_subtitle(url, topath, lst_args['quiet'])
 
 if __name__ == '__main__':
     main()
