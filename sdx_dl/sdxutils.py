@@ -809,7 +809,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
         if not quiet:
             console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
             time.sleep(0.8)
-            clean_screen()
+        clean_screen()
         exit(1)
 
     if (res == -1):
@@ -817,7 +817,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
         if not quiet:
             console.print("\r\n" + ":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
             time.sleep(0.8)
-            clean_screen()
+        clean_screen()
         exit(0)
 
     return res
@@ -857,22 +857,22 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
                         show_choices=False, show_default=True, choices=choices, default=0)
         except KeyboardInterrupt:
             logger.debug('Interrupted by user')
-            if not quiet: console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
             temp_file.close()
             os.unlink(temp_file.name)
             if not quiet:
+                console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
                 time.sleep(0.5)
-                clean_screen()
+            clean_screen()
             exit(1)
     
         if (res == count + 1):
-            logger.debug('Canceled Download Subtitle')
-            if not quiet: console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
+            logger.debug('Canceled Download Subtitle') 
             temp_file.close()
             os.unlink(temp_file.name)
             if not quiet:
+                console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
                 time.sleep(2)
-                clean_screen()
+            clean_screen()
             exit(0)
 
         logger.debug('Decompressing files')
@@ -897,6 +897,7 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
                                 break
             compressed_sub_file.close()
         logger.debug(f"Done extract subtitles!")
+        clean_screen()
         if not quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
     else:
         for name in compressed_sub_file.infolist():
