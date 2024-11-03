@@ -32,7 +32,8 @@ from rich.prompt import IntPrompt
 from rich.traceback import install
 install(show_locals=False)
 
-#obtained from http://flexget.com/wiki/Plugins/quality
+#obtained from https://flexget.com/Plugins/quality#qualities
+
 _qualities = ('1080i', '1080p', '2160p', '10bit', '1280x720',
               '1920x1080', '360p', '368p', '480', '480p', '576p',
                '720i', '720p', 'ddp5.1', 'dd5.1', 'bdrip', 'brrip', 'bdscr', 'bluray',
@@ -46,7 +47,7 @@ _keywords = (
 'galaxyrg', 'galaxytv', 'hazmatt', 'immerse', 'internal', 'ion10', 'killers', 'loki', 
 'lol', 'mement', 'minx', 'notv', 'phoenix', 'rarbg', 'sfm', 'sva', 'sparks', 'turbo', 
 'torrentgalaxy', 'psa', 'nf', 'rrb', 'pcok', 'edith', 'successfulcrab', 'megusta', 'ethel',
-'ntb', 'flux', 'yts', 'rbb', 'xebec', 'yify')
+'ntb', 'flux', 'yts', 'rbb', 'xebec', 'yify', 'rubik')
 
 _codecs = ('xvid', 'x264', 'h264', 'x265', 'hevc')
 
