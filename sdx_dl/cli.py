@@ -88,6 +88,7 @@ def main():
                         version=f'subdx-dl {version("subdx-dl")}', help="Show program version")
     parser.add_argument('--keyword','-k',type=str,help="Add keyword to search among subtitles")
     parser.add_argument('--title','-t',type=str,help="Set the title of the show")
+    parser.add_argument('--imdb','-i',type=str,help="Search by IMDB id")
    
     args = parser.parse_args()
   
@@ -101,6 +102,7 @@ def main():
         "force": args.force,
         "keyword": args.keyword,
         "title": args.title,
+        "imdb": args.imdb
     }
 
     # Setting logger
@@ -120,7 +122,7 @@ def main():
         else:
             number = f"({info['year']})" if "year" in info  else  ""
 
-        if (lst_args['title']):
+        if (lst_args['title'] and not lst_args['imdb']):
             title=lst_args['title']
         else:
             if info["type"] == "movie" :

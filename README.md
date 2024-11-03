@@ -50,7 +50,8 @@ _optional arguments_:
   --force, -f           Override existing subtitle file.
   --version -V          Show program version.
   --title -t "<string>" _ Set the title to search instead of getting it from the file name. This option is invalid if --imdb is setting. 
-  --keyword -k "<strings>" _ Add an <strings> to the list of keywords separated by spaces. Keywords are used when you have.
+  --keyword -k "<strings>" _ Add an <strings> to the list of keywords separated by spaces. Keywords are used when you search by filename.
+  --imdb -i IMDB_ID _ Search by IMDB id regardless filename, search strings or serie season.
 
 ```
 
@@ -80,13 +81,20 @@ $ sdx-dl "Deadpool and Wolverine 2024"
 $ sdx-dl "Deadpool 3"
 
 $ sdx-dl tt6263850
- ```
+```
 _Search by a file reference:_
 
 ```
 $ sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.mkv
 
 ```
+```
+
+$ sdx-dl --imdb tt13062500 -q The.Walking.Dead.Daryl.Dixon.S02E06.480p.x264-RUBiK.mkv
+
+```
+  > Search by IMDB id regardless filename, search strings keeping the serie season/number and in quiet mode.
+
 ## Tips
 
 - Always try to search with *__Title, Year or season number__* for better results.
