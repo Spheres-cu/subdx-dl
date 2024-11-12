@@ -51,7 +51,7 @@ _keywords = (
 
 _codecs = ('xvid', 'x264', 'h264', 'x265', 'hevc')
 
-_sub_extensions = ['.srt', '.ssa']
+_sub_extensions = ['.srt', '.ssa', '.ass', '.sub']
 
 SUBDIVX_SEARCH_URL = 'https://www.subdivx.com/inc/ajax.php'
 
@@ -729,6 +729,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                                 break
 
                             if ch_exit in ["D", "d"]:
+                                live._screen = False
                                 res = results_pages['pages'][page][selected]['id']
                                 break
                                 
@@ -737,6 +738,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                 if ch in ["C", "c"]:
                     cpage = 0
                     subtitle_selected =  results_pages['pages'][page][selected]['titulo']
+                    subid = int(results_pages['pages'][page][selected]['id'])
                     layout_comments = make_layout()
                     title ="Subtítulo: " + html2text.html2text(subtitle_selected).strip()
                     show_comments = True if results_pages['pages'][page][selected]['comentarios'] != 0 else False
@@ -744,7 +746,6 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
 
                     with console.screen(hide_cursor=True) as screen_comments:
                         if show_comments:
-                            subid = int(results_pages['pages'][page][selected]['id'])
                             with console.status("[bold yellow][i]CARGANDO COMENTARIOS...[/]", spinner='aesthetic'):
                               aaData = get_comments_data(subid)
                             comments = get_list_Dict(aaData['aaData']) if aaData is not None else None
@@ -779,6 +780,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                                 cpage = max(0, cpage - 1)
 
                             if ch_comment in ["D", "d"]:
+                                live._screen = False
                                 res = subid
                                 break
 
