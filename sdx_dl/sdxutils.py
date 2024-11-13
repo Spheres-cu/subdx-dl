@@ -673,7 +673,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
         page = 0
         res = 0
         with Live(
-            generate_results (table_title, results_pages, page, selected),auto_refresh=False, screen=True, transient=True
+            generate_results (table_title, results_pages, page, selected),auto_refresh=False, screen=False, transient=True
         ) as live:
             while True:
                 live.console.show_cursor(False)
@@ -729,7 +729,6 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                                 break
 
                             if ch_exit in ["D", "d"]:
-                                live._screen = False
                                 res = results_pages['pages'][page][selected]['id']
                                 break
                                 
@@ -780,7 +779,6 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                                 cpage = max(0, cpage - 1)
 
                             if ch_comment in ["D", "d"]:
-                                live._screen = False
                                 res = subid
                                 break
 
@@ -795,15 +793,11 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                     selected = 0
 
                 if ch == key.ENTER:
-                    live.stop()
                     res = results_pages['pages'][page][selected]['id']
-                    if not quiet: clean_screen()
                     break
 
                 if ch in ["S", "s"]:
-                    live.stop()
                     res = -1
-                    if not quiet: clean_screen()
                     break
                 live.update(generate_results(table_title, results_pages, page, selected), refresh=True)
 
@@ -822,7 +816,8 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
             time.sleep(0.8)
         clean_screen()
         exit(0)
-
+    
+    clean_screen()
     return res
 
 ### Extract Subtitles ###
