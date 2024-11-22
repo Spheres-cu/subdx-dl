@@ -94,8 +94,7 @@ def check_Cookie_Status():
         cookie = get_Cookie()
         stor_Cookie(cookie)
     try:
-        _f_rtk = _keywords[12][:-3] + _keywords[37][:-12]
-        _f_tk = SUBDIVX_SEARCH_URL[:-8] + _f_rtk + '.php?' + _f_rtk + "=" + str(1**0.5)[:-2]
+        _f_tk = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
         _r_ftoken = s.request('GET', _f_tk, headers={"Cookie":cookie},preload_content=False).data
         _f_token = json.loads(_r_ftoken)['token']
     
@@ -410,6 +409,8 @@ def HTTPErrorsMessageException(e: HTTPError):
 
 def get_aadata(search):
     """Get a json data with the ``search`` results."""
+   
+    headers['Cookie'], _f_token = check_Cookie_Status()
     try:
         _vpage = s.request('GET', SUBDIVX_DOWNLOAD_PAGE, preload_content=False).data
         _vdata = BeautifulSoup(_vpage, 'html5lib')
@@ -906,9 +907,6 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
         compressed_sub_file.close()
         logger.debug(f"Done extract subtitle!")
         if not quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
-
-### Checking cookie ###
-headers['Cookie'], _f_token = check_Cookie_Status()
 
 ### Store aadata test ###
 def store_aadata(aadata):
