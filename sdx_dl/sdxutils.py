@@ -117,10 +117,7 @@ def exp_time_Cookie():
     delta_csdx = datetime.now() - csdx_ti_m
     exp_c_time = timedelta(hours=24)
 
-    if delta_csdx > exp_c_time:
-            return True 
-    else:
-        return False
+    return delta_csdx > exp_c_time
 
 def get_Cookie():
     """ Retrieve sdx cookie."""
