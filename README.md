@@ -1,3 +1,10 @@
+![PyPI - Python Version](https://img.shields.io/pypi/dm/subdx-dl?link=https%3A%2F%2Fpypistats.org%2Fpackages%2Fsubdx-dl)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl)
+![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl)
+![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl)
+![GitHub License](https://img.shields.io/github/license/Spheres-cu/subdx-dl)
+![GitHub User's stars](https://img.shields.io/github/stars/Spheres-cu)
+
 A cli tool for download subtitle from www.subdivx.com with the better possible matching results.
 
 
