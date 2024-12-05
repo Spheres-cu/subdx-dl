@@ -66,10 +66,14 @@ def subtitle_renamer(filepath, inf_sub):
               exit(1)
 
 def main():
-    parser = argparse.ArgumentParser(prog='sdx-dl', 
-                                     description='A cli tool for download subtitle from\
-                                       www.subdivx.com with the better possible matching results.',
-                                       epilog='Project site: https://github.com/Spheres-cu/subdx-dl')
+    parser = argparse.ArgumentParser(prog='sdx-dl',
+    formatter_class=argparse.RawTextHelpFormatter,
+    description='A cli tool for download subtitle from https://www.subdivx.com with the better possible matching results.',
+    epilog='Project site: https://github.com/Spheres-cu/subdx-dl\n\
+    \nProject issues:https://github.com/Spheres-cu/subdx-dl/issues\n\
+    \nUsage examples:https://github.com/Spheres-cu/subdx-dl#examples'
+    )
+
     parser.add_argument('search', type=str,
                         help="file, directory or movie/series title or IMDB Id to retrieve subtitles")
     parser.add_argument('--path', '-p', type=str,
