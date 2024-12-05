@@ -78,7 +78,7 @@ $ sdx-dl "Abbott Elementary"
  _or search for complete  Season:_
  
  ```
- sdx-dl -S "Abbot Elementary S04E01"
+ sdx-dl -S "Abbott Elementary S04E01"
  ```
  _Search for a Movie by Title, Year or simple title, even by __IMDB ID__ :_
  
