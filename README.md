@@ -1,4 +1,4 @@
-![PyPI - Python Version](https://img.shields.io/pypi/dm/subdx-dl?link=https%3A%2F%2Fpypistats.org%2Fpackages%2Fsubdx-dl)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/subdx-dl?link=https%3A%2F%2Fpypistats.org%2Fpackages%2Fsubdx-dl)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl)
 ![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl)
 ![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl)
@@ -68,11 +68,11 @@ _optional arguments_:
 _Search a single TV-Show by: Title, Season number or simple show name:_
 
 ```
-$ sdx-dl "Abbot Elementary S04E01"
+$ sdx-dl "Abbott Elementary S04E01"
 
-$ sdx-dl "Abbot Elementary 04x01"
+$ sdx-dl "Abbott Elementary 04x01"
 
-$ sdx-dl "Abbot Elementary"
+$ sdx-dl "Abbott Elementary"
  ```
  
  _or search for complete  Season:_
