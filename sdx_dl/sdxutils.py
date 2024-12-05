@@ -3,8 +3,10 @@
 
 import os
 import re
+import sys
 import time
 import json
+import signal
 import logging
 import certifi
 import urllib3
@@ -83,6 +85,9 @@ logger = logging.getLogger(__name__)
 def setup_logger(level):
 
     logger.setLevel(level)
+
+# Manage ctrl-c Keyboard Interrupt, quit gracefully
+signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
 
 ### Setting cookies ###
 sdxcookie_name = 'sdx-cookie'
@@ -301,6 +306,7 @@ def get_filtered_results (title, number, inf_sub, list_Subs_Dicts):
 ### Filters searchs functions ###
 
 def clean_screen():
+    """Clean the screen"""
     os.system('clear' if os.name != 'nt' else 'cls')
 
 def highlight_text(text,  metadata):
