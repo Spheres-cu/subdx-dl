@@ -9,7 +9,6 @@ from configparser import RawConfigParser
 from html.parser import HTMLParser
 from os.path import join, dirname
 
-
 class Attributes(dict):
     def __getitem__(self, name):
         try:
@@ -22,7 +21,6 @@ class TagParser(RawConfigParser):
     def get_pretty(self, section, option):
         value = self.get(section, option)
         return value.replace("\\n", "\n")
-
 
 class HTML2BBCode(HTMLParser):
     """
@@ -133,13 +131,12 @@ class HTML2BBCode(HTMLParser):
 class NoResultsError(Exception):
     pass
 
-"""Generate a user agent"""
+### Generate a user agent ###
 
 _TOKEN: str = "Mozilla/5.0"
 _WINDOWS_PREFIX: str = "Windows NT 10.0; Win64; x64"
 _MAC_PREFIX: str = "Macintosh; Intel Mac OS X"
 _LINUX_PREFIX: str = "X11; Ubuntu; Linux x86_64"
-
 
 class GenerateUserAgent:
     """Class containing methods for generating user agents."""
