@@ -110,7 +110,7 @@ $ sdx-dl --search-imdb "Los Caza fantasmas"
 
 $ sdx-dl -si "Duna S1E3"
 ```
-- IMDB search:_
+- _IMDB search:_
 
 ![![IMDB search film]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search01.png?raw=true)
 
