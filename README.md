@@ -50,7 +50,7 @@ search                  file, directory or movie/series title or IMDB Id to retr
 ```
 _optional arguments_:
 
-```bash
+```shell
 -h, --help            Show this help message and exit.
 --quiet, -q           No verbose mode and very quiet. Applies even in verbose mode (-v).
 --path, -p            Path to download subtitles.
@@ -70,7 +70,7 @@ _optional arguments_:
 
 _Search a single TV-Show by: Title, Season number or simple show name:_
 
-```bash
+```shell
 sdx-dl "Abbott Elementary S04E01"
 
 sdx-dl "Abbott Elementary 04x01"
@@ -80,12 +80,12 @@ sdx-dl "Abbott Elementary"
 
 _or search for complete  Season:_
 
-```bash
+```shell
 sdx-dl -S "Abbott Elementary S04E01"
 ```
 _Search for a Movie by Title, Year or simple title, even by __IMDB ID__ :_
 
-```bash
+```shell
 sdx-dl "Deadpool and Wolverine 2024"
 
 sdx-dl "Deadpool 3"
@@ -94,12 +94,12 @@ sdx-dl tt6263850
 ```
 _Search by a file reference:_
 
-```bash
+```shell
 sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.mkv
 
 ```
 
-```bash
+```shell
 sdx-dl --imdb tt13062500 -q The.Walking.Dead.Daryl.Dixon.S02E06.480p.x264-RUBiK.mkv
 ```
   > Search by IMDB id regardless filename, search strings keeping the serie season/number and in quiet mode.
