@@ -14,7 +14,7 @@ import tempfile
 import logging.handlers
 import html2text
 import random
-from .sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent
+from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
@@ -32,7 +32,7 @@ from rich.align import Align
 from rich.live import Live
 from rich.prompt import IntPrompt
 from rich.traceback import install
-install(show_locals=False)
+install(show_locals=True)
 
 #obtained from https://flexget.com/Plugins/quality#qualities
 
@@ -387,9 +387,9 @@ def Network_Connection_Error(e: HTTPError) -> str:
     msg = e.__str__()
     error_class = e.__class__.__name__
     Network_error_msg= {
-        'ConnectTimeoutError' : "Connection to www.subdivx.com timed out",
+        'ConnectTimeoutError' : "Connection to host timed out",
         'ReadTimeoutError'    : "Read timed out",
-        'NameResolutionError' : 'Failed to resolve www.subdivx.com',
+        'NameResolutionError' : 'Failed to resolve host name',
         'ProxyError' : "Unable to connect to proxy",
         'NewConnectionError' : "Failed to establish a new connection",
         'ProtocolError'      : "Connection aborted. Remote end closed connection without response",
@@ -910,6 +910,89 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
         compressed_sub_file.close()
         logger.debug(f"Done extract subtitle!")
         if not quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
+
+### Search IMDB ###
+
+def get_imdb_search(title, number, inf_sub):
+    """Get the IMDB ``id`` or ``title`` for search subtitles"""
+    try:
+        imdb = IMDB()
+        title = f'{title}'
+        number = f'{number}'
+        year = int(number[1:5]) if (inf_sub['type']  == "movie") and (number != "") else None
+        # logger.debug(f'Year: {year} Number {number}')
+
+        if inf_sub['type'] == "movie":
+            res = imdb.get_by_name(title, year, tv=False) if year is not None else imdb.search(title, tv=False)
+        else:
+            res = imdb.search(title, tv=True)
+    except Exception:
+        pass
+        return None
+    
+    try:
+        results = json.loads(res) if year is not None else json.loads(res)['results']
+        # logger.debug(f'Search IMDB json: {str(json.dumps(results, default=str))}')
+    except JSONDecodeError as e:
+        msg = e.__str__()
+        logger.debug(f'Could not decode json results: Error JSONDecodeError:"{msg}"')
+        console.print(":no_entry: [bold red]Some error retrieving from IMDB:[/]: " + msg, new_line_start=True, emoji=True)
+        return None
+   
+    if year is not None:
+        search = f"{results['id']}" if inf_sub['type'] == "movie" else f"{results['name']} {number}"
+        return search
+    else:
+        search = make_IMDB_table(title, results, inf_sub['type'])
+        if inf_sub['type'] == "movie":
+            return search
+        else:
+            return f'{search} {number}'
+
+def make_IMDB_table(title, results, type):
+    """Define a IMDB Table."""
+    count = 0
+    choices = []
+    choices.append(str(count))
+
+    BG_STYLE = Style(color="white", bgcolor="gray0", bold=False)
+
+    imdb_table = Table(box=box.SIMPLE_HEAD, title="\n Resultados de IMDB para: " + title, caption="[italic bright_yellow]"\
+                    "Seleccione un resultado o enter para cancelar[/]\n",
+                    show_header=True, header_style="bold yellow", title_style="bold green",
+                    caption_style="bold bright_yellow", leading=1, show_lines=True)
+    
+    imdb_table.add_column("#", justify="right", vertical="middle", style="bold green")
+    imdb_table.add_column("Título + url", justify="left", vertical="middle", style="white")
+    imdb_table.add_column("IMDB", justify="center", vertical="middle")
+    imdb_table.add_column("Tipo", justify="center", vertical="middle")
+
+    rows = []
+ 
+    for item in results:
+        try:
+            titulo = str(html2text.html2text(item['name'])).strip() + " ("+ str(item['year'])+ ")\n" + str(item['url'])
+            imdb = str(item['id'])
+            tipo = str(item['type'])
+
+            items = [str(count + 1), titulo, imdb, tipo]
+            choices.append(str(count + 1))
+            rows.append(items)
+        except IndexError:
+            pass
+        count = count +1
+    
+    for row in rows:
+        row[0] =  "[bold green]" + row[0] + "[/]"
+        imdb_table.add_row(*row, style = BG_STYLE )
+    
+    console.print(imdb_table)
+    console.print("[bold green]>> [0] Cancelar selección\n\r", new_line_start=True)
+    
+    res = IntPrompt.ask("[bold yellow]>> Elija un [" + "[bold green]#" + "][bold yellow]. Por defecto:", 
+                    show_choices=False, show_default=True, choices=choices, default=0)
+    search = f"{results[res-1]['id']}" if type == "movie" else f"{results[res-1]['name']}"
+    return search if res else None
 
 ### Store aadata test ###
 def store_aadata(aadata):

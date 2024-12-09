@@ -4,8 +4,8 @@
 
 import os
 import argparse
-from .sdxlib import *
-from .sdxutils import _sub_extensions, console as rconsole
+from sdx_dl.sdxlib import *
+from sdx_dl.sdxutils import _sub_extensions, console as rconsole
 from guessit import guessit
 from rich.logging import RichHandler
 from tvnamer.utils import FileFinder
@@ -86,6 +86,8 @@ def main():
                         default=False, help="No Choose sub manually")
     parser.add_argument('--Season', '-S', action='store_true',
                         default=False, help="Search for Season")
+    parser.add_argument('--search-imdb', '-si', action='store_true',
+                        default=False, help="Search first for the IMDB id or title")
     parser.add_argument('--force', '-f', action='store_true',
                         default=False, help="override existing file")
     parser.add_argument('--version', '-V', action='version',
@@ -103,6 +105,7 @@ def main():
         "verbose" : args.verbose,
         "no_choose": args.no_choose,
         "Season": args.Season,
+        "search_imdb": args.search_imdb,
         "force": args.force,
         "keyword": args.keyword,
         "title": args.title,
@@ -163,7 +166,7 @@ def main():
             url = get_subtitle_url(
                 title, number, metadata,
                 lst_args, 
-                inf_sub = inf_sub )
+                inf_sub )
         
         except NoResultsError as e:
             logger.error(str(e))
@@ -203,7 +206,7 @@ def main():
                 title, number,
                 metadata,
                 lst_args,
-                inf_sub=inf_sub)
+                inf_sub)
 
         except NoResultsError as e:
             logger.error(str(e))

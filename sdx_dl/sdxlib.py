@@ -8,7 +8,7 @@ from tempfile import NamedTemporaryFile
 from zipfile import is_zipfile, ZipFile
 from rarfile import is_rarfile, RarFile, RarCannotExec, RarExecError
 
-from .sdxutils import *
+from sdx_dl.sdxutils import *
 
 def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
     
@@ -20,8 +20,23 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
       If ``no_choose`` ``(-nc)``  is true then a list of subtitles is show for chose 
         else the first subtitle is choosen.
     """
+    buscar = None
+    if lst_arg['search_imdb']:
+        if not lst_arg['quiet']:
+            console.print(":earth_americas: [bold yellow]Searching in IMDB ... " +  f"{title} {number}", new_line_start=True, emoji=True) 
+        search = get_imdb_search(title, number, inf_sub)
+        buscar = search
+        if buscar is not None and inf_sub['type'] == 'episode':
+            title = buscar.replace(number, "").strip()
+        logger.debug(f'IMDB Search result:{buscar}')
 
-    buscar = f"{title} {number}" if not lst_arg['imdb'] else lst_arg['imdb']
+        if not lst_arg['quiet']:
+            clean_screen()
+            imdb_search = buscar if buscar is not None else "Ninguno"
+            console.print(":information_source: [bold yellow] Search terms from IMDB: " + imdb_search, new_line_start=True, emoji=True)
+            time.sleep(2)
+
+    if buscar is None : buscar = f"{title} {number}" if not lst_arg['imdb'] else lst_arg['imdb']
 
     if not lst_arg['quiet']:console.print("\r")
     logger.debug(f'Searching subtitles for: ' + str(title) + " " + str(number).upper())

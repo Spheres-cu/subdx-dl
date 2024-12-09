@@ -54,6 +54,7 @@ _optional arguments_:
   --verbose -v          Be in verbose mode.
   --no-choose, -nc      Download the default match subtitle available. Show all the available subtitles to download is de default behavior.
   --Season, -S          Search for Season.
+  --search-imdb, -si    Search first for the IMDB id or title.
   --force, -f           Override existing subtitle file.
   --version -V          Show program version.
   --title -t "<string>" _ Set the title to search instead of getting it from the file name. This option is invalid if --imdb is setting. 
@@ -101,6 +102,24 @@ $ sdx-dl --imdb tt13062500 -q The.Walking.Dead.Daryl.Dixon.S02E06.480p.x264-RUBi
 
 ```
   > Search by IMDB id regardless filename, search strings keeping the serie season/number and in quiet mode.
+
+_Search first for the __IMDB ID__ or  correct tv show __Title__ if don't know they name or it's in another language:_
+
+```
+$ sdx-dl --search-imdb "Los Caza fantasmas"
+
+$ sdx-dl -si "Duna S1E3"
+```
+- IMDB search:_
+
+![![IMDB search film]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search01.png?raw=true)
+
+![![IMDB search film reults]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search02.png?raw=true)
+
+![![IMDB search TV show]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search03.png?raw=true)
+
+![![IMDB search TV show results]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search04.png?raw=true)
+
 
 ## Tips
 
