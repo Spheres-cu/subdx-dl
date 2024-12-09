@@ -10,26 +10,31 @@ A cli tool for download subtitle from www.subdivx.com with the better possible m
 
 # Install
 -------
-```
-git clone https://github.com/Spheres-cu/subdx-dl.git
-cd subdx-dl
-python3 -m pip install .
-
-OR
-
+```bash
 pip install -U subdx-dl
-
 ```
 
-### My recomendation is to use a virtual env and install it there:
+### For testing use a virtual env and install it there:
 
-```
+_For linux:_
+
+```bash
 mkdir subdx
 python3 -m venv subdx
 source subdx/bin/activate
-then clone with git and install with all the dependencies among them:
-pip install -r requirements.txt
+git clone https://github.com/Spheres-cu/subdx-dl.git
+cd subdx-dl
+pip install -e .
+```
+_For Windows:_
 
+```batch
+mkdir subdx
+python -m venv subdx
+.\subdx\Scripts\activate
+git clone https://github.com/Spheres-cu/subdx-dl.git
+cd subdx-dl
+pip install -e .
 ```
 
 # Usage
@@ -37,30 +42,27 @@ pip install -r requirements.txt
 
 ```
 usage: sdx-dl [-h or --help] [optional arguments] search
-
 ```
 _positional arguments_:
 
 ```
-  search                  file, directory or movie/series title or IMDB Id to retrieve subtitles
-
+search                  file, directory or movie/series title or IMDB Id to retrieve subtitles
 ```
 _optional arguments_:
 
-```
-  -h, --help            Show this help message and exit.
-  --quiet, -q           No verbose mode and very quiet. Applies even in verbose mode (-v).
-  --path, -p            Path to download subtitles.
-  --verbose -v          Be in verbose mode.
-  --no-choose, -nc      Download the default match subtitle available. Show all the available subtitles to download is de default behavior.
-  --Season, -S          Search for Season.
-  --search-imdb, -si    Search first for the IMDB id or title.
-  --force, -f           Override existing subtitle file.
-  --version -V          Show program version.
-  --title -t "<string>" _ Set the title to search instead of getting it from the file name. This option is invalid if --imdb is setting. 
-  --keyword -k "<strings>" _ Add an <strings> to the list of keywords separated by spaces. Keywords are used when you search by filename.
-  --imdb -i IMDB_ID _ Search by IMDB id regardless filename, search strings or serie season.
-
+```bash
+-h, --help            Show this help message and exit.
+--quiet, -q           No verbose mode and very quiet. Applies even in verbose mode (-v).
+--path, -p            Path to download subtitles.
+--verbose -v          Be in verbose mode.
+--no-choose, -nc      Download the default match subtitle available. Show all the available subtitles to download is de default behavior.
+--Season, -S          Search for Season.
+--search-imdb, -si    Search first for the IMDB id or title.
+--force, -f           Override existing subtitle file.
+--version -V          Show program version.
+--title -t "<string>" _ Set the title to search instead of getting it from the file name. This option is invalid if --imdb is setting. 
+--keyword -k "<strings>" _ Add an <strings> to the list of keywords separated by spaces. Keywords are used when you search by filename.
+--imdb -i IMDB_ID _ Search by IMDB id regardless filename, search strings or serie season.
 ```
 
 ## Examples
@@ -68,47 +70,46 @@ _optional arguments_:
 
 _Search a single TV-Show by: Title, Season number or simple show name:_
 
+```bash
+sdx-dl "Abbott Elementary S04E01"
+
+sdx-dl "Abbott Elementary 04x01"
+
+sdx-dl "Abbott Elementary"
 ```
-$ sdx-dl "Abbott Elementary S04E01"
 
-$ sdx-dl "Abbott Elementary 04x01"
+_or search for complete  Season:_
 
-$ sdx-dl "Abbott Elementary"
- ```
- 
- _or search for complete  Season:_
- 
- ```
- sdx-dl -S "Abbott Elementary S04E01"
- ```
- _Search for a Movie by Title, Year or simple title, even by __IMDB ID__ :_
- 
- ```
-$ sdx-dl "Deadpool and Wolverine 2024"
+```bash
+sdx-dl -S "Abbott Elementary S04E01"
+```
+_Search for a Movie by Title, Year or simple title, even by __IMDB ID__ :_
 
-$ sdx-dl "Deadpool 3"
+```bash
+sdx-dl "Deadpool and Wolverine 2024"
 
-$ sdx-dl tt6263850
+sdx-dl "Deadpool 3"
+
+sdx-dl tt6263850
 ```
 _Search by a file reference:_
 
-```
-$ sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.mkv
+```bash
+sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.mkv
 
 ```
-```
 
-$ sdx-dl --imdb tt13062500 -q The.Walking.Dead.Daryl.Dixon.S02E06.480p.x264-RUBiK.mkv
-
+```bash
+sdx-dl --imdb tt13062500 -q The.Walking.Dead.Daryl.Dixon.S02E06.480p.x264-RUBiK.mkv
 ```
   > Search by IMDB id regardless filename, search strings keeping the serie season/number and in quiet mode.
 
 _Search first for the __IMDB ID__ or  correct tv show __Title__ if don't know they name or it's in another language:_
 
-```
-$ sdx-dl --search-imdb "Los Caza fantasmas"
+```bash
+sdx-dl --search-imdb "Los Caza fantasmas"
 
-$ sdx-dl -si "Duna S1E3"
+sdx-dl -si "Duna S1E3"
 ```
 - _IMDB search:_
 
@@ -152,7 +153,5 @@ $ sdx-dl -si "Duna S1E3"
 
 - _User comments:_
 
-  ![![Subtitle description]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot04.jpg?raw=true)
+![![Subtitle description]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot04.jpg?raw=true)
 
-
- 
