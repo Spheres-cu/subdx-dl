@@ -325,23 +325,25 @@ class IMDB:
         results = response.html.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
         if tv is True:
             results = [result for result in results if "TV" in result.text]
-
+        else:
+            results = [result for result in results if "TV" not in result.text]
+        
         output = []
         for result in results:
             name = result.text.replace('\n', ' ')
             url = result.find('a')[0].attrs['href']
             if not (any(s in name for s in ['Podcast', 'Music Video', 'Video', 'Episode'])):
                 try:
-                    for i in range(len(result.find('span')) - 1):
+                    for i in range(len(result.find('span'))):
                         span = result.find('span')[i]
-                        if 'TV' in span.text and tv:
+                        if 'TV' in span.text:
                             show = span.text
-                        elif 'TV' not in span.text:
-                            year_date = span.text.strip().split('-')[0][:4]
-                            show = "Movie"
                         else:
-                            year_date = "N/A"
-                            show = span.text
+                            text = span.text.strip().split('-')[0][:4]
+                            if text.isnumeric():
+                                year_date = text
+                          
+                    show = "Movie" if show == "" else show
             
                     file_id = url.split('/')[2]
                     name = result.find('a')[0].text
