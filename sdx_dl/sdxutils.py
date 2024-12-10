@@ -938,7 +938,10 @@ def get_imdb_search(title, number, inf_sub):
         logger.debug(f'Could not decode json results: Error JSONDecodeError:"{msg}"')
         console.print(":no_entry: [bold red]Some error retrieving from IMDB:[/]: " + msg, new_line_start=True, emoji=True)
         return None
-   
+    
+    if 'result_count' in results and results['result_count'] == 0:
+        return None
+        
     if year is not None:
         search = f"{results['id']}" if inf_sub['type'] == "movie" else f"{results['name']} {number}"
         return search
