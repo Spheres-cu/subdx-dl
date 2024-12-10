@@ -37,6 +37,7 @@ license = {file = "LICENSE"}
 [project.urls]
 Homepage = "https://github.com/Spheres-cu/subdx-dl"
 Issues = "https://github.com/Spheres-cu/subdx-dl/issues"
+Examples = "https://github.com/Spheres-cu/subdx-dl#examples"
 
 [tool.setuptools]
 packages = ["sdx_dl"]
