@@ -920,7 +920,7 @@ def get_imdb_search(title, number, inf_sub):
         title = f'{title}'
         number = f'{number}'
         year = int(number[1:5]) if (inf_sub['type']  == "movie") and (number != "") else None
-        # logger.debug(f'Year: {year} Number {number}')
+        # logger.debug(f'Year: {year} Number {number} Title {title}')
 
         if inf_sub['type'] == "movie":
             res = imdb.get_by_name(title, year, tv=False) if year is not None else imdb.search(title, tv=False)
@@ -939,9 +939,12 @@ def get_imdb_search(title, number, inf_sub):
         console.print(":no_entry: [bold red]Some error retrieving from IMDB:[/]: " + msg, new_line_start=True, emoji=True)
         return None
     
-    if 'result_count' in results and results['result_count'] == 0:
+    if not results:
         return None
-        
+    else:
+        if "result_count" in results and not results['results']:
+            return None
+
     if year is not None:
         search = f"{results['id']}" if inf_sub['type'] == "movie" else f"{results['name']} {number}"
         return search
@@ -994,7 +997,9 @@ def make_IMDB_table(title, results, type):
     
     res = IntPrompt.ask("[bold yellow]>> Elija un [" + "[bold green]#" + "][bold yellow]. Por defecto:", 
                     show_choices=False, show_default=True, choices=choices, default=0)
+  
     search = f"{results[res-1]['id']}" if type == "movie" else f"{results[res-1]['name']}"
+
     return search if res else None
 
 ### Store aadata test ###
