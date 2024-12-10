@@ -947,7 +947,7 @@ def get_imdb_search(title, number, inf_sub):
         if inf_sub['type'] == "movie":
             return search
         else:
-            return f'{search} {number}'
+            return f'{search} {number}' if search is not None else None
 
 def make_IMDB_table(title, results, type):
     """Define a IMDB Table."""
