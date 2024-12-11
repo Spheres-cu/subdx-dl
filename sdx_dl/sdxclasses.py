@@ -332,6 +332,7 @@ class IMDB:
         for result in results:
             name = result.text.replace('\n', ' ')
             year_date = "N/A"
+            show = ""
             url = result.find('a')[0].attrs['href']
             if not (any(s in name for s in ['Podcast', 'Music Video', 'Video', 'Episode'])):
                 try:
