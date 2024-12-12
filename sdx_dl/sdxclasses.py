@@ -334,7 +334,7 @@ class IMDB:
             year_date = "N/A"
             show = ""
             url = result.find('a')[0].attrs['href']
-            if not (any(s in name for s in ['Podcast', 'Music Video', 'Video', 'Episode'])):
+            if not (any(s in name for s in ['Podcast', 'Music Video', 'Video', 'Episode', 'Short'])):
                 try:
                     for i in range(len(result.find('span'))):
                         span = result.find('span')[i]
