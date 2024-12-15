@@ -72,7 +72,10 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
     
-    filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)
+    if lst_arg['search_imdb'] or lst_arg['imdb']:
+        filtered_list_Subs_Dicts = list_Subs_Dicts
+    else:
+        filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)
 
     if not filtered_list_Subs_Dicts:
         raise NoResultsError(f'No suitable subtitles were found for: "{buscar}"')
