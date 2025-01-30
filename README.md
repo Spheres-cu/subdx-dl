@@ -7,7 +7,7 @@
 ![GitHub License](https://img.shields.io/github/license/Spheres-cu/subdx-dl)
 ![GitHub User's stars](https://img.shields.io/github/stars/Spheres-cu)
 
-A cli tool for download subtitle from <www.subdivx.com> with the better possible matching results.
+A cli tool for download subtitle from [www.subdivx.com](https://www.subdivx.com) with the better possible matching results.
 
 ## Install
 
