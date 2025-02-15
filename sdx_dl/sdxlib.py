@@ -34,7 +34,7 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
             clean_screen()
             imdb_search = buscar if buscar is not None else "Ninguno"
             console.print(":information_source: [bold yellow] Search terms from IMDB: " + imdb_search, new_line_start=True, emoji=True)
-            time.sleep(2)
+            time.sleep(0.5)
 
     if buscar is None : buscar = f"{title} {number}" if not lst_arg['imdb'] else lst_arg['imdb']
 
@@ -189,5 +189,4 @@ def get_subtitle(url, topath, quiet):
     # Cleaning
     temp_file.close()
     os.unlink(temp_file.name)
-    time.sleep(2)
     if not quiet: clean_screen()
