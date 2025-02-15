@@ -5,7 +5,7 @@
 ![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl)
 ![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl)
 ![GitHub License](https://img.shields.io/github/license/Spheres-cu/subdx-dl)
-![GitHub User's stars](https://img.shields.io/github/stars/Spheres-cu)
+![GitHub Repo stars](https://img.shields.io/github/stars/Spheres-cu/subdx-dl)
 
 A cli tool for download subtitle from [www.subdivx.com](https://www.subdivx.com) with the better possible matching results.
 
