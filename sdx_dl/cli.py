@@ -5,7 +5,7 @@
 import os
 import argparse
 from sdx_dl.sdxlib import *
-from sdx_dl.sdxutils import _sub_extensions, console as rconsole
+from sdx_dl.sdxutils import _sub_extensions, console as rconsole, check_version
 from guessit import guessit
 from rich.logging import RichHandler
 from tvnamer.utils import FileFinder
@@ -92,6 +92,8 @@ def main():
                         default=False, help="override existing file")
     parser.add_argument('--version', '-V', action='version',
                         version=f'subdx-dl {version("subdx-dl")}', help="Show program version")
+    parser.add_argument('--check-version', '-cv', action=check_version(f'{version("subdx-dl")}'),
+                        help="Check for new program version")
     parser.add_argument('--keyword','-k',type=str,help="Add keyword to search among subtitles")
     parser.add_argument('--title','-t',type=str,help="Set the title of the show")
     parser.add_argument('--imdb','-i',type=str,help="Search by IMDB id")

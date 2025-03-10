@@ -1002,6 +1002,34 @@ def make_IMDB_table(title, results, type):
 
     return search if res else None
 
+### Check version ###
+def check_version(version:str):
+    """Check for new version."""
+    try:
+        _page_version = f"https://raw.githubusercontent.com/Spheres-cu/subdx-dl/refs/heads/main/sdx_dl/__init__.py"
+        _dt_version = s.request('GET', _page_version, preload_content=False, timeout=10).data
+        _g_version = f"{_dt_version}".split('"')[1]
+
+        if _g_version > version:
+            msg = "New version available!: " + _g_version + "\n"\
+                  "Please update your current version: " + f"{version}\r"
+        else:
+            msg = "No new version available\n"\
+                  "Actual version: " + f"{version}\r"
+
+    except HTTPError as e:
+        msg = Network_Connection_Error(e)
+
+    import argparse
+    class ChkVersionAction(argparse.Action):
+        def __init__(self, nargs=0, **kw):
+            super().__init__(nargs=nargs, **kw)
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            print(msg)
+            exit (0)
+    return ChkVersionAction
+
 ### Store aadata test ###
 def store_aadata(aadata):
     """Store aadata."""
