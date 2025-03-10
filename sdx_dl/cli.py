@@ -127,15 +127,20 @@ def main():
         if info["type"] == "episode" :
             number = f"s{info['season']:02}e{info['episode']:02}" if "episode" in info and not lst_args['Season'] else f"s{info['season']:02}" 
         else:
-            number = f"({info['year']})" if "year" in info  else  ""
+            number = f"({info['year']})" if ("year" in info and "title" in info) else  ""
 
         if (lst_args['title'] and not lst_args['imdb']):
-            title=lst_args['title']
+            title = f"{lst_args['title']}"
         else:
             if info["type"] == "movie" :
-                title = info["title"] 
+                title = f"{info['title'] if 'title' in info else info['year']}"
             else:
-                title=f"{info['title']} ({info['year']})" if "year" in info else info['title']
+                if ("title" in info and "year" in info):
+                    title = f"{info['title']} ({info['year']})"
+                elif "title" in info:
+                    title = f"{info['title']}"
+                else:
+                    title = f"{info['year']}"
         
         inf_sub = {
             'type': info["type"],
@@ -160,7 +165,8 @@ def main():
                      
     if not os.path.exists(lst_args['search']):
         try:
-            title, number, inf_sub = guess_search(lst_args['search'])
+            search = f"{os.path.basename(lst_args['search'])}"
+            title, number, inf_sub = guess_search(search)
             metadata = extract_meta_data(lst_args['search'], lst_args['keyword'])
             
             url = get_subtitle_url(
