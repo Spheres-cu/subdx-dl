@@ -809,7 +809,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
         logger.debug('Interrupted by user')
         if not quiet:
             console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
-            time.sleep(0.5)
+            time.sleep(0.2)
         clean_screen()
         exit(1)
 
@@ -817,7 +817,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
         logger.debug('Download Canceled')
         if not quiet:
             console.print("\r\n" + ":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
-            time.sleep(0.5)
+            time.sleep(0.2)
         clean_screen()
         exit(0)
     
@@ -863,7 +863,7 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
             os.unlink(temp_file.name)
             if not quiet:
                 console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
-                time.sleep(0.5)
+                time.sleep(0.2)
             clean_screen()
             exit(1)
     
@@ -873,7 +873,7 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
             os.unlink(temp_file.name)
             if not quiet:
                 console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
-                time.sleep(0.5)
+                time.sleep(0.2)
             clean_screen()
             exit(0)
 
