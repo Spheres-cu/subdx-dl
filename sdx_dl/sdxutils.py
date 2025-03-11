@@ -14,7 +14,7 @@ import tempfile
 import logging.handlers
 import html2text
 import random
-from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB
+from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, HTMLSession
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
@@ -1003,6 +1003,37 @@ def make_IMDB_table(title, results, type):
     return search if res else None
 
 ### Check version ###
+
+def get_version_description(version:str):
+    """Get new `version` description."""
+    session = HTMLSession()
+    session.headers={
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-EN,es,q=0.6",
+    "User-Agent": ua,
+    "Referer": "https://github.com/Spheres-cu/subdx-dl"
+    }
+    url = f"https://github.com/Spheres-cu/subdx-dl/releases/tag/{version}"
+    
+    try:
+        response = session.get(url)
+    except HTTPError as e:
+        HTTPErrorsMessageException(e)
+        exit (1)
+
+    results = response.html.xpath("//div[@data-test-selector='body-content']/ul/li")
+    description = f""
+    try:
+        for result in results:
+            for i in range(len(result.find('li'))):
+                item = result.find('li')[i]
+                text = f"\u25cf {item.text}"
+                description = description + text + "\n"
+
+    except IndexError:
+        pass
+    return description
+
 def check_version(version:str):
     """Check for new version."""
     try:
@@ -1011,11 +1042,13 @@ def check_version(version:str):
         _g_version = f"{_dt_version}".split('"')[1]
 
         if _g_version > version:
-            msg = "New version available!: " + _g_version + "\n"\
-                  "Please update your current version: " + f"{version}\r"
+
+            msg = "\nNew version available! -> " + _g_version + ":\n\n"\
+                   + get_version_description(_g_version) + "\n"\
+                  "Please update your current version: " + f"{version}\r\n"        
         else:
-            msg = "No new version available\n"\
-                  "Actual version: " + f"{version}\r"
+            msg = "\nNo new version available\n"\
+                  "Current version: " + f"{version}\r\n"
 
     except HTTPError as e:
         msg = Network_Connection_Error(e)
