@@ -390,9 +390,10 @@ def Network_Connection_Error(e: HTTPError) -> str:
         'ConnectTimeoutError' : "Connection to host timed out",
         'ReadTimeoutError'    : "Read timed out",
         'NameResolutionError' : 'Failed to resolve host name',
-        'ProxyError' : "Unable to connect to proxy",
-        'NewConnectionError' : "Failed to establish a new connection",
-        'ProtocolError'      : "Connection aborted. Remote end closed connection without response",
+        'ProxyError'          : "Unable to connect to proxy",
+        'NewConnectionError'  : "Failed to establish a new connection",
+        'ProtocolError'       : "Connection aborted. Remote end closed connection without response",
+        'MaxRetryError'       : "Maxretries exceeded with",
         'HTTPError' : msg
     }
     error_msg = f'{error_class} : {Network_error_msg[error_class] if error_class in Network_error_msg else msg }'
@@ -408,7 +409,7 @@ def HTTPErrorsMessageException(e: HTTPError):
     console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
 
     if LOGGER_LEVEL == logging.DEBUG:
-        logger.debug(f'Network Connection Error occurred: {msg}')
+        logger.debug(f'Network Connection Error occurred: {e.__str__()}')
 
 def get_aadata(search):
     """Get a json data with the ``search`` results."""

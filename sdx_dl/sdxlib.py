@@ -57,18 +57,6 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
     else:
         raise NoResultsError(f'No suitable data were found for: "{buscar}"')
     
-    """" ######### For testing ##########
-    page = load_aadata()
-    aaData = json.loads(page)['aaData']
-    aaData_Items = get_list_Dict(aaData)
-
-    if aaData_Items is not None:
-         list_Subs_Dicts = clean_list_subs(aaData_Items)
-    else:
-        raise NoResultsError(f'No suitable data were found for: "{buscar}"')
-   
-    ####### For testing ######### """
-    
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
     
@@ -118,24 +106,14 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
 
     if (lst_arg['no_choose'] == False):
         res = get_selected_subtitle_id(table_title, results, metadata, lst_arg['quiet'])
-        url = SUBDIVX_DOWNLOAD_PAGE + str(res)
+        url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{res}'}"
     else:
         # get first subtitle
-        url = SUBDIVX_DOWNLOAD_PAGE + str(results_pages['pages'][0][0]['id'])
-    
-    if not lst_arg['quiet']: print("\r")
-    # check download page
-    try:
-        with console.status("Checking download url... ", spinner="earth") as status:
-            status.start() if not lst_arg['quiet'] else status.stop()
-            if (s.request("GET", url).status == 200):
-                logger.debug(f"Getting url from: {url}")
-                return url
-    except HTTPError as e:
-        HTTPErrorsMessageException(e)
-        exit(1)
+        res = results_pages['pages'][0][0]['id']
+        url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{res}'}"
+    return url
 
-def get_subtitle(url, topath, quiet):
+def get_subtitle(url:str, topath, quiet):
     """Download subtitles from ``url`` to a destination ``path``."""
     
     if not quiet: clean_screen()
@@ -148,25 +126,23 @@ def get_subtitle(url, topath, quiet):
             status.start() if not quiet else status.stop()
 
             # Download file
-            for i in range ( 9, 0, -1 ):
-                logger.debug(f"Trying Download from link: {SUBDIVX_DOWNLOAD_PAGE + 'sub' + str(i) + '/' + url[24:]}")
-                try:
-                    temp_file.write(s.request('GET', SUBDIVX_DOWNLOAD_PAGE + 'sub' + str(i) + '/' + url[24:], headers=headers).data)
-                    temp_file.seek(0)
-                except HTTPError as e:
-                    HTTPErrorsMessageException(e)
-                    exit(1)
+            logger.debug(f"Trying Download from link: {url}")
+            try:
+                temp_file.write(s.request('GET', url, headers=headers).data)
+                temp_file.seek(0)
+            except HTTPError as e:
+                HTTPErrorsMessageException(e)
+                exit(1)
 
-                # Checking if the file is zip or rar then decompress
-                compressed_sub_file = ZipFile(temp_file) if is_zipfile(temp_file.name) else RarFile(temp_file) if is_rarfile(temp_file.name) else None
+            # Checking if the file is zip or rar then decompress
+            compressed_sub_file = ZipFile(temp_file) if is_zipfile(temp_file.name) else RarFile(temp_file) if is_rarfile(temp_file.name) else None
 
-                if compressed_sub_file is not None:
-                    SUCCESS = True
-                    logger.debug(f"Downloaded from: {SUBDIVX_DOWNLOAD_PAGE + 'sub' + str(i) + '/' + url[24:]}")
-                    break
-                else:
-                    SUCCESS = False
-                    time.sleep(2)
+            if compressed_sub_file is not None:
+                SUCCESS = True
+                logger.debug(f"Downloaded from: {url}")
+            else:
+                SUCCESS = False
+                time.sleep(2)
 
         if not SUCCESS :
             temp_file.close()
