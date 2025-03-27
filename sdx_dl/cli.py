@@ -124,7 +124,7 @@ def main():
 
     def guess_search(search):
         """ Parse search parameter. """
-        exclude_list = "--exclude release_group --exclude other --exclude country --exclude language --exclude audio_channels"
+        exclude_list = "--exclude release_group --exclude other --exclude country --exclude language"
 
         info = guessit(search, exclude_list)
         
