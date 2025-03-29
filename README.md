@@ -66,6 +66,8 @@ _optional arguments_:
 --title -t "<string>" _ Set the title to search instead of getting it from the file name. This option is invalid if --imdb is setting. 
 --keyword -k "<strings>" _ Add an <strings> to the list of keywords separated by spaces. Keywords are used when you search by filename.
 --imdb -i IMDB_ID _ Search by IMDB id regardless filename, search strings or serie season.
+--check-version, -cv  Check for new program version.
+--proxy, -P           Set a http(s) proxy connection.
 ```
 
 ## Examples
