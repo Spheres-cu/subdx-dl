@@ -9,8 +9,11 @@ from zipfile import is_zipfile, ZipFile
 from rarfile import is_rarfile, RarFile, RarCannotExec, RarExecError
 
 from sdx_dl.sdxutils import *
+from sdx_dl.config import parser
 
-def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
+args = parser.parse_args()
+
+def get_subtitle_url(title, number, metadata, inf_sub):
     
     """Get a page with a list of subtitles searched by ``title`` and season/episode
         ``number`` of series or movies.
@@ -21,8 +24,8 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
         else the first subtitle is choosen.
     """
     buscar = None
-    if lst_arg['search_imdb']:
-        if not lst_arg['quiet']:
+    if args.search_imdb:
+        if not args.quiet:
             console.print(":earth_americas: [bold yellow]Searching in IMDB ... " +  f"{title} {number}", new_line_start=True, emoji=True) 
         search = get_imdb_search(title, number, inf_sub)
         buscar = search
@@ -30,19 +33,19 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
             title = buscar.replace(number, "").strip()
         logger.debug(f'IMDB Search result:{buscar}')
 
-        if not lst_arg['quiet']:
+        if not args.quiet:
             clean_screen()
             imdb_search = buscar if buscar is not None else "Ninguno"
             console.print(":information_source: [bold yellow] Search terms from IMDB: " + imdb_search, new_line_start=True, emoji=True)
             time.sleep(0.5)
 
-    if buscar is None : buscar = f"{title} {number}" if not lst_arg['imdb'] else lst_arg['imdb']
+    if buscar is None : buscar = f"{title} {number}" if not args.imdb else args.imdb
 
-    if not lst_arg['quiet']:console.print("\r")
+    if not args.quiet:console.print("\r")
     logger.debug(f'Searching subtitles for: ' + str(title) + " " + str(number).upper())
     
     with console.status(f'Searching subtitles for: ' + str(title) + " " + str(number).upper()) as status:
-        status.start() if not lst_arg['quiet'] else status.stop()
+        status.start() if not args.quiet else status.stop()
         json_aaData = get_aadata(buscar)
  
     if json_aaData["iTotalRecords"] == 0 :
@@ -60,7 +63,7 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
     
-    if lst_arg['search_imdb'] or lst_arg['imdb']:
+    if args.search_imdb or args.imdb:
         filtered_list_Subs_Dicts = list_Subs_Dicts
     else:
         filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)
@@ -104,8 +107,8 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
     table_title = str(title) + " " + str(number).upper()
     results_pages = paginate(results, 10)
 
-    if (lst_arg['no_choose'] == False):
-        res = get_selected_subtitle_id(table_title, results, metadata, lst_arg['quiet'])
+    if (args.no_choose == False):
+        res = get_selected_subtitle_id(table_title, results, metadata, args.quiet)
         url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{res}'}"
     else:
         # get first subtitle
@@ -113,17 +116,17 @@ def get_subtitle_url(title, number, metadata, lst_arg, inf_sub):
         url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{res}'}"
     return url
 
-def get_subtitle(url:str, topath, quiet):
+def get_subtitle(url:str, topath):
     """Download subtitles from ``url`` to a destination ``path``."""
     
-    if not quiet: clean_screen()
+    if not args.quiet: clean_screen()
     temp_file = NamedTemporaryFile(delete=False)
     SUCCESS = False
 
     # get direct download link
     try:
         with console.status("Downloading Subtitle... ", spinner="dots4") as status:
-            status.start() if not quiet else status.stop()
+            status.start() if not args.quiet else status.stop()
 
             # Download file
             logger.debug(f"Trying Download from link: {url}")
@@ -150,7 +153,7 @@ def get_subtitle(url:str, topath, quiet):
             logger.error(f'No suitable subtitle download for : "{url}"')
             exit(1)
 
-        extract_subtitles(compressed_sub_file, temp_file, topath, quiet)
+        extract_subtitles(compressed_sub_file, temp_file, topath)
         
     except (RarCannotExec, RarExecError):
             console.clear()
@@ -165,4 +168,4 @@ def get_subtitle(url:str, topath, quiet):
     # Cleaning
     temp_file.close()
     os.unlink(temp_file.name)
-    if not quiet: clean_screen()
+    if not args.quiet: clean_screen()

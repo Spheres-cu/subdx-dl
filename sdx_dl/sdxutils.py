@@ -7,21 +7,20 @@ import sys
 import time
 import json
 import signal
-import logging
 import certifi
 import urllib3
 import tempfile
-import logging.handlers
 import html2text
 import random
-from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, HTMLSession
+from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, validate_proxy
+from sdx_dl.config import logger, parser
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
 from collections import namedtuple
 from datetime import datetime, timedelta
 from readchar import readkey, key
-from .sdxconsole import console
+from sdx_dl.sdxconsole import console
 from rich import box
 from rich.layout import Layout
 from rich.console import Group
@@ -31,8 +30,8 @@ from rich.table import Table
 from rich.align import Align
 from rich.live import Live
 from rich.prompt import IntPrompt
-from rich.traceback import install
-install(show_locals=True)
+
+args = parser.parse_args()
 
 #obtained from https://flexget.com/Plugins/quality#qualities
 
@@ -66,94 +65,81 @@ lst_ua = GenerateUserAgent.generate_all()
 ua = random.choice(lst_ua)
 headers={"user-agent" : ua}
 
-s = urllib3.PoolManager(num_pools=1, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
+if (args.proxy and validate_proxy(args.proxy)):
+    proxie = f"{args.proxy}"
+    if not (any(p in proxie for p in ["http", "https"])):
+        proxie = "http://" + proxie
+    s = urllib3.ProxyManager(proxie, num_pools=1, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
+else:
+    s = urllib3.PoolManager(num_pools=1, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
 
-# Proxy: You must modify this configuration depending on the Proxy you use
-#s = urllib3.ProxyManager('http://127.0.0.1:3128/', num_pools=1, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
-
-# Setting Loggers
-LOGGER_LEVEL = logging.DEBUG
-LOGGER_FORMATTER_LONG = logging.Formatter('%(asctime)-12s %(levelname)-6s %(message)s', '%Y-%m-%d %H:%M:%S')
-LOGGER_FORMATTER_SHORT = logging.Formatter(fmt='%(message)s', datefmt="[%X]")
-
-temp_log_dir = tempfile.gettempdir()
-file_log = os.path.join(temp_log_dir, 'subdx-dl.log')
-
-global logger
-logger = logging.getLogger(__name__)
-
-def setup_logger(level):
-
-    logger.setLevel(level)
-
-# Manage ctrl-c Keyboard Interrupt, quit gracefully
 signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
 
-### Setting cookies ###
-sdxcookie_name = 'sdx-cookie'
+### Setting data connection ###
+sdx_data_connection_name = 'sdx_data_connection'
 
-def check_Cookie_Status():
-    """Check the time and existence of the `cookie` session and return it."""
-    cookie = load_Cookie()
-    if cookie is None or exp_time_Cookie is True: 
-        cookie = get_Cookie()
-        stor_Cookie(cookie)
-    try:
-        _f_tk = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
-        _r_ftoken = s.request('GET', _f_tk, headers={"Cookie":cookie},preload_content=False).data
-        _f_token = json.loads(_r_ftoken)['token']
-    
-    except HTTPError as e:
-        HTTPErrorsMessageException(e)
-        exit(1)
+def check_data_connection():
+    """Check the time and existence of the `cookie` session and return data connection."""
 
-    except JSONDecodeError as e:
-        console.print(":no_entry: [bold red]Couldn't load results page![/]: " + e.__str__(), emoji=True, new_line_start=True)
-        exit(1)
-    
-    return cookie, _f_token
+    sdx_data_connection = load_data_connection()
+
+    if sdx_data_connection is None or exp_time_Cookie() is True:
+        logger.debug(f'Getting data connection')
+        cookie, token, f_search = get_data_connection()
+        stor_data_connection(cookie, token, f_search)
+    else:
+        cookie, token, f_search = sdx_data_connection.split(";")
+        logger.debug(f'Loaded data connection')
+    return cookie, token, f_search
 
 def exp_time_Cookie():
     """Compare modified time and return `True` if is expired."""
-    # Get cookie modified time and convert it to datetime
+    # Get data connection modified time and convert it to datetime
     temp_dir = tempfile.gettempdir()
-    cookiesdx_path = os.path.join(temp_dir, sdxcookie_name)
-    csdx_ti_m = datetime.fromtimestamp(os.path.getmtime(cookiesdx_path))
+    sdx_dc_path = os.path.join(temp_dir, sdx_data_connection_name)
+    csdx_ti_m = datetime.fromtimestamp(os.path.getmtime(sdx_dc_path))
     delta_csdx = datetime.now() - csdx_ti_m
-    exp_c_time = timedelta(hours=24)
-
+    exp_c_time = timedelta(hours=12)
     return delta_csdx > exp_c_time
 
-def get_Cookie():
-    """ Retrieve sdx cookie."""
+def get_data_connection():
+    """ Retrieve sdx data connection."""
     try:
-        cookie_sdx = s.request('GET', SUBDIVX_DOWNLOAD_PAGE, timeout=10).headers.get('Set-Cookie').split(';')[0]
+        sdx_request = s.request('GET', SUBDIVX_DOWNLOAD_PAGE, timeout=10)
+        cookie_sdx = sdx_request.headers.get('Set-Cookie').split(';')[0]
+        _vdata = BeautifulSoup(sdx_request.data, 'html5lib')
+        _f_search = _vdata('div', id="vs")[0].text.replace("v", "").replace(".", "")
+        _f_tk = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
+        _r_ftoken = s.request('GET', _f_tk, headers={"Cookie":cookie_sdx},preload_content=False).data
+        _f_token = json.loads(_r_ftoken)['token']
     except HTTPError as e:
         HTTPErrorsMessageException(e)
         exit(1)
+    except JSONDecodeError as e:
+        console.print(":no_entry: [bold red]Couldn't load results page![/]: " + e.__str__(), emoji=True, new_line_start=True)
 
-    return cookie_sdx
+    return cookie_sdx, _f_token, _f_search
 
-def stor_Cookie(sdx_cookie):
+def stor_data_connection(sdx_cookie, token, f_search):
     """ Store sdx cookies."""
     temp_dir = tempfile.gettempdir()
-    cookiesdx_path = os.path.join(temp_dir, sdxcookie_name)
-
+    cookiesdx_path = os.path.join(temp_dir, sdx_data_connection_name)
+    sdx_data_connection =f'{sdx_cookie};{token};{f_search}'
     with open(cookiesdx_path, 'w') as file:
-        file.write(sdx_cookie)
+        file.write(sdx_data_connection)
         file.close()
     
-def load_Cookie():
+def load_data_connection():
     """ Load stored sdx cookies return ``None`` if not exists."""
     temp_dir = tempfile.gettempdir()
-    cookiesdx_path = os.path.join(temp_dir, sdxcookie_name)
-    if os.path.exists(cookiesdx_path):
-        with open(cookiesdx_path, 'r') as filecookie:
-            sdx_cookie = filecookie.read()
+    sdx_dc_path = os.path.join(temp_dir, sdx_data_connection_name)
+    if os.path.exists(sdx_dc_path):
+        with open(sdx_dc_path, 'r') as filecookie:
+            sdx_data_connection = filecookie.read()
     else:
         return None
 
-    return sdx_cookie
+    return sdx_data_connection
 
 #### sdxlib utils ####
 def extract_meta_data(filename, kword):
@@ -384,7 +370,8 @@ def clean_list_subs(list_dict_subs):
 def Network_Connection_Error(e: HTTPError) -> str:
     """ Return a Network Connection Error message."""
 
-    msg = e.__str__()
+    # msg = e.__str__()
+    msg = e.__str__().split(":")[1].split("(")[0]
     error_class = e.__class__.__name__
     Network_error_msg= {
         'ConnectTimeoutError' : "Connection to host timed out",
@@ -393,7 +380,8 @@ def Network_Connection_Error(e: HTTPError) -> str:
         'ProxyError'          : "Unable to connect to proxy",
         'NewConnectionError'  : "Failed to establish a new connection",
         'ProtocolError'       : "Connection aborted. Remote end closed connection without response",
-        'MaxRetryError'       : "Maxretries exceeded with",
+        'MaxRetryError'       : "Maxretries exceeded",
+        'SSLError'            : "Certificate verify failed: unable to get local issuer certificate",
         'HTTPError' : msg
     }
     error_msg = f'{error_class} : {Network_error_msg[error_class] if error_class in Network_error_msg else msg }'
@@ -408,17 +396,14 @@ def HTTPErrorsMessageException(e: HTTPError):
     msg = Network_Connection_Error(e)
     console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
 
-    if LOGGER_LEVEL == logging.DEBUG:
+    if logger.level == 10:
         logger.debug(f'Network Connection Error occurred: {e.__str__()}')
 
 def get_aadata(search):
     """Get a json data with the ``search`` results."""
    
-    headers['Cookie'], _f_token = check_Cookie_Status()
+    headers['Cookie'], _f_token, _f_search = check_data_connection()
     try:
-        _vpage = s.request('GET', SUBDIVX_DOWNLOAD_PAGE, preload_content=False).data
-        _vdata = BeautifulSoup(_vpage, 'html5lib')
-        _f_search = _vdata('div', id="vs")[0].text.replace("v", "").replace(".", "")
         fields={'buscar'+ _f_search: search, 'filtros': '', 'tabla': 'resultados', 'token': _f_token}
         page = s.request(
             'POST',
@@ -826,7 +811,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
     return res
 
 ### Extract Subtitles ###
-def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
+def extract_subtitles(compressed_sub_file, temp_file, topath):
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
 
     # In case of existence of various subtitles choose which to download
@@ -862,7 +847,7 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
             logger.debug('Interrupted by user')
             temp_file.close()
             os.unlink(temp_file.name)
-            if not quiet:
+            if not args.quiet:
                 console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
                 time.sleep(0.2)
             clean_screen()
@@ -872,7 +857,7 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
             logger.debug('Canceled Download Subtitle') 
             temp_file.close()
             os.unlink(temp_file.name)
-            if not quiet:
+            if not args.quiet:
                 console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
                 time.sleep(0.2)
             clean_screen()
@@ -901,7 +886,7 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
             compressed_sub_file.close()
         logger.debug(f"Done extract subtitles!")
         clean_screen()
-        if not quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
+        if not args.quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
     else:
         for name in compressed_sub_file.infolist():
             # don't unzip stub __MACOSX folders
@@ -910,7 +895,7 @@ def extract_subtitles(compressed_sub_file, temp_file, topath, quiet):
                 compressed_sub_file.extract(name, topath)
         compressed_sub_file.close()
         logger.debug(f"Done extract subtitle!")
-        if not quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
+        if not args.quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
 
 ### Search IMDB ###
 
@@ -1003,66 +988,6 @@ def make_IMDB_table(title, results, type):
 
     return search if res else None
 
-### Check version ###
-
-def get_version_description(version:str):
-    """Get new `version` description."""
-    session = HTMLSession()
-    session.headers={
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-EN,es,q=0.6",
-    "User-Agent": ua,
-    "Referer": "https://github.com/Spheres-cu/subdx-dl"
-    }
-    url = f"https://github.com/Spheres-cu/subdx-dl/releases/tag/{version}"
-    
-    try:
-        response = session.get(url)
-    except HTTPError as e:
-        HTTPErrorsMessageException(e)
-        exit (1)
-
-    results = response.html.xpath("//div[@data-test-selector='body-content']/ul/li")
-    description = f""
-    try:
-        for result in results:
-            for i in range(len(result.find('li'))):
-                item = result.find('li')[i]
-                text = f"\u25cf {item.text}"
-                description = description + text + "\n"
-
-    except IndexError:
-        pass
-    return description
-
-def check_version(version:str):
-    """Check for new version."""
-    try:
-        _page_version = f"https://raw.githubusercontent.com/Spheres-cu/subdx-dl/refs/heads/main/sdx_dl/__init__.py"
-        _dt_version = s.request('GET', _page_version, preload_content=False, timeout=10).data
-        _g_version = f"{_dt_version}".split('"')[1]
-
-        if _g_version > version:
-
-            msg = "\nNew version available! -> " + _g_version + ":\n\n"\
-                   + get_version_description(_g_version) + "\n"\
-                  "Please update your current version: " + f"{version}\r\n"        
-        else:
-            msg = "\nNo new version available\n"\
-                  "Current version: " + f"{version}\r\n"
-
-    except HTTPError as e:
-        msg = Network_Connection_Error(e)
-
-    import argparse
-    class ChkVersionAction(argparse.Action):
-        def __init__(self, nargs=0, **kw):
-            super().__init__(nargs=nargs, **kw)
-
-        def __call__(self, parser, namespace, values, option_string=None):
-            print(msg)
-            exit (0)
-    return ChkVersionAction
 
 ### Store aadata test ###
 def store_aadata(aadata):

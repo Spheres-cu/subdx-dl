@@ -2,6 +2,14 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 # Copyright 2024 BSD 3-Clause License (see https://opensource.org/license/bsd-3-clause)
 
+
+### Check version imports ###
+import re
+import argparse
+import urllib3
+from importlib.metadata import version
+from urllib3.exceptions import HTTPError
+
 ####  HTML2BBCode imports ###
 from collections import defaultdict
 from configparser import RawConfigParser
@@ -1016,3 +1024,117 @@ class HTMLSession(BaseSession):
         if hasattr(self, "_browser"):
             self.loop.run_until_complete(self._browser.close())
         super().close()
+
+### validate proxy settings ###
+
+def validate_proxy(proxy_str):
+    """
+    Validation with IP address and port or domain.
+    """
+
+    ip_pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+    host_pattern = r'^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$'
+    
+    match = re.match(r'^(?:(https|http)://)?(?:([^:@]+):([^:@]+)@)?([^:@/]+)(?::(\d+))?$', proxy_str)
+    
+    if not match:
+        return False
+        
+    protocol, user, password, host, port = match.groups()
+    
+    if not (re.match(ip_pattern, host) or re.match(host_pattern, host)):
+        return False
+        
+    if port and not (0 < int(port) <= 65535):
+        return False
+    
+    if protocol not in ["http", "https", None]:
+        return False
+    
+    return True
+
+### Check version ###
+ua = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+headers={"user-agent" : ua}
+
+def ExceptionErrorMessage(e: Exception):
+    """Parse ``Exception`` error message."""
+    if isinstance(e, (requests.exceptions.ConnectionError, urllib3.exceptions.HTTPError)):
+        msg = e.__str__().split(":")[1].split("(")[0]
+    else:
+        msg = e.__str__()
+    error_class = e.__class__.__name__
+    print("Error occurred: " + error_class + ":" + msg)
+    exit(1)
+
+def get_version_description(version:str, proxies):
+    """Get new `version` description."""
+
+    verify = False if proxies is not None else True
+    session = HTMLSession()
+    session.headers={
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-EN,es,q=0.6",
+    "User-Agent": ua,
+    "Referer": "https://github.com/Spheres-cu/subdx-dl"
+    }
+    url = f"https://github.com/Spheres-cu/subdx-dl/releases/tag/{version}"
+    
+    try:
+        response = session.get(url, proxies=proxies, verify=verify)
+    except (HTTPError, Exception) as e:
+        ExceptionErrorMessage(e)
+
+    results = response.html.xpath("//div[@data-test-selector='body-content']/ul/li")
+    description = f""
+    try:
+        for result in results:
+            for i in range(len(result.find('li'))):
+                item = result.find('li')[i]
+                text = f"\u25cf {item.text}"
+                description = description + text + "\n"
+
+    except IndexError:
+        pass
+    return description
+
+def check_version(version:str, proxy):
+    """Check for new version."""
+    if (proxy):
+        if not (any(p in proxy for p in ["http", "https"])):
+            proxy = "http://" + proxy
+        
+        proxies = {"http" : proxy, "https" : proxy} if validate_proxy(proxy) else None
+    else:
+        proxies = None
+
+    verify = False if proxies is not None else True
+    
+    try:
+        _page_version = f"https://raw.githubusercontent.com/Spheres-cu/subdx-dl/refs/heads/main/sdx_dl/__init__.py"
+        _dt_version = requests.get(_page_version, headers=headers, proxies=proxies, verify=verify, timeout=10).content
+        _g_version = f"{_dt_version}".split('"')[1]
+
+        if _g_version > version:
+
+            msg = "\nNew version available! -> " + _g_version + ":\n\n"\
+                   + get_version_description(_g_version, proxies) + "\n"\
+                  "Please update your current version: " + f"{version}\r\n"        
+        else:
+            msg = "\nNo new version available\n"\
+                  "Current version: " + f"{version}\r\n"
+
+    except (HTTPError, Exception) as e:
+        ExceptionErrorMessage(e)
+
+    return msg
+
+class ChkVersionAction(argparse.Action):
+    """Class Check version. This class call for `check_version` function"""
+    def __init__(self, nargs=0, **kw,):
+        super().__init__(nargs=nargs, **kw)
+    
+    def __call__(self, parser, namespace, values, option_string=None):
+        proxy = getattr(namespace, "proxy")
+        print(check_version(version("subdx-dl"), proxy))
+        exit (0)

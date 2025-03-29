@@ -3,14 +3,13 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
-import argparse
+from sdx_dl.config import parser, logger
 from sdx_dl.sdxlib import *
-from sdx_dl.sdxutils import _sub_extensions, console as rconsole, check_version
+from sdx_dl.sdxutils import _sub_extensions, validate_proxy
+from sdx_dl.sdxconsole import console as rconsole
 from guessit import guessit
-from rich.logging import RichHandler
 from tvnamer.utils import FileFinder
 from contextlib import contextmanager
-from importlib.metadata import version
 
 _extensions = [
     'avi', 'mkv', 'mp4',
@@ -66,62 +65,8 @@ def subtitle_renamer(filepath, inf_sub):
               exit(1)
 
 def main():
-    parser = argparse.ArgumentParser(prog='sdx-dl',
-    formatter_class=argparse.RawTextHelpFormatter,
-    description='A cli tool for download subtitle from https://www.subdivx.com with the better possible matching results.',
-    epilog='Project site: https://github.com/Spheres-cu/subdx-dl\n\
-    \nProject issues:https://github.com/Spheres-cu/subdx-dl/issues\n\
-    \nUsage examples:https://github.com/Spheres-cu/subdx-dl#examples'
-    )
-
-    parser.add_argument('search', type=str,
-                        help="file, directory or movie/series title or IMDB Id to retrieve subtitles")
-    parser.add_argument('--path', '-p', type=str,
-                        help="Path to download subtitles")
-    parser.add_argument('--quiet', '-q', action='store_true',
-                        default=False, help="No verbose mode")
-    parser.add_argument('--verbose', '-v', action='store_true',
-                        default=False, help="Be in verbose mode")
-    parser.add_argument('--no-choose', '-nc', action='store_true',
-                        default=False, help="No Choose sub manually")
-    parser.add_argument('--Season', '-S', action='store_true',
-                        default=False, help="Search for Season")
-    parser.add_argument('--search-imdb', '-si', action='store_true',
-                        default=False, help="Search first for the IMDB id or title")
-    parser.add_argument('--force', '-f', action='store_true',
-                        default=False, help="override existing file")
-    parser.add_argument('--version', '-V', action='version',
-                        version=f'subdx-dl {version("subdx-dl")}', help="Show program version")
-    parser.add_argument('--check-version', '-cv', action=check_version(f'{version("subdx-dl")}'),
-                        help="Check for new program version")
-    parser.add_argument('--keyword','-k',type=str,help="Add keyword to search among subtitles")
-    parser.add_argument('--title','-t',type=str,help="Set the title of the show")
-    parser.add_argument('--imdb','-i',type=str,help="Search by IMDB id")
-   
     args = parser.parse_args()
   
-    lst_args = {
-        "search" : args.search,
-        "path" : args.path,
-        "quiet" : args.quiet,
-        "verbose" : args.verbose,
-        "no_choose": args.no_choose,
-        "Season": args.Season,
-        "search_imdb": args.search_imdb,
-        "force": args.force,
-        "keyword": args.keyword,
-        "title": args.title,
-        "imdb": args.imdb
-    }
-
-    # Setting logger
-    setup_logger(LOGGER_LEVEL if not args.verbose else logging.DEBUG)
-
-    logfile = logging.FileHandler(file_log, mode='w', encoding='utf-8')
-    logfile.setFormatter(LOGGER_FORMATTER_LONG)
-    logfile.setLevel(logging.DEBUG)
-    logger.addHandler(logfile)
-
     def guess_search(search):
         """ Parse search parameter. """
         exclude_list = "--exclude release_group --exclude other --exclude country --exclude language"
@@ -129,12 +74,12 @@ def main():
         info = guessit(search, exclude_list)
         
         if info["type"] == "episode" :
-            number = f"s{info['season']:02}e{info['episode']:02}" if "episode" in info and not lst_args['Season'] else f"s{info['season']:02}" 
+            number = f"s{info['season']:02}e{info['episode']:02}" if "episode" in info and not args.Season else f"s{info['season']:02}" 
         else:
             number = f"({info['year']})" if ("year" in info and "title" in info) else  ""
 
-        if (lst_args['title'] and not lst_args['imdb']):
-            title = f"{lst_args['title']}"
+        if (args.title and not args.imdb):
+            title = f"{args.title}"
         else:
             if info["type"] == "movie" :
                 title = f"{info['title'] if 'title' in info else info['year']}"
@@ -148,46 +93,45 @@ def main():
         
         inf_sub = {
             'type': info["type"],
-            'season' : False if info["type"] == "movie" else lst_args['Season'],
+            'season' : False if info["type"] == "movie" else args.Season,
             'number' : f"s{info['season']:02}e{info['episode']:02}" if "episode" in info else number
         }
 
         return title, number, inf_sub
 
-    if not args.quiet:
-        console = RichHandler(rich_tracebacks=True, tracebacks_show_locals=True)
-        console.setFormatter(LOGGER_FORMATTER_SHORT)
-        console.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
-        logger.addHandler(console)
-
-    if lst_args['path'] and not os.path.isdir(lst_args['path']):
-        if lst_args['quiet']:
-            rconsole.print(":no_entry:[bold red] Directory:[yellow] " + lst_args['path'] + "[bold red] do not exists[/]",
+    if args.path and not os.path.isdir(args.path):
+        if args.quiet:
+            rconsole.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
                            new_line_start=True, emoji=True)
-        logger.error(f'Directory {lst_args["path"]} do not exists')
+        logger.error(f'Directory {args.path} do not exists')
         exit(1)
-                     
-    if not os.path.exists(lst_args['search']):
+    
+    if (args.proxy and not validate_proxy(args.proxy) ):
+        if args.quiet:
+            rconsole.print(":heavy_exclamation_mark:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
+                    new_line_start=True, emoji=True)
+        logger.error(f'Incorrect proxy setting. Only http, https or IP:PORT is accepted')
+        exit(1)
+
+    if not os.path.exists(args.search):
         try:
-            search = f"{os.path.basename(lst_args['search'])}"
+            search = f"{os.path.basename(args.search)}"
             title, number, inf_sub = guess_search(search)
-            metadata = extract_meta_data(lst_args['search'], lst_args['keyword'])
+            metadata = extract_meta_data(args.search, args.keyword)
             
             url = get_subtitle_url(
-                title, number, metadata,
-                lst_args, 
-                inf_sub )
+                title, number, metadata, inf_sub)
         
         except NoResultsError as e:
             logger.error(str(e))
             url = None
             
         if (url is not None):
-            topath = os.getcwd() if lst_args['path'] is None else lst_args['path']
-            get_subtitle(url, topath, lst_args['quiet'])
+            topath = os.getcwd() if args.path is None else args.path
+            get_subtitle(url, topath)
 
-    elif os.path.exists(lst_args['search']):
-      cursor = FileFinder(lst_args['search'], with_extension=_extensions)
+    elif os.path.exists(args.search):
+      cursor = FileFinder(args.search, with_extension=_extensions)
 
       for filepath in cursor.findFiles():
         # skip if a subtitle for this file exists
@@ -210,26 +154,23 @@ def main():
         try:
             title, number, inf_sub = guess_search(filename)
 
-            metadata = extract_meta_data(filename, lst_args['keyword'])
+            metadata = extract_meta_data(filename, args.keyword)
 
             url = get_subtitle_url(
-                title, number,
-                metadata,
-                lst_args,
-                inf_sub)
+                title, number, metadata, inf_sub)
 
         except NoResultsError as e:
             logger.error(str(e))
             url = None
         
-        if lst_args['path'] is None:
+        if args.path is None:
             topath = os.path.dirname(filepath) if os.path.isfile(filepath) else filepath
         else:
-            topath = lst_args['path']
+            topath = args.path
 
         if (url is not None):
             with subtitle_renamer(filepath, inf_sub=inf_sub):
-                get_subtitle(url, topath, lst_args['quiet'])
+                get_subtitle(url, topath)
 
 if __name__ == '__main__':
     main()
