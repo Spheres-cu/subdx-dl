@@ -12,7 +12,7 @@ import urllib3
 import tempfile
 import html2text
 import random
-from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, validate_proxy
+from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, validate_proxy, VideoMetadataExtractor
 from sdx_dl.config import logger, parser
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
@@ -35,22 +35,24 @@ args = parser.parse_args()
 
 #obtained from https://flexget.com/Plugins/quality#qualities
 
-_qualities = ('1080i', '1080p', '2160p', '10bit', '1280x720',
+_qualities = ('1080i', '1080p', '2160p', '8bits', '10bit', '1280x720',
               '1920x1080', '360p', '368p', '480', '480p', '576p',
-               '720i', '720p', 'ddp5.1', 'dd5.1', 'bdrip', 'brrip', 'bdscr', 'bluray',
+               '720i', '720p', 'bdrip', 'brrip', 'bdscr', 'bluray',
                'blurayrip', 'cam', 'dl', 'dsrdsrip', 'dvb', 'dvdrip',
                'dvdripdvd', 'dvdscr', 'hdtv', 'hr', 'ppvrip',
-               'preair', 'sdtvpdtv', 'tvrip','web', 'web-dl',
-               'web-dlwebdl', 'webrip', 'workprint')
+               'preair', 'sdtvpdtv', 'tvrip', 'web', 'web-dl',
+               'web-dlwebdl', 'webrip', 'workprint', 'avc')
 _keywords = (
 '2hd', 'adrenaline', 'amzn', 'asap', 'axxo', 'compulsion', 'crimson', 'ctrlhd', 
 'ctrlhd', 'ctu', 'dimension', 'ebp', 'gttv','ettv', 'eztv', 'fanta', 'fov', 'fqm', 'ftv', 
 'galaxyrg', 'galaxytv', 'hazmatt', 'immerse', 'internal', 'ion10', 'killers', 'loki', 
 'lol', 'mement', 'minx', 'notv', 'phoenix', 'rarbg', 'sfm', 'sva', 'sparks', 'turbo', 
 'torrentgalaxy', 'psa', 'nf', 'rrb', 'pcok', 'edith', 'successfulcrab', 'megusta', 'ethel',
-'ntb', 'flux', 'yts', 'rbb', 'xebec', 'yify', 'rubik')
+'ntb', 'flux', 'yts', 'rbb', 'xebec', 'rubik')
 
 _codecs = ('xvid', 'x264', 'h264', 'x265', 'hevc')
+
+_audio = ('dts-hd', 'dts', 'ma', '5.1', 'ddp5.1', 'hdr', 'atmos' )
 
 _sub_extensions = ['.srt', '.ssa', '.ass', '.sub']
 
@@ -58,7 +60,7 @@ SUBDIVX_SEARCH_URL = 'https://www.subdivx.com/inc/ajax.php'
 
 SUBDIVX_DOWNLOAD_PAGE = 'https://www.subdivx.com/'
 
-Metadata = namedtuple('Metadata', 'keywords quality codec')
+Metadata = namedtuple('Metadata', 'keywords quality codec audio')
 
 # Configure connections
 lst_ua = GenerateUserAgent.generate_all()
@@ -144,8 +146,28 @@ def load_data_connection():
 #### sdxlib utils ####
 def extract_meta_data(filename, kword):
     """Extract metadata from a filename based in matchs of keywords
-    the lists of keywords includen quality and codec for videos.""" 
+    the lists of keywords includen quality and codec for videos."""
 
+    extractor = VideoMetadataExtractor()
+    extracted_kwords = extractor.extract_specific(f"{filename}", 'screen_size', 'video_codec','audio_channels',\
+                        'release_group', 'source')
+    words = f""
+
+    def clean_words(word):
+        """clean words"""
+        clean = [".", "-"]
+        for i in clean:
+            word = word.replace(i, '')
+        return f"{word}"
+    
+    for k in extracted_kwords.keys():
+        value = extracted_kwords[k]
+        if (value):
+            words += f"{value} " if k not in ['video_codec', 'source'] else f"{clean_words(value)} "
+    
+    words = words.strip()
+    # logger.debug(f'Extracted kwords:{words}')
+    
     f = filename.lower()[:-4] if os.path.isfile(filename) else filename.lower()
 
     def _match(options):
@@ -158,10 +180,16 @@ def extract_meta_data(filename, kword):
     keywords = _match(_keywords)
     quality = _match(_qualities)
     codec = _match(_codecs)
+    audio = _match(_audio)
+    
     #Split keywords and add to the list
+    if (words):
+        keywords = keywords + [x for x in words.split(' ') if x not in keywords]
+    
     if (kword):
-        keywords = keywords + kword.split(' ')
-    return Metadata(keywords, quality, codec)
+        keywords += kword.split(' ')
+    
+    return Metadata(keywords, quality, codec, audio)
 
 ### Filters searchs functions ###
 def match_text(title, number, inf_sub, text):

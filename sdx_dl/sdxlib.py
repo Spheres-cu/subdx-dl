@@ -93,6 +93,9 @@ def get_subtitle_url(title, number, metadata, inf_sub):
         for codec in metadata.codec:
             if codec.lower() in description:
                 score += .25
+        for audio in metadata.audio:
+            if audio.lower() in description:
+                score += .25
         if  max_dl == int(subs_dict['descargas']):
                 score += .5
         

@@ -2,6 +2,9 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 # Copyright 2024 BSD 3-Clause License (see https://opensource.org/license/bsd-3-clause)
 
+### Metadata video extractor imports ###
+from guessit import guessit
+from typing import Dict, Any
 
 ### Check version imports ###
 import re
@@ -1138,3 +1141,47 @@ class ChkVersionAction(argparse.Action):
         proxy = getattr(namespace, "proxy")
         print(check_version(version("subdx-dl"), proxy))
         exit (0)
+
+### Class VideoExtractor ###
+class VideoMetadataExtractor:
+    """
+    A class to extract metadata from video filenames using guessit.
+    """
+    
+    @staticmethod
+    def extract_all(filename: str) -> Dict[str, Any]:
+        """
+        Extract all available metadata from a video filename.
+        
+        Args:
+            filename (str): The video filename to parse
+            
+        Returns:
+            dict: Dictionary containing all extracted properties
+        """
+        return guessit(filename)
+    
+    @staticmethod
+    def extract_specific(filename: str, *properties: str) -> Dict[str, Any]:
+        """
+        Extract specific properties from a video filename.
+        
+        Args:
+            filename (str): The video filename to parse
+            *properties (str): Properties to extract (e.g., 'title', 'year')
+            
+        Returns:
+            dict: Dictionary containing only the requested properties
+        """
+        all_metadata = guessit(filename)
+        return {prop: all_metadata.get(prop) for prop in properties}
+    
+    @staticmethod
+    def pretty_print(metadata: Dict[str, Any]) -> None:
+        """
+        Pretty print the metadata dictionary.
+        
+        Args:
+            metadata (dict): Metadata dictionary to print
+        """
+        print(json.dumps(metadata, indent=4, default=str))

@@ -5,7 +5,7 @@
 import os
 from sdx_dl.config import parser, logger
 from sdx_dl.sdxlib import *
-from sdx_dl.sdxutils import _sub_extensions, validate_proxy
+from sdx_dl.sdxutils import _sub_extensions, validate_proxy, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console as rconsole
 from guessit import guessit
 from tvnamer.utils import FileFinder
@@ -69,33 +69,42 @@ def main():
   
     def guess_search(search):
         """ Parse search parameter. """
+        
         exclude_list = "--exclude release_group --exclude other --exclude country --exclude language"
 
         info = guessit(search, exclude_list)
-        
-        if info["type"] == "episode" :
-            number = f"s{info['season']:02}e{info['episode']:02}" if "episode" in info and not args.Season else f"s{info['season']:02}" 
-        else:
-            number = f"({info['year']})" if ("year" in info and "title" in info) else  ""
+        try:
 
-        if (args.title and not args.imdb):
-            title = f"{args.title}"
-        else:
-            if info["type"] == "movie" :
-                title = f"{info['title'] if 'title' in info else info['year']}"
+            if info["type"] == "episode" :
+                number = f"s{info['season']:02}e{info['episode']:02}" if "episode" in info and not args.Season else f"s{info['season']:02}" 
             else:
-                if ("title" in info and "year" in info):
-                    title = f"{info['title']} ({info['year']})"
-                elif "title" in info:
-                    title = f"{info['title']}"
+                number = f"({info['year']})" if ("year" in info and "title" in info) else  ""
+
+            if (args.title and not args.imdb):
+                title = f"{args.title}"
+            else:
+                if info["type"] == "movie" :
+                    title = f"{info['title'] if 'title' in info else info['year']}"
                 else:
-                    title = f"{info['year']}"
-        
-        inf_sub = {
-            'type': info["type"],
-            'season' : False if info["type"] == "movie" else args.Season,
-            'number' : f"s{info['season']:02}e{info['episode']:02}" if "episode" in info else number
-        }
+                    if ("title" in info and "year" in info):
+                        title = f"{info['title']} ({info['year']})"
+                    elif "title" in info:
+                        title = f"{info['title']}"
+                    else:
+                        title = f"{info['year']}"
+            
+            inf_sub = {
+                'type': info["type"],
+                'season' : False if info["type"] == "movie" else args.Season,
+                'number' : f"s{info['season']:02}e{info['episode']:02}" if "episode" in info else number
+            }
+
+        except (TypeError,Exception) as e:
+            error = e.__class__.__name__
+            logger.debug(f"Failed to parse search argument: {search} {error}: {e}")
+            console.print(f":no_entry: [red]Failed to parse search argument: [yellow]{search}[/]",emoji=True)
+            console.print(f"[red]{error}[/]: {e}",emoji=True)
+            exit(1)
 
         return title, number, inf_sub
 
