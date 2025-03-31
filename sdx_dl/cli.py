@@ -3,10 +3,10 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
-from sdx_dl.config import parser, logger
-from sdx_dl.sdxlib import *
-from sdx_dl.sdxutils import _sub_extensions, validate_proxy, VideoMetadataExtractor
-from sdx_dl.sdxconsole import console as rconsole
+from sdx_dl.sdxparser import parser, logger
+from sdx_dl.sdxlib import get_subtitle_url, get_subtitle
+from sdx_dl.sdxutils import _sub_extensions, extract_meta_data, NoResultsError, validate_proxy, VideoMetadataExtractor
+from sdx_dl.sdxconsole import console
 from guessit import guessit
 from tvnamer.utils import FileFinder
 from contextlib import contextmanager
@@ -69,34 +69,41 @@ def main():
   
     def guess_search(search):
         """ Parse search parameter. """
-        
-        exclude_list = "--exclude release_group --exclude other --exclude country --exclude language"
 
-        info = guessit(search, exclude_list)
+        excludes = " --exclude ".join((' ', 'other', 'country', ' language'))
+        options = "-i -s -n " + excludes
+        properties = ('type','title','season','episode','year')
+        season = True if args.Season else False
+        info = VideoMetadataExtractor.extract_specific(search, *properties, options=options)
+        # logger.debug(f'Extracted: {json.dumps(extractor, indent=4, default=str)}')
+
         try:
 
-            if info["type"] == "episode" :
-                number = f"s{info['season']:02}e{info['episode']:02}" if "episode" in info and not args.Season else f"s{info['season']:02}" 
+            if info["type"] == "episode":
+                number = f"s{info['season']:02}e{info['episode']:02}" if all(i is not None for i in [info['season'], info['episode'], info['title']]) else ""
+                
+                if ( args.Season and all(i is not None for i in [ info['title'], info['season'] ]) )\
+                    or all( i is not None for i in [info['season'], info['title']] ) and info['episode'] is None:
+                    number = f"s{info['season']:02}"
+                    season = True if number else season
             else:
-                number = f"({info['year']})" if ("year" in info and "title" in info) else  ""
+                number = f"({info['year']})" if all(i is not None for i in [info['year'], info['title']]) else  ""
 
             if (args.title and not args.imdb):
                 title = f"{args.title}"
             else:
-                if info["type"] == "movie" :
-                    title = f"{info['title'] if 'title' in info else info['year']}"
+                if info["type"] == "movie":
+                    title = f"{info['title'] if info['title'] is not None else search}"
                 else:
-                    if ("title" in info and "year" in info):
+                    if all( i is not None for i in [ info["year"], info['title'] ] ):
                         title = f"{info['title']} ({info['year']})"
-                    elif "title" in info:
-                        title = f"{info['title']}"
                     else:
-                        title = f"{info['year']}"
+                        title = f"{info['title'] if info['title'] is not None else search}"
             
             inf_sub = {
                 'type': info["type"],
-                'season' : False if info["type"] == "movie" else args.Season,
-                'number' : f"s{info['season']:02}e{info['episode']:02}" if "episode" in info else number
+                'season' : season,
+                'number' : f"{number}"
             }
 
         except (TypeError,Exception) as e:
@@ -110,14 +117,14 @@ def main():
 
     if args.path and not os.path.isdir(args.path):
         if args.quiet:
-            rconsole.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
+            console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
                            new_line_start=True, emoji=True)
         logger.error(f'Directory {args.path} do not exists')
         exit(1)
     
     if (args.proxy and not validate_proxy(args.proxy) ):
         if args.quiet:
-            rconsole.print(":heavy_exclamation_mark:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
+            console.print(":heavy_exclamation_mark:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
                     new_line_start=True, emoji=True)
         logger.error(f'Incorrect proxy setting. Only http, https or IP:PORT is accepted')
         exit(1)

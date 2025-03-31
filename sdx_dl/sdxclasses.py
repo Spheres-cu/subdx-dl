@@ -1044,11 +1044,12 @@ def validate_proxy(proxy_str):
         return False
         
     protocol, user, password, host, port = match.groups()
+    print("Proxy protocol: %s host:%s port:%s" % (protocol, host, port))
     
     if not (re.match(ip_pattern, host) or re.match(host_pattern, host)):
         return False
         
-    if port and not (0 < int(port) <= 65535):
+    if (port is None) or (not (0 < int(port) <= 65535)):
         return False
     
     if protocol not in ["http", "https", None]:
@@ -1149,31 +1150,37 @@ class VideoMetadataExtractor:
     """
     
     @staticmethod
-    def extract_all(filename: str) -> Dict[str, Any]:
+    def extract_all(filename: str, options:str|dict=None) -> Dict[str, Any]:
         """
         Extract all available metadata from a video filename.
         
         Args:
             filename (str): The video filename to parse
-            
+        
+        :param options:
+        :type options: str|dict
+                   
         Returns:
             dict: Dictionary containing all extracted properties
         """
-        return guessit(filename)
+        return guessit(filename, options)
     
     @staticmethod
-    def extract_specific(filename: str, *properties: str) -> Dict[str, Any]:
+    def extract_specific(filename: str, *properties: str, options:str|dict=None) -> Dict[str, Any]:
         """
         Extract specific properties from a video filename.
         
         Args:
             filename (str): The video filename to parse
             *properties (str): Properties to extract (e.g., 'title', 'year')
+    
+        :param options:
+        :type options: str|dict
             
         Returns:
             dict: Dictionary containing only the requested properties
         """
-        all_metadata = guessit(filename)
+        all_metadata = guessit(filename, options)
         return {prop: all_metadata.get(prop) for prop in properties}
     
     @staticmethod

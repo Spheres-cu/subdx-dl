@@ -13,7 +13,7 @@ import tempfile
 import html2text
 import random
 from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, validate_proxy, VideoMetadataExtractor
-from sdx_dl.config import logger, parser
+from sdx_dl.sdxparser import logger, parser
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
@@ -71,9 +71,9 @@ if (args.proxy and validate_proxy(args.proxy)):
     proxie = f"{args.proxy}"
     if not (any(p in proxie for p in ["http", "https"])):
         proxie = "http://" + proxie
-    s = urllib3.ProxyManager(proxie, num_pools=1, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
+    s = urllib3.ProxyManager(proxie, num_pools=8, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
 else:
-    s = urllib3.PoolManager(num_pools=1, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
+    s = urllib3.PoolManager(num_pools=8, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
 
 signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
 
@@ -101,7 +101,7 @@ def exp_time_Cookie():
     sdx_dc_path = os.path.join(temp_dir, sdx_data_connection_name)
     csdx_ti_m = datetime.fromtimestamp(os.path.getmtime(sdx_dc_path))
     delta_csdx = datetime.now() - csdx_ti_m
-    exp_c_time = timedelta(hours=12)
+    exp_c_time = timedelta(hours=2)
     return delta_csdx > exp_c_time
 
 def get_data_connection():
@@ -142,6 +142,8 @@ def load_data_connection():
         return None
 
     return sdx_data_connection
+
+headers['Cookie'], _f_token, _f_search = check_data_connection()
 
 #### sdxlib utils ####
 def extract_meta_data(filename, kword):
@@ -209,32 +211,25 @@ def match_text(title, number, inf_sub, text):
   re_full_match = re.compile(rf"^{re.escape(search)}$", re.I)
   re_full_pattern = re.compile(rf"^{re.escape(title)}.*{number}.*$", re.I) if inf_sub['type'] == "movie"\
     else re.compile(rf"^{re.escape(title.split()[0])}.*{number}.*$", re.I)
-  re_title_pattern = re.compile(rf"\b{re.escape(title)}\b", re.I)
+  re_title_pattern = re.compile(rf"^{re.escape(title)}\b", re.I)
 
   # Perform searches
   r = True if re_full_match.search(text.strip()) else False
   match_type = 'full' if r else None
-  if not r: logger.debug(f'FullMatch text: {text} Found: {match_type} {r}')
 
   if not r:
     r = True if re_full_pattern.search(text.strip()) else False
     match_type = 'pattern' if r else None 
-    if not r: logger.debug(f'FullPattern text: {text} Found:{match_type} {r}')
 
   if not r :
     rtitle = True if re_title_pattern.search(text.strip()) else False
-    if not rtitle: logger.debug(f'Title Match: {title} Found: {rtitle}')
-
     for num in number.split(" "):
         if not inf_sub['season']:
            rnumber = True if re.search(rf"\b{num}\b", text, re.I) else False
         else:
            rnumber = True if re.search(rf"\b{num}.*\b", text, re.I) else False
-    
-    if not rnumber: logger.debug(f'Number Match: {number} Found: {rnumber}')
 
     raka = True if re.search(rf"\b{aka}\b", text, re.I) else False
-    if not raka: logger.debug(f'Search Match: aka Found: {raka}')
 
     if raka :
         r = True if rtitle and rnumber and raka else False
@@ -243,26 +238,21 @@ def match_text(title, number, inf_sub, text):
         r = True if rtitle and rnumber else False
         match_type = 'partial' if r else None
 
-    if not r: logger.debug(f'Partial Match text: {text}:{match_type} {r}')
-
   if not r:
     if all(re.search(rf"\b{word}\b", text, re.I) for word in search.split()) :
         r = True if rnumber and raka else False
         match_type = 'partial' if r else None
-    if not r: logger.debug(f'All Words Match Search: {search.split()} in {text}:{match_type} {r}')
 
   if not r:
     if all(re.search(rf"\b{word}\b", text, re.I) for word in title.split()) :
         r = True if rnumber else False
         match_type = 'partial' if r else None
-    if not r: logger.debug(f'All Words Match title and number: {title.split()} in {text}: {match_type} {r}')
 
   if not r:
-    if any(re.search(rf"\b{word}\b", text, re.I) for word in title.split()) :
-        r = True if rnumber else False
-        match_type = 'any' if r else None
-    if not r: logger.debug(f'Any Words Match title and number: {title.split()} in {text}: {match_type} {r}')
-       
+    match_type = 'any'
+
+#   logger.debug(f'Match type for: {text} :{match_type}')
+
   return match_type 
 
 def get_filtered_results (title, number, inf_sub, list_Subs_Dicts):
@@ -292,22 +282,25 @@ def get_filtered_results (title, number, inf_sub, list_Subs_Dicts):
     if inf_sub['season']:
         filtered_results = lst_full + lst_partial if len(lst_partial) !=0 else lst_full + lst_pattern
     
-    if inf_sub['type'] == "episode" and not inf_sub['season']:
-
-        if len(lst_full) != 0:
-            filtered_results = lst_full
-        elif len(lst_partial) != 0:
-            filtered_results = lst_partial
-        elif len(lst_pattern) != 0:
-            filtered_results = lst_pattern
+    if inf_sub['type'] == "episode":
+        if (inf_sub['season']):
+            if len(lst_full) != 0:
+                filtered_results = lst_full + lst_pattern         
         else:
-            filtered_results = lst_any
+            if len(lst_full) != 0:
+                filtered_results = lst_full
+            elif len(lst_partial) != 0:
+                filtered_results = lst_partial
+            elif len(lst_pattern) != 0:
+                filtered_results = lst_pattern
+            else:
+                filtered_results = lst_any
+    
     
     if inf_sub['type'] == "movie":
 
         if len(lst_full) != 0 or len(lst_pattern) != 0:
             filtered_results = lst_full + lst_pattern
-
         elif len(lst_partial) != 0:
             filtered_results = lst_partial
         else:
@@ -363,7 +356,7 @@ def convert_datetime(string_datetime:str):
         date_time_str = datetime.combine(date_obj, time_obj).strftime('%d/%m/%Y %H:%M')
 
     except ValueError as e:
-        logger.debug(f'Value Error parsing: {string_datetime} Error: {e}')
+        # logger.debug(f'Value Error parsing: {string_datetime} Error: {e}')
         return "--- --"
     
     return date_time_str
@@ -398,8 +391,7 @@ def clean_list_subs(list_dict_subs):
 def Network_Connection_Error(e: HTTPError) -> str:
     """ Return a Network Connection Error message."""
 
-    # msg = e.__str__()
-    msg = e.__str__().split(":")[1].split("(")[0]
+    msg = e.__str__()
     error_class = e.__class__.__name__
     Network_error_msg= {
         'ConnectTimeoutError' : "Connection to host timed out",
@@ -430,7 +422,6 @@ def HTTPErrorsMessageException(e: HTTPError):
 def get_aadata(search):
     """Get a json data with the ``search`` results."""
    
-    headers['Cookie'], _f_token, _f_search = check_data_connection()
     try:
         fields={'buscar'+ _f_search: search, 'filtros': '', 'tabla': 'resultados', 'token': _f_token}
         page = s.request(
@@ -825,7 +816,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
             console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
             time.sleep(0.2)
         clean_screen()
-        exit(1)
+        return None
 
     if (res == -1):
         logger.debug('Download Canceled')
@@ -833,65 +824,67 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
             console.print("\r\n" + ":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
             time.sleep(0.2)
         clean_screen()
-        exit(0)
+        return None
     
     clean_screen()
     return res
 
 ### Extract Subtitles ###
-def extract_subtitles(compressed_sub_file, temp_file, topath):
+def extract_subtitles(compressed_sub_file, topath):
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
 
     # In case of existence of various subtitles choose which to download
     if len(compressed_sub_file.infolist()) > 1 :
-        clean_screen()
+        res = 0
         count = 0
         choices = []
         choices.append(str(count))
         list_sub = []
-        table = Table(box=box.ROUNDED, title=">> Subtítulos disponibles:", title_style="bold green",show_header=True, 
-                    header_style="bold yellow", show_lines=True, title_justify='center')
-        table.add_column("#", justify="center", vertical="middle", style="bold green")
-        table.add_column("Subtítulos", justify="center" , no_wrap=True)
 
         for i in compressed_sub_file.infolist():
             if i.is_dir() or os.path.basename(i.filename).startswith("._"):
                 continue
             i.filename = os.path.basename(i.filename)
             list_sub.append(i.filename)
-            table.add_row(str(count + 1), str(i.filename))
-            count += 1
-            choices.append(str(count))
-    
-        choices.append(str(count + 1))
-        console.print(table)
-        console.print("[bold green]>> [0] Descargar todos\r", new_line_start=True)
-        console.print("[bold red]>> [" + str(count + 1) + "] Cancelar descarga\r", new_line_start=True)
+        
+        if not args.no_choose:
+            clean_screen()
+            table = Table(box=box.ROUNDED, title=">> Subtítulos disponibles:", title_style="bold green",show_header=True, 
+                        header_style="bold yellow", show_lines=True, title_justify='center')
+            table.add_column("#", justify="center", vertical="middle", style="bold green")
+            table.add_column("Subtítulos", justify="center" , no_wrap=True)
 
-        try:
-            res = IntPrompt.ask("[bold yellow]>> Elija un [" + "[bold green]#" + "][bold yellow]. Por defecto:", 
-                        show_choices=False, show_default=True, choices=choices, default=0)
-        except KeyboardInterrupt:
-            logger.debug('Interrupted by user')
-            temp_file.close()
-            os.unlink(temp_file.name)
-            if not args.quiet:
-                console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
-                time.sleep(0.2)
+            for i in list_sub:
+                table.add_row(str(count + 1), str(i))
+                count += 1
+                choices.append(str(count))
+        
+            choices.append(str(count + 1))
+            console.print(table)
+            console.print("[bold green]>> [0] Descargar todos\r", new_line_start=True)
+            console.print("[bold red]>> [" + str(count + 1) + "] Cancelar descarga\r", new_line_start=True)
+
+            try:
+                res = IntPrompt.ask("[bold yellow]>> Elija un [" + "[bold green]#" + "][bold yellow]. Por defecto:", 
+                            show_choices=False, show_default=True, choices=choices, default=0)
+            except KeyboardInterrupt:
+                logger.debug('Interrupted by user')
+                if not args.quiet:
+                    console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
+                    time.sleep(0.2)
+                return
+        
+            if (res == count + 1):
+                logger.debug('Canceled Download Subtitle') 
+                if not args.quiet:
+                    console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
+                    time.sleep(0.2)
+                return
+
             clean_screen()
-            exit(1)
-    
-        if (res == count + 1):
-            logger.debug('Canceled Download Subtitle') 
-            temp_file.close()
-            os.unlink(temp_file.name)
-            if not args.quiet:
-                console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
-                time.sleep(0.2)
-            clean_screen()
-            exit(0)
 
         logger.debug('Decompressing files')
+
         if res == 0:
             with compressed_sub_file as csf:
                 for sub in csf.infolist():
@@ -912,9 +905,12 @@ def extract_subtitles(compressed_sub_file, temp_file, topath):
                                 csf.extract(sub, topath)
                                 break
             compressed_sub_file.close()
+
         logger.debug(f"Done extract subtitles!")
-        clean_screen()
-        if not args.quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
+
+        if not args.quiet:
+            clean_screen()
+            console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
     else:
         for name in compressed_sub_file.infolist():
             # don't unzip stub __MACOSX folders

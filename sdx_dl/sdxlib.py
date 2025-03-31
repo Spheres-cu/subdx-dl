@@ -9,7 +9,7 @@ from zipfile import is_zipfile, ZipFile
 from rarfile import is_rarfile, RarFile, RarCannotExec, RarExecError
 
 from sdx_dl.sdxutils import *
-from sdx_dl.config import parser
+from sdx_dl.sdxparser import parser
 
 args = parser.parse_args()
 
@@ -49,7 +49,9 @@ def get_subtitle_url(title, number, metadata, inf_sub):
         json_aaData = get_aadata(buscar)
  
     if json_aaData["iTotalRecords"] == 0 :
-        raise NoResultsError(f'Not subtitles records found for: {buscar}')
+        if not args.quiet: console.print(":no_entry:[bold red] Not subtitles records found for:[yellow]" + buscar +"[/]")
+        logger.debug(f'Not subtitles records found for: "{buscar}"')
+        return None
 
     # Checking Json Data Items
     aaData_Items = get_list_Dict(json_aaData['aaData'])
@@ -58,18 +60,22 @@ def get_subtitle_url(title, number, metadata, inf_sub):
         # Cleaning Items
         list_Subs_Dicts = clean_list_subs(aaData_Items)
     else:
-        raise NoResultsError(f'No suitable data were found for: "{buscar}"')
+        if not args.quiet: console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
+        logger.debug(f'No suitable data were found for: "{buscar}"')
+        return None
     
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
     
-    if args.search_imdb or args.imdb:
+    if args.search_imdb or args.imdb or args.no_filter:
         filtered_list_Subs_Dicts = list_Subs_Dicts
     else:
         filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)
 
     if not filtered_list_Subs_Dicts:
-        raise NoResultsError(f'No suitable subtitles were found for: "{buscar}"')
+        console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
+        logger.debug(f'No suitable data were found for: "{buscar}"')
+        return None
 
     # finding the best result looking for metadata keywords
     # in the description and max downloads
@@ -112,7 +118,10 @@ def get_subtitle_url(title, number, metadata, inf_sub):
 
     if (args.no_choose == False):
         res = get_selected_subtitle_id(table_title, results, metadata, args.quiet)
-        url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{res}'}"
+        if res is not None:
+            url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{res}'}"
+        else:
+            return None
     else:
         # get first subtitle
         res = results_pages['pages'][0][0]['id']
@@ -156,7 +165,7 @@ def get_subtitle(url:str, topath):
             logger.error(f'No suitable subtitle download for : "{url}"')
             exit(1)
 
-        extract_subtitles(compressed_sub_file, temp_file, topath)
+        extract_subtitles(compressed_sub_file, topath)
         
     except (RarCannotExec, RarExecError):
             console.clear()
@@ -171,4 +180,4 @@ def get_subtitle(url:str, topath):
     # Cleaning
     temp_file.close()
     os.unlink(temp_file.name)
-    if not args.quiet: clean_screen()
+    # if not args.quiet: clean_screen()
