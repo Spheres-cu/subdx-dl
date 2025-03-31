@@ -73,7 +73,7 @@ def get_subtitle_url(title, number, metadata, inf_sub):
         filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)
 
     if not filtered_list_Subs_Dicts:
-        console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
+        if not args.quiet: console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
         logger.debug(f'No suitable data were found for: "{buscar}"')
         return None
 

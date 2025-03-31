@@ -1044,7 +1044,6 @@ def validate_proxy(proxy_str):
         return False
         
     protocol, user, password, host, port = match.groups()
-    print("Proxy protocol: %s host:%s port:%s" % (protocol, host, port))
     
     if not (re.match(ip_pattern, host) or re.match(host_pattern, host)):
         return False

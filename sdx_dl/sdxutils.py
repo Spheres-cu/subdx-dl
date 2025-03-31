@@ -414,8 +414,11 @@ def HTTPErrorsMessageException(e: HTTPError):
     """
 
     msg = Network_Connection_Error(e)
-    console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
-
+    if args.quiet: 
+        logger.debug(f'Some Network Connection Error occurred: {msg}')
+    else:
+        console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
+    
     if logger.level == 10:
         logger.debug(f'Network Connection Error occurred: {e.__str__()}')
 
@@ -946,7 +949,8 @@ def get_imdb_search(title, number, inf_sub):
     except JSONDecodeError as e:
         msg = e.__str__()
         logger.debug(f'Could not decode json results: Error JSONDecodeError:"{msg}"')
-        console.print(":no_entry: [bold red]Some error retrieving from IMDB:[/]: " + msg, new_line_start=True, emoji=True)
+        if not args.quiet: console.print(":no_entry: [bold red]Some error retrieving from IMDB:[/]: " + msg,\
+                                        new_line_start=True, emoji=True)
         return None
     
     if not results:

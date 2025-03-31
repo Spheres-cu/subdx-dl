@@ -117,16 +117,18 @@ def main():
 
     if args.path and not os.path.isdir(args.path):
         if args.quiet:
+            logger.debug(f'Directory {args.path} do not exists')
+        else:
             console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
-                           new_line_start=True, emoji=True)
-        logger.error(f'Directory {args.path} do not exists')
+                        new_line_start=True, emoji=True)
         exit(1)
     
     if (args.proxy and not validate_proxy(args.proxy) ):
         if args.quiet:
-            console.print(":heavy_exclamation_mark:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
-                    new_line_start=True, emoji=True)
-        logger.error(f'Incorrect proxy setting. Only http, https or IP:PORT is accepted')
+            logger.debug(f'Incorrect proxy setting. Only http, https or IP:PORT is accepted')
+        else:
+            console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
+                        new_line_start=True, emoji=True)
         exit(1)
 
     if not os.path.exists(args.search):
@@ -162,7 +164,11 @@ def main():
                     break
         
         if exists_sub:
-            logger.error(f'Subtitle already exits use -f for force downloading')
+            if args.quiet:
+                logger.debug(f'Subtitle already exits use -f for force downloading')
+            else:
+                console.print(":no_entry:[bold red] Subtitle already exits use:[yellow] -f for force downloading[/]",
+                        new_line_start=True, emoji=True)
             continue
 
         filename = os.path.basename(filepath)
