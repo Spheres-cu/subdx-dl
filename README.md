@@ -54,20 +54,30 @@ search                  file, directory or movie/series title or IMDB Id to retr
 _optional arguments_:
 
 ```text
--h, --help            Show this help message and exit.
---quiet, -q           No verbose mode and very quiet. Applies even in verbose mode (-v).
---path, -p            Path to download subtitles.
---verbose -v          Be in verbose mode.
---no-choose, -nc      Download the default match subtitle available. Show all the available subtitles to download is de default behavior.
---Season, -S          Search for Season.
---search-imdb, -si    Search first for the IMDB id or title.
---force, -f           Override existing subtitle file.
---version -V          Show program version.
---title -t "<string>" _ Set the title to search instead of getting it from the file name. This option is invalid if --imdb is setting. 
---keyword -k "<strings>" _ Add an <strings> to the list of keywords separated by spaces. Keywords are used when you search by filename.
---imdb -i IMDB_ID _ Search by IMDB id regardless filename, search strings or serie season.
---check-version, -cv  Check for new program version.
---proxy, -P           Set a http(s) proxy connection.
+  -h, --help             show this help message and exit
+
+Download:
+  --path PATH, -p PATH    Path to download subtitles
+  --quiet, -q             No verbose mode
+  --verbose, -v           Be in verbose mode
+  --force, -f             override existing file
+  --no-choose, -nc        No Choose sub manually
+  --no-filter, -nf        Do not filter search results
+  --proxy PROXY, -P PROXY Set a http(s) proxy connection
+
+Search by:
+  --Season, -S                    Search for Season
+  --keyword KEYWORD, -k KEYWORD   Add keyword to search among subtitles
+  --title TITLE, -t TITLE         Set the title of the show
+
+IMDB search:
+  Search in IMDB by ID or title
+  --search-imdb, -si    Search first for the IMDB id or title
+  --imdb IMDB, -i IMDB  Search by IMDB id
+
+Information:
+  --version, -V         Show program version
+  --check-version, -cv  Check for new version
 ```
 
 ## Examples
@@ -140,6 +150,8 @@ sdx-dl -si "Duna S1E3"
 - Pass keywords (```--keyword -k "<str1 str2 str3 ...>"```) of the subtitle   you are searching for better ordered results.
 
 - If the search not found any records by a single chapter number (exe. S01E02) try search by the complete Seasson with ``` --Seasson -S ``` parameter.
+
+- If you don't wanna filter the search results for a better match and, instead,  improved response time use ``` --no-filter -nf ``` argument.
 
 - __Very important!__: You need to be installed some rar decompression tool for example: [unrar](https://www.rarlab.com/) (preferred), [unar](https://theunarchiver.com/command-line), [7zip](https://www.7-zip.org/) or [bsdtar](https://github.com/libarchive/libarchive). Otherwise, subtitle file will do not decompress.
 
