@@ -70,12 +70,12 @@ def main():
     def guess_search(search):
         """ Parse search parameter. """
 
-        excludes = " --exclude ".join((' ', 'other', 'country', ' language'))
+        excludes = "--exclude ".join(('', 'other ', 'country ', 'language ', 'audio_codec '))
         options = "-i -s -n " + excludes
         properties = ('type','title','season','episode','year')
         season = True if args.Season else False
         info = VideoMetadataExtractor.extract_specific(search, *properties, options=options)
-        # logger.debug(f'Extracted: {json.dumps(extractor, indent=4, default=str)}')
+        # logger.debug(f'Extracted: {info}')
 
         try:
 
