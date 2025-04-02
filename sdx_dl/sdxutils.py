@@ -56,6 +56,8 @@ _audio = ('dts-hd', 'dts', 'ma', '5.1', 'ddp5.1', 'hdr', 'atmos' )
 
 _sub_extensions = ['.srt', '.ssa', '.ass', '.sub']
 
+_compressed_extensions = ['.zip', '.rar']
+
 SUBDIVX_SEARCH_URL = 'https://www.subdivx.com/inc/ajax.php'
 
 SUBDIVX_DOWNLOAD_PAGE = 'https://www.subdivx.com/'
@@ -472,6 +474,8 @@ def get_aadata(search):
     except JSONDecodeError as msg:
         logger.debug(f'Error JSONDecodeError: "{msg.__str__()}"')
         console.print(":no_entry: [bold red]Couldn't load results page![/]", emoji=True, new_line_start=True)
+    
+    if (page): logger.debug(f'Found subtitles records for: "{search}"')
     
     return json_aaData
 
@@ -893,12 +897,12 @@ def extract_subtitles(compressed_sub_file, topath):
                 for sub in csf.infolist():
                     if not sub.is_dir():
                         sub.filename = os.path.basename(sub.filename)
-                    if any(sub.filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in sub.filename:
+                    if any(sub.filename.endswith(ext) for ext in _sub_extensions + _compressed_extensions) and '__MACOSX' not in sub.filename:
                         logger.debug(' '.join(['Decompressing subtitle:', sub.filename, 'to', topath]))
                         csf.extract(sub, topath)
             compressed_sub_file.close()
         else:
-            if any(list_sub[res - 1].endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in list_sub[res - 1]:
+            if any(list_sub[res - 1].endswith(ext) for ext in _sub_extensions + _compressed_extensions) and '__MACOSX' not in list_sub[res - 1]:
                 with compressed_sub_file as csf:
                     for sub in csf.infolist():
                         if not sub.is_dir():
