@@ -15,6 +15,12 @@ A cli tool for download subtitle from [www.subdivx.com](https://www.subdivx.com)
 pip install -U subdx-dl
 ```
 
+### Special case installing on Termux (Android) for first time
+
+```bash
+pkg install python-lxml && pip install -U subdx-dl
+```
+
 ### For testing use a virtual env and install it there
 
 _For linux:_
