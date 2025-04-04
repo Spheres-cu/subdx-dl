@@ -6,12 +6,15 @@ import re
 import sys
 import time
 import json
+import shutil
 import signal
 import certifi
 import urllib3
 import tempfile
 import html2text
 import random
+from zipfile import is_zipfile, ZipFile
+from rarfile import is_rarfile, RarFile, RarCannotExec, RarExecError
 from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, validate_proxy, VideoMetadataExtractor
 from sdx_dl.sdxparser import logger, parser
 from json import JSONDecodeError
@@ -497,8 +500,8 @@ def make_screen_layout() -> Layout:
         Layout(name="description", size=8, ratio=1),
         Layout(name="caption")
     )
-    layout["caption"].update(Align.center("[italic bright_yellow] Oprima:[[bold green]D[/]] PARA DESCARGAR " \
-                                          "[[bold green]A[/]] PARA IR ATRÁS [/]", vertical="middle"))
+    layout["caption"].update(Align.center("Download:[[bold green]D[/]] Back:[[bold green]A[/]]",
+                                          vertical="middle", style="italic bright_yellow"))
 
     return layout
 
@@ -567,14 +570,12 @@ def make_comments_table(title, results, page) -> Table:
 
     BG_STYLE = Style(color="white", bgcolor="gray0", bold=False)
 
-    comment_table = Table(box=box.SIMPLE_HEAD, title="\n" + title, caption="[italic bright_yellow] MOVERSE: [[bold green] \u2190 \u2192 [/]] "\
-                    "| [[bold green]A[/]] ATRÁS [[bold green]D[/]] DESCARGAR[/]\n\n"\
-                    "[italic] Página [bold white on medium_purple3] " + str(page + 1) +" [/] de [bold medium_purple3]"\
-                    + str(results['pages_no']) + "[/] " \
-                    "de [bold green]" + str(results['total']) + "[/] comentario(s)[/]"   
-                        ,
+    comment_table = Table(box=box.SIMPLE, title="\n" + title, caption="Prev.:[[bold green]\u2190[/]] Next:[[bold green]\u2192[/]] "\
+                    "Back:[[bold green]A[/]] Download:[[bold green]D[/]]\n\n"\
+                    "Pag.[bold white] " + str(page + 1) + "[/] of [bold white]" + str(results['pages_no']) + "[/] " \
+                    "of [bold green]" + str(results['total']) + "[/] comment(s)",
                     show_header=True, header_style="bold yellow", title_style="bold green",
-                    caption_style="bold bright_yellow", leading=1, show_lines=True)
+                    caption_style="italic bright_yellow", leading=0, show_lines=False, show_edge=False,show_footer=True)
     
     comment_table.add_column("#", justify="right", vertical="middle", style="bold green")
     comment_table.add_column("Comentarios", justify="left", vertical="middle", style="white")
@@ -607,13 +608,14 @@ def not_comments(text) -> Panel:
 
     not_comment_panel = Panel(
         Align.center(
-            Group(Align.center(text,vertical='middle')), vertical = "middle"
+            Group(Align.center(text,vertical='top')), vertical = "top"
         ),
-        box = box.ROUNDED,
+        box = box.SIMPLE_HEAD,
         title = "[bold yellow]Comentarios[/]",
-        subtitle ="[italic bright_yellow] Oprima:[[bold green]D[/]] PARA DESCARGAR " \
-                  "[[bold green]A[/]] PARA IR ATRÁS [/]",
-        padding = 5 
+        subtitle ="Back:[[bold green]A[/]] Download:[[bold green]D[/]]",
+        padding = 1,
+        style="italic bright_yellow",
+        height=5,
     )
 
     return not_comment_panel
@@ -626,14 +628,14 @@ def generate_results(title, results, page, selected) -> Layout:
     SELECTED = Style(color="green", bgcolor="gray35", bold=True)
     layout_results = make_layout() 
 
-    table = Table(box=box.SIMPLE_HEAD, title=">> Resultados para: " + str(title), 
-                caption="Menú:[bold green]\u2193 \u2191 \u2192 \u2190[/] | " \
-                "Descargar:[bold green]ENTER[/] | Descripción:[bold green]D[/] | Comentarios:[bold green]C[/] | Salir:[bold green]S[/]\n" \
-                "Ordenar x Fecha:[bold green]\u2193 PgDn[/] [bold green]\u2191 PgUp[/] | Defecto:[bold green]F[/]\n\n"\
-                "[italic]Página [bold white on medium_purple3] " + str(page + 1) +" [/] de [bold medium_purple3]"\
-                + str(results['pages_no']) + "[/] de [bold green]" + str(results['total']) + "[/] resultado(s)[/]",
-                title_style="bold green",
-                show_header=True, header_style="bold yellow", caption_style="bold bright_yellow", show_lines=False)
+    table = Table(box=box.SIMPLE, title=">> " + f'{title}\n' +\
+                "[italic]Pag.[bold white] " + f"{page + 1}" + "[/] of [bold white]" + f"{results['pages_no']}" +\
+                "[/] of [bold green]" + f"{results['total']}" + "[/] result(s)[/]", 
+                caption="\nDw:[bold green]\u2193[/] Up:[bold green]\u2191[/] Nx:[bold green]\u2192[/] Pv:[bold green]\u2190[/] "\
+                "Dl:[bold green]ENTER[/] Descrip.:[bold green]D[/] Coments.:[bold green]C[/] Exit:[bold green]S[/]\n" \
+                "Order by Date:[bold green]\u2193 PgDn[/] [bold green]\u2191 PgUp[/] Default:[bold green]F[/]",
+                title_style="bold green", show_header=True, header_style="bold yellow", caption_style="bold bright_yellow",
+                show_edge=False, pad_edge=False)
     
     table.add_column("#", justify="right", vertical="middle", style="bold green")
     table.add_column("Título", justify="left", vertical="middle", style="white", ratio=2)
@@ -660,7 +662,7 @@ def generate_results(title, results, page, selected) -> Layout:
     for i, row in enumerate(rows):
         row[0] =  "[bold red]\u25cf[/]" + row[0] if i == selected else " " + row[0]
         table.add_row(*row, style=SELECTED if i == selected else "bold white")
- 
+
     layout_results["table"].update(table)
     
     return layout_results
@@ -681,18 +683,34 @@ def paginate(items, per_page):
         'pages': pages
     }
 
-def get_selected_subtitle_id(table_title, results, metadata, quiet):
+def get_rows():
+    """Get Terminal available rows"""
+    lines = shutil.get_terminal_size().lines
+    fixed_lines = lines - 10
+    available_lines = fixed_lines if (fixed_lines > 0) else lines
+    return available_lines
+
+def get_comments_rows():
+    """Get Terminal available rows for comments"""
+    lines = shutil.get_terminal_size().lines
+    fixed_lines = lines - 15
+    available_lines = fixed_lines if (fixed_lines > 0) else lines
+    return available_lines
+
+def get_selected_subtitle_id(table_title, results, metadata):
     """Show subtitles search results for obtain download id."""
-    results_pages = paginate(results, 10)
+    
     try:
+        results_pages = paginate(results, get_rows())
         selected = 0
         page = 0
         res = 0
         with Live(
-            generate_results (table_title, results_pages, page, selected),auto_refresh=False, screen=False, transient=True
+            generate_results (table_title, results_pages, page, selected),auto_refresh=False, screen=True, transient=False
         ) as live:
             while True:
                 live.console.show_cursor(False)
+
                 ch = readkey()
                 if ch == key.UP:
                     selected = max(0, selected - 1)
@@ -703,7 +721,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                                     if item['fecha_subida'] != "--- --" else datetime.min
                                     ), reverse=False
                                 )
-                    results_pages = paginate(results_pages, 10)
+                    results_pages = paginate(results_pages, get_rows())
                 
                 if ch == key.PAGE_DOWN:
                     results_pages = sorted(results, key=lambda item: (
@@ -711,11 +729,11 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                                     if item['fecha_subida'] != "--- --" else datetime.min
                                     ), reverse=True
                                 )
-                    results_pages = paginate(results_pages, 10)
+                    results_pages = paginate(results_pages, get_rows())
                 
                 if ch in ["F", "f"]:
                       results_pages = sorted(results, key=lambda item: (item['score'], item['descargas']), reverse=True)
-                      results_pages = paginate(results_pages, 10)
+                      results_pages = paginate(results_pages, get_rows())
                 
                 if ch == key.DOWN:
                     selected = min(len(results_pages['pages'][page]) - 1, selected + 1)
@@ -730,7 +748,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                     layout_description = make_screen_layout()
                     layout_description["description"].update(make_description_panel(description))
                     layout_description["subtitle"].update(Align.center(
-                                "Subtítulo: " + html2text.html2text(subtitle_selected).strip(),
+                                html2text.html2text(subtitle_selected).strip(),
                                 vertical="middle",
                                 style="italic bold green"
                                 ))
@@ -755,7 +773,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                     subtitle_selected =  results_pages['pages'][page][selected]['titulo']
                     subid = int(results_pages['pages'][page][selected]['id'])
                     layout_comments = make_layout()
-                    title ="Subtítulo: " + html2text.html2text(subtitle_selected).strip()
+                    title = html2text.html2text(subtitle_selected).strip()
                     show_comments = True if results_pages['pages'][page][selected]['comentarios'] != 0 else False
                     comment_msg = ":neutral_face: [bold red][i]¡No hay comentarios para este subtítulo![/]" if not show_comments else "" 
 
@@ -765,7 +783,7 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                               aaData = get_comments_data(subid)
                             comments = get_list_Dict(aaData['aaData']) if aaData is not None else None
                             comments = parse_list_comments(comments) if comments is not None else None
-                            comments = paginate(comments, 5) if comments is not None else None
+                            comments = paginate(comments, get_comments_rows()) if comments is not None else None
                             
                             if comments is None:
                                 show_comments = False
@@ -818,26 +836,20 @@ def get_selected_subtitle_id(table_title, results, metadata, quiet):
                 live.update(generate_results(table_title, results_pages, page, selected), refresh=True)
 
     except KeyboardInterrupt:
-        logger.debug('Interrupted by user')
-        if not quiet:
-            console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
-            time.sleep(0.2)
         clean_screen()
+        logger.debug('Interrupted by user')
         return None
 
     if (res == -1):
-        logger.debug('Download Canceled')
-        if not quiet:
-            console.print("\r\n" + ":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
-            time.sleep(0.2)
         clean_screen()
+        logger.debug('Download Canceled')
         return None
     
     clean_screen()
     return res
 
 ### Extract Subtitles ###
-def extract_subtitles(compressed_sub_file, topath):
+def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath):
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
 
     # In case of existence of various subtitles choose which to download
@@ -879,6 +891,7 @@ def extract_subtitles(compressed_sub_file, topath):
                 if not args.quiet:
                     console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
                     time.sleep(0.2)
+                    clean_screen()
                 return
         
             if (res == count + 1):
@@ -886,6 +899,7 @@ def extract_subtitles(compressed_sub_file, topath):
                 if not args.quiet:
                     console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
                     time.sleep(0.2)
+                    clean_screen()
                 return
 
             clean_screen()

@@ -1,27 +1,25 @@
 # Copyright (C) 2024 Spheres-cu (https://github.com/Spheres-cu) subdx-dl
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import os
-import time
-import shutil
 from tempfile import NamedTemporaryFile
-from zipfile import is_zipfile, ZipFile
-from rarfile import is_rarfile, RarFile, RarCannotExec, RarExecError
-
 from sdx_dl.sdxutils import *
 from sdx_dl.sdxparser import parser
 
 args = parser.parse_args()
 
-def get_subtitle_url(title, number, metadata, inf_sub):
+def get_subtitle_id(title, number, metadata, inf_sub):
     
-    """Get a page with a list of subtitles searched by ``title`` and season/episode
-        ``number`` of series or movies.
+    """
+    Get a list of subtitles of subtitles searched by ``title`` and season/episode
+    ``number`` of series or movies.
       
-      The results are ordered based on a weighing of a ``metadata`` list.
+    The results are ordered based on a weighing of a ``metadata`` list.
 
-      If ``no_choose`` ``(-nc)``  is true then a list of subtitles is show for chose 
-        else the first subtitle is choosen.
+    If ``no_choose`` ``(-nc)`` is false then a list of subtitles is show for choose.
+
+    Else the first founded subtitle `id` is choosen.
+
+    Return the subtitle `id`
     """
     buscar = None
     if args.search_imdb:
@@ -117,19 +115,18 @@ def get_subtitle_url(title, number, metadata, inf_sub):
     results_pages = paginate(results, 10)
 
     if (args.no_choose == False):
-        res = get_selected_subtitle_id(table_title, results, metadata, args.quiet)
-        if res is not None:
-            url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{res}'}"
-        else:
-            return None
+        res = get_selected_subtitle_id(table_title, results, metadata)
+        if res is None: return None
     else:
         # get first subtitle
         res = results_pages['pages'][0][0]['id']
-        url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{res}'}"
-    return url
+    
+    return res
 
-def get_subtitle(url:str, topath):
-    """Download subtitles from ``url`` to a destination ``path``."""
+def get_subtitle(subid, topath):
+    """Download a subtitle with id ``subid`` to a destination ``path``."""
+
+    url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{subid}'}"
     
     if not args.quiet: clean_screen()
     temp_file = NamedTemporaryFile(delete=False)
@@ -170,7 +167,7 @@ def get_subtitle(url:str, topath):
     except (RarCannotExec, RarExecError):
             console.clear()
             temp_dir = tempfile.gettempdir()
-            shutil.copyfile(os.path.join(temp_dir, temp_file.name), os.path.join(topath, str(url[24:]) + ".rar")) 
+            shutil.copyfile(os.path.join(temp_dir, temp_file.name), os.path.join(topath, f'{subid}.rar')) 
 
             console.print(":warning: [bold red] Cannot find working tool:[bold yellow] please install rar decompressor tool like: unrar (preferred), unar, 7zip or bsdtar\n\r" \
                            "Subtitle file will do not decompress[/]", emoji=True, new_line_start=True)
@@ -180,4 +177,4 @@ def get_subtitle(url:str, topath):
     # Cleaning
     temp_file.close()
     os.unlink(temp_file.name)
-    # if not args.quiet: clean_screen()
+

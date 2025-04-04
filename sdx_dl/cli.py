@@ -4,7 +4,7 @@
 
 import os
 from sdx_dl.sdxparser import parser, logger
-from sdx_dl.sdxlib import get_subtitle_url, get_subtitle
+from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
 from sdx_dl.sdxutils import _sub_extensions, extract_meta_data, NoResultsError, validate_proxy, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console
 from guessit import guessit
@@ -137,16 +137,16 @@ def main():
             title, number, inf_sub = guess_search(search)
             metadata = extract_meta_data(args.search, args.keyword)
             
-            url = get_subtitle_url(
+            subid = get_subtitle_id(
                 title, number, metadata, inf_sub)
         
         except NoResultsError as e:
             logger.error(str(e))
-            url = None
+            subid = None
             
-        if (url is not None):
+        if (subid is not None):
             topath = os.getcwd() if args.path is None else args.path
-            get_subtitle(url, topath)
+            get_subtitle(subid, topath)
 
     elif os.path.exists(args.search):
       cursor = FileFinder(args.search, with_extension=_extensions)
@@ -178,21 +178,21 @@ def main():
 
             metadata = extract_meta_data(filename, args.keyword)
 
-            url = get_subtitle_url(
+            subid = get_subtitle_id(
                 title, number, metadata, inf_sub)
 
         except NoResultsError as e:
             logger.error(str(e))
-            url = None
+            subid = None
         
         if args.path is None:
             topath = os.path.dirname(filepath) if os.path.isfile(filepath) else filepath
         else:
             topath = args.path
 
-        if (url is not None):
+        if (subid is not None):
             with subtitle_renamer(filepath, inf_sub=inf_sub):
-                get_subtitle(url, topath)
+                get_subtitle(subid, topath)
 
 if __name__ == '__main__':
     main()
