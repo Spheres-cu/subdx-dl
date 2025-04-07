@@ -13,8 +13,8 @@ import urllib3
 import tempfile
 import html2text
 import random
-from zipfile import is_zipfile, ZipFile
-from rarfile import is_rarfile, RarFile, RarCannotExec, RarExecError
+from zipfile import ZipFile
+from rarfile import RarFile
 from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, validate_proxy, VideoMetadataExtractor
 from sdx_dl.sdxparser import logger, parser
 from json import JSONDecodeError
@@ -67,6 +67,8 @@ SUBDIVX_DOWNLOAD_PAGE = 'https://www.subdivx.com/'
 
 Metadata = namedtuple('Metadata', 'keywords quality codec audio')
 
+signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
+
 # Configure connections
 lst_ua = GenerateUserAgent.generate_all()
 ua = random.choice(lst_ua)
@@ -80,7 +82,41 @@ if (args.proxy and validate_proxy(args.proxy)):
 else:
     s = urllib3.PoolManager(num_pools=8, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
 
-signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
+# Network connections Errors
+def Network_Connection_Error(e: HTTPError) -> str:
+    """ Return a Network Connection Error message."""
+
+    msg = e.__str__()
+    error_class = e.__class__.__name__
+    Network_error_msg= {
+        'ConnectTimeoutError' : "Connection to host timed out",
+        'ReadTimeoutError'    : "Read timed out",
+        'NameResolutionError' : 'Failed to resolve host name',
+        'ProxyError'          : "Unable to connect to proxy",
+        'NewConnectionError'  : "Failed to establish a new connection",
+        'ProtocolError'       : "Connection aborted. Remote end closed connection without response",
+        'MaxRetryError'       : "Maxretries exceeded",
+        'SSLError'            : "Certificate verify failed: unable to get local issuer certificate",
+        'HTTPError' : msg
+    }
+    error_msg = f'{error_class} : {Network_error_msg[error_class] if error_class in Network_error_msg else msg }'
+    return error_msg
+
+def HTTPErrorsMessageException(e: HTTPError):
+    """ Manage HTTP Network connection Errors Exceptions message:
+        * Log HTTP Network connection Error message
+        * Print HTTP Network connection error message.
+    """
+
+    msg = Network_Connection_Error(e)
+    if args.quiet: 
+        logger.debug(f'Some Network Connection Error occurred: {msg}')
+    else:
+        console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
+    
+    if logger.level == 10:
+        logger.debug(f'Network Connection Error occurred: {e.__str__()}')
+
 
 ### Setting data connection ###
 sdx_data_connection_name = 'sdx_data_connection'
@@ -257,7 +293,6 @@ def match_text(title, number, inf_sub, text):
     match_type = 'any'
 
 #   logger.debug(f'Match type for: {text} :{match_type}')
-
   return match_type 
 
 def get_filtered_results (title, number, inf_sub, list_Subs_Dicts):
@@ -393,40 +428,6 @@ def clean_list_subs(list_dict_subs):
 
     return list_dict_subs
 
-def Network_Connection_Error(e: HTTPError) -> str:
-    """ Return a Network Connection Error message."""
-
-    msg = e.__str__()
-    error_class = e.__class__.__name__
-    Network_error_msg= {
-        'ConnectTimeoutError' : "Connection to host timed out",
-        'ReadTimeoutError'    : "Read timed out",
-        'NameResolutionError' : 'Failed to resolve host name',
-        'ProxyError'          : "Unable to connect to proxy",
-        'NewConnectionError'  : "Failed to establish a new connection",
-        'ProtocolError'       : "Connection aborted. Remote end closed connection without response",
-        'MaxRetryError'       : "Maxretries exceeded",
-        'SSLError'            : "Certificate verify failed: unable to get local issuer certificate",
-        'HTTPError' : msg
-    }
-    error_msg = f'{error_class} : {Network_error_msg[error_class] if error_class in Network_error_msg else msg }'
-    return error_msg
-
-def HTTPErrorsMessageException(e: HTTPError):
-    """ Manage HTTP Network connection Errors Exceptions message:
-        * Log HTTP Network connection Error message
-        * Print HTTP Network connection error message.
-    """
-
-    msg = Network_Connection_Error(e)
-    if args.quiet: 
-        logger.debug(f'Some Network Connection Error occurred: {msg}')
-    else:
-        console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
-    
-    if logger.level == 10:
-        logger.debug(f'Network Connection Error occurred: {e.__str__()}')
-
 def get_aadata(search):
     """Get a json data with the ``search`` results."""
    
@@ -477,8 +478,6 @@ def get_aadata(search):
     except JSONDecodeError as msg:
         logger.debug(f'Error JSONDecodeError: "{msg.__str__()}"')
         console.print(":no_entry: [bold red]Couldn't load results page![/]", emoji=True, new_line_start=True)
-    
-    if (page): logger.debug(f'Found subtitles records for: "{search}"')
     
     return json_aaData
 
@@ -838,7 +837,7 @@ def get_selected_subtitle_id(table_title, results, metadata):
     except KeyboardInterrupt:
         clean_screen()
         logger.debug('Interrupted by user')
-        return None
+        exit(1)
 
     if (res == -1):
         clean_screen()

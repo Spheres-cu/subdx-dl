@@ -4,7 +4,7 @@
 import os
 import tempfile
 import argparse
-import logging, logging.handlers
+import logging
 from sdx_dl.sdxclasses import ChkVersionAction
 from importlib.metadata import version
 from rich.logging import RichHandler

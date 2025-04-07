@@ -2,6 +2,8 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from tempfile import NamedTemporaryFile
+from zipfile import is_zipfile
+from rarfile import is_rarfile, RarCannotExec, RarExecError
 from sdx_dl.sdxutils import *
 from sdx_dl.sdxparser import parser
 
@@ -37,7 +39,7 @@ def get_subtitle_id(title, number, metadata, inf_sub):
             console.print(":information_source: [bold yellow] Search terms from IMDB: " + imdb_search, new_line_start=True, emoji=True)
             time.sleep(0.5)
 
-    if buscar is None : buscar = f"{title} {number}" if not args.imdb else args.imdb
+    if buscar is None : buscar = f"{title} {number}".strip() if not args.imdb else args.imdb
 
     if not args.quiet:console.print("\r")
     logger.debug(f'Searching subtitles for: ' + str(title) + " " + str(number).upper())
@@ -50,7 +52,9 @@ def get_subtitle_id(title, number, metadata, inf_sub):
         if not args.quiet: console.print(":no_entry:[bold red] Not subtitles records found for:[yellow]" + buscar +"[/]")
         logger.debug(f'Not subtitles records found for: "{buscar}"')
         return None
-
+    else:
+        logger.debug(f'Found subtitles records for: "{buscar}"')
+    
     # Checking Json Data Items
     aaData_Items = get_list_Dict(json_aaData['aaData'])
     
