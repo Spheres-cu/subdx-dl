@@ -69,6 +69,7 @@ Download:
   --force, -f             override existing file
   --no-choose, -nc        No Choose sub manually
   --no-filter, -nf        Do not filter search results
+  --num-lines, -nl        [5, 10 ,15, 20] Show only nl records. Without argument only show 10 records 
   --proxy PROXY, -P PROXY Set a http(s) proxy connection
 
 Search by:
