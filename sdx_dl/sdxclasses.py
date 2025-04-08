@@ -2,6 +2,12 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 # Copyright 2024 BSD 3-Clause License (see https://opensource.org/license/bsd-3-clause)
 
+### Config Settings imports ###
+import os
+import pathlib
+from typing import Optional
+from pathlib import Path
+
 ### Metadata video extractor imports ###
 from guessit import guessit
 from typing import Dict, Any
@@ -1191,3 +1197,151 @@ class VideoMetadataExtractor:
             metadata (dict): Metadata dictionary to print
         """
         print(json.dumps(metadata, indent=4, default=str))
+
+### Class Config Settings
+class ConfigManager:
+    """
+    A class to manage application configuration settings in a JSON file.
+    
+    Attributes:
+        config_path (str): Path to the configuration file
+        config (dict): Dictionary containing the configuration settings
+    """
+    
+    def __init__(self, config_path: str = ""):
+        """
+        Initialize the ConfigManager with a path to the configuration file.
+        
+        Args:
+            config_path (str): Path to the configuration file. Defaults to None.
+        """
+        self.config_path = config_path if config_path else self.get_config_path()
+        self.config = {}
+        
+        # Load existing config or create new one if it doesn't exist
+        self._load_config()
+
+    def _load_config(self) -> None:
+        """Load the configuration from file or create a new one if it doesn't exist."""
+        try:
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r') as f:
+                    self.config = json.load(f)
+            else:
+                self.config = {}
+                self._save_config()
+        except (json.JSONDecodeError, IOError) as e:
+            raise RuntimeError(f"Failed to load configuration: {str(e)}")
+
+    def _save_config(self) -> None:
+        """Save the current configuration to file."""
+        try:
+            with open(self.config_path, 'w') as f:
+                json.dump(self.config, f, indent=4)
+        except IOError as e:
+            raise RuntimeError(f"Failed to save configuration: {str(e)}")
+
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
+        """
+        Get a configuration value by key.
+        
+        Args:
+            key (str): The configuration key to retrieve
+            default (Any): Default value to return if key doesn't exist
+            
+        Returns:
+            The configuration value or default if key doesn't exist
+        """
+        return self.config.get(key, default)
+
+    def set(self, key: str, value: Any) -> None:
+        """
+        Set a configuration value.
+        
+        Args:
+            key (str): The configuration key to set
+            value (Any): The value to set
+        """
+        self.config[key] = value
+        self._save_config()
+
+    def update(self, new_config: Dict[str, Any]) -> None:
+        """
+        Update multiple configuration values at once.
+        
+        Args:
+            new_config (dict): Dictionary of key-value pairs to update
+        """
+        self.config.update(new_config)
+        self._save_config()
+
+    def delete(self, key: str) -> None:
+        """
+        Delete a configuration key.
+        
+        Args:
+            key (str): The configuration key to delete
+        """
+        if key in self.config:
+            del self.config[key]
+            self._save_config()
+
+    def reset(self) -> None:
+        """Reset the configuration to an empty state."""
+        self.config = {}
+        self._save_config()
+
+    def get_all(self) -> Dict[str, Any]:
+        """
+        Get all configuration settings.
+        
+        Returns:
+            dict: A copy of the current configuration
+        """
+        return self.config.copy()
+    
+    @staticmethod
+    def get_config_path(app_name: str = "subdx-dl", file_name: Optional[str] = "sdx-config.json") -> Path:
+        """
+        Get the appropriate local configuration path for the current platform.
+        
+        Args:
+            app_name: Name of your application (used to create a subdirectory). Default subdx-dl
+            file_name: Optional filename to append to the config path. Default sdx-config.json
+            
+        Returns:
+            Path object pointing to the configuration directory or file
+            
+        Platform-specific paths:
+        - Windows: %LOCALAPPDATA%\\<app_name>\\
+        - macOS: ~/Library/Application Support/<app_name>/
+        - Linux: ~/.config/<app_name>/
+        """
+        if sys.platform == "win32":
+            # Windows
+            base_dir = Path(os.getenv("LOCALAPPDATA"))
+        elif sys.platform == "darwin":
+            # macOS
+            base_dir = Path.home() / "Library" / "Application Support"
+        else:
+            # Linux and other UNIX-like systems
+            base_dir = Path.home() / ".config"
+        
+        config_dir = base_dir / app_name
+        
+        # Create directory if it doesn't exist
+        config_dir.mkdir(parents=True, exist_ok=True)
+        
+        if file_name:
+            return config_dir / file_name
+        return config_dir
+    
+
+class CreateSettings(argparse.Action):
+    def __init__(self, nargs=0, **kw,):
+        super().__init__(nargs=nargs, **kw)
+    
+    def __call__(self, parser, namespace, values, option_string=None):
+        config = ConfigManager()
+        print("Config file was create:",f'{config.get_config_path()}')
+        exit (0)
