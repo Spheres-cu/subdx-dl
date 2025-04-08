@@ -5,7 +5,7 @@ import os
 import tempfile
 import argparse
 import logging
-from sdx_dl.sdxclasses import ChkVersionAction
+from sdx_dl.sdxclasses import ChkVersionAction, CreateSettings
 from importlib.metadata import version
 from rich.logging import RichHandler
 from rich.traceback import install
@@ -54,6 +54,10 @@ def create_parser():
                                 help="Show program version")
     infomation_opts.add_argument('--check-version', '-cv', action=ChkVersionAction,
                                  help="Check for new version")
+    
+    ### Config Settings opts group
+    settings_opts = parser.add_argument_group('Settings')
+    settings_opts.add_argument('--create-settings', '-cs', action=CreateSettings, help="Create a configuration settings")
     
     return parser
 
