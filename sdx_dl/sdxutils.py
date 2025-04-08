@@ -687,6 +687,10 @@ def get_rows():
     lines = shutil.get_terminal_size().lines
     fixed_lines = lines - 10
     available_lines = fixed_lines if (fixed_lines > 0) else lines
+    if args.num_lines:
+        num_lines = args.num_lines
+        available_lines = min(available_lines, num_lines)
+
     return available_lines
 
 def get_comments_rows():
@@ -694,6 +698,10 @@ def get_comments_rows():
     lines = shutil.get_terminal_size().lines
     fixed_lines = lines - 15
     available_lines = fixed_lines if (fixed_lines > 0) else lines
+    if args.num_lines:
+        num_lines = args.num_lines
+        available_lines = min(available_lines, num_lines)
+
     return available_lines
 
 def get_selected_subtitle_id(table_title, results, metadata):

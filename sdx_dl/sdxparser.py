@@ -31,6 +31,8 @@ def create_parser():
     download_opts.add_argument('--force', '-f', action='store_true',default=False, help="override existing file")
     download_opts.add_argument('--no-choose', '-nc', action='store_true', default=False, help="No Choose sub manually")
     download_opts.add_argument('--no-filter', '-nf', action='store_true',default=False, help="Do not filter search results")
+    download_opts.add_argument('--num-lines', '-nl', type=int, choices=[5, 10, 15, 20], default=False, nargs='?', const=10,
+                               help="Show only nl availables records per screen.\nWithout argument only show 10 records.")
     download_opts.add_argument('--proxy', '-P',type=str,help="Set a http(s) proxy connection")
 
     ## Search opts group
