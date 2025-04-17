@@ -5,7 +5,7 @@ import os
 import tempfile
 import argparse
 import logging
-from sdx_dl.sdxclasses import ChkVersionAction, CreateSettings
+from sdx_dl.sdxclasses import ChkVersionAction
 from importlib.metadata import version
 from rich.logging import RichHandler
 from rich.traceback import install
@@ -18,47 +18,33 @@ def create_parser():
     description='A cli tool for download subtitle from https://www.subdivx.com with the better possible matching results.',
     epilog='Project site: https://github.com/Spheres-cu/subdx-dl\n\
     \nProject issues:https://github.com/Spheres-cu/subdx-dl/issues\n\
-    \nUsage examples:https://github.com/Spheres-cu/subdx-dl#examples'
+    \nUsage examples:https://github.com/Spheres-cu/subdx-dl#examples\n'
     )
 
     parser.add_argument('search', type=str,help="file, directory or movie/series title or IMDB Id to retrieve subtitles")
 
+    parser.add_argument('--quiet', '-q', action='store_true',default=False, help="No verbose mode")
+    parser.add_argument('--verbose', '-v', action='store_true',default=False, help="Be in verbose mode")
+    parser.add_argument('--force', '-f', action='store_true',default=False, help="override existing file")
+    parser.add_argument('--no-choose', '-nc', action='store_true', default=False, help="No Choose sub manually")
+    parser.add_argument('--no-filter', '-nf', action='store_true',default=False, help="Do not filter search results")
+    parser.add_argument('--nlines', '-nl', type=int, choices=[5, 10, 15, 20], default=False, nargs='?', const=10,
+                        help="Show nl(5,10,15,20) availables records per screen. Default 10 records.", metavar="")
+    parser.add_argument('--version', '-V', action='version', version=f'subdx-dl {version("subdx-dl")}', help="Show program version")
+    parser.add_argument('--check-version', '-cv', action=ChkVersionAction, help="Check for new version")
+                        
     ## Download opts group
     download_opts = parser.add_argument_group('Download')
     download_opts.add_argument('--path', '-p', type=str, help="Path to download subtitles")
-    download_opts.add_argument('--quiet', '-q', action='store_true',default=False, help="No verbose mode")
-    download_opts.add_argument('--verbose', '-v', action='store_true',default=False, help="Be in verbose mode")
-    download_opts.add_argument('--force', '-f', action='store_true',default=False, help="override existing file")
-    download_opts.add_argument('--no-choose', '-nc', action='store_true', default=False, help="No Choose sub manually")
-    download_opts.add_argument('--no-filter', '-nf', action='store_true',default=False, help="Do not filter search results")
-    download_opts.add_argument('--num-lines', '-nl', type=int, choices=[5, 10, 15, 20], default=False, nargs='?', const=10,
-                               help="Show only nl availables records per screen.\nWithout argument only show 10 records.")
-    download_opts.add_argument('--proxy', '-P',type=str,help="Set a http(s) proxy connection")
+    download_opts.add_argument('--proxy', '-P', type=str, help="Set a http(s) proxy(px) connection", metavar="px")
 
     ## Search opts group
     search_opts = parser.add_argument_group('Search by')
-    search_opts.add_argument('--Season', '-S', action='store_true',default=False, help="Search for Season")
-    search_opts.add_argument('--keyword','-k',type=str,help="Add keyword to search among subtitles")
-    search_opts.add_argument('--title','-t',type=str,help="Set the title of the show")
+    search_opts.add_argument('--Season', '-S', action='store_true',default=False, help="Search by Season")
+    search_opts.add_argument('--kword','-k',type=str,help="Add keywords to search among subtitles descriptions", metavar="kw")
+    search_opts.add_argument('--title','-t',type=str,help="Set the title to search", metavar="t")
+    search_opts.add_argument('--search-imdb', '-si', action='store_true',default=False, help="Search first for the IMDB id or title")
 
-    ## Search IMDB exclusive group
-    imdb_opts = parser.add_argument_group('IMDB search', 'Search in IMDB by ID or title')
-    search_imdb_opts = imdb_opts.add_mutually_exclusive_group()
-    search_imdb_opts.add_argument('--search-imdb', '-si', action='store_true',default=False, 
-                                  help="Search first for the IMDB id or title")
-    search_imdb_opts.add_argument('--imdb','-i',type=str,help="Search by IMDB id")
-
-    ## Information opts group
-    infomation_opts = parser.add_argument_group('Information')
-    infomation_opts.add_argument('--version', '-V', action='version', version=f'subdx-dl {version("subdx-dl")}',
-                                help="Show program version")
-    infomation_opts.add_argument('--check-version', '-cv', action=ChkVersionAction,
-                                 help="Check for new version")
-    
-    ### Config Settings opts group
-    settings_opts = parser.add_argument_group('Settings')
-    settings_opts.add_argument('--create-settings', '-cs', action=CreateSettings, help="Create a configuration settings")
-    
     return parser
 
 parser = create_parser()
