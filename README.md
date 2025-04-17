@@ -60,31 +60,25 @@ search                  file, directory or movie/series title or IMDB Id to retr
 _optional arguments_:
 
 ```text
-  -h, --help             show this help message and exit
-
-Download:
-  --path PATH, -p PATH    Path to download subtitles
-  --quiet, -q             No verbose mode
-  --verbose, -v           Be in verbose mode
-  --force, -f             override existing file
-  --no-choose, -nc        No Choose sub manually
-  --no-filter, -nf        Do not filter search results
-  --num-lines, -nl        [5, 10 ,15, 20] Show only nl records. Without argument only show 10 records 
-  --proxy PROXY, -P PROXY Set a http(s) proxy connection
-
-Search by:
-  --Season, -S                    Search for Season
-  --keyword KEYWORD, -k KEYWORD   Add keyword to search among subtitles
-  --title TITLE, -t TITLE         Set the title of the show
-
-IMDB search:
-  Search in IMDB by ID or title
-  --search-imdb, -si    Search first for the IMDB id or title
-  --imdb IMDB, -i IMDB  Search by IMDB id
-
-Information:
+  -h, --help            show this help message and exit
+  --quiet, -q           No verbose mode
+  --verbose, -v         Be in verbose mode
+  --force, -f           override existing file
+  --no-choose, -nc      No Choose sub manually
+  --no-filter, -nf      Do not filter search results
+  --nlines [], -nl []   Show nl(5,10,15,20) availables records per screen. Default 10 records.
   --version, -V         Show program version
   --check-version, -cv  Check for new version
+
+Download:
+  --path PATH, -p PATH  Path to download subtitles
+  --proxy px, -P px     Set a http(s) proxy(px) connection
+
+Search by:
+  --Season, -S          Search by Season
+  --kword kw, -k kw     Add keywords to search among subtitles descriptions
+  --title t, -t t       Set the title to search
+  --search-imdb, -si    Search first for the IMDB id or title
 ```
 
 ## Examples
@@ -120,12 +114,6 @@ _Search by a file reference:_
 ```shell
 sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.mkv
 ```
-
-```shell
-sdx-dl --imdb tt13062500 -q The.Walking.Dead.Daryl.Dixon.S02E06.480p.x264-RUBiK.mkv
-```
-
-  > Search by IMDB id regardless filename, search strings keeping the serie season/number and in quiet mode.
 
 _Search first for the __IMDB ID__ or  correct tv show __Title__ if don't know they name or it's in another language:_
 
