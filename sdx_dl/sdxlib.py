@@ -39,7 +39,7 @@ def get_subtitle_id(title, number, metadata, inf_sub):
             console.print(":information_source: [bold yellow] Search terms from IMDB: " + imdb_search, new_line_start=True, emoji=True)
             time.sleep(0.5)
 
-    if buscar is None : buscar = f"{title} {number}".strip() if not args.imdb else args.imdb
+    if buscar is None : buscar = f"{title} {number}".strip()
 
     if not args.quiet:console.print("\r")
     logger.debug(f'Searching subtitles for: ' + str(title) + " " + str(number).upper())
@@ -69,7 +69,7 @@ def get_subtitle_id(title, number, metadata, inf_sub):
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
     
-    if args.search_imdb or args.imdb or args.no_filter:
+    if args.search_imdb or args.no_filter:
         filtered_list_Subs_Dicts = list_Subs_Dicts
     else:
         filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)

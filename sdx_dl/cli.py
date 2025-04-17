@@ -89,7 +89,7 @@ def main():
             else:
                 number = f"({info['year']})" if all(i is not None for i in [info['year'], info['title']]) else  ""
 
-            if (args.title and not args.imdb):
+            if (args.title):
                 title = f"{args.title}"
             else:
                 if info["type"] == "movie":
@@ -135,7 +135,7 @@ def main():
         try:
             search = f"{os.path.basename(args.search)}"
             title, number, inf_sub = guess_search(search)
-            metadata = extract_meta_data(args.search, args.keyword)
+            metadata = extract_meta_data(args.search, args.kword)
             
             subid = get_subtitle_id(
                 title, number, metadata, inf_sub)
@@ -176,7 +176,7 @@ def main():
         try:
             title, number, inf_sub = guess_search(filename)
 
-            metadata = extract_meta_data(filename, args.keyword)
+            metadata = extract_meta_data(filename, args.kword)
 
             subid = get_subtitle_id(
                 title, number, metadata, inf_sub)
