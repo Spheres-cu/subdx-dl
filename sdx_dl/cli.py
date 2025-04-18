@@ -3,8 +3,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
-from sdx_dl.sdxparser import parser, logger
-from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
+from sdx_dl.sdxlib import get_subtitle_id, get_subtitle, logger, parser_args
 from sdx_dl.sdxutils import _sub_extensions, extract_meta_data, NoResultsError, validate_proxy, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console
 from guessit import guessit
@@ -65,7 +64,7 @@ def subtitle_renamer(filepath, inf_sub):
               exit(1)
 
 def main():
-    args = parser.parse_args()
+    args = parser_args
   
     def guess_search(search):
         """ Parse search parameter. """

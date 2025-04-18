@@ -5,9 +5,6 @@ from tempfile import NamedTemporaryFile
 from zipfile import is_zipfile
 from rarfile import is_rarfile, RarCannotExec, RarExecError
 from sdx_dl.sdxutils import *
-from sdx_dl.sdxparser import parser
-
-args = parser.parse_args()
 
 def get_subtitle_id(title, number, metadata, inf_sub):
     
@@ -24,7 +21,7 @@ def get_subtitle_id(title, number, metadata, inf_sub):
     Return the subtitle `id`
     """
     buscar = None
-    if args.search_imdb:
+    if args.imdb:
         if not args.quiet:
             console.print(":earth_americas: [bold yellow]Searching in IMDB ... " +  f"{title} {number}", new_line_start=True, emoji=True) 
         search = get_imdb_search(title, number, inf_sub)
@@ -69,7 +66,7 @@ def get_subtitle_id(title, number, metadata, inf_sub):
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
     
-    if args.search_imdb or args.no_filter:
+    if args.imdb or args.no_filter:
         filtered_list_Subs_Dicts = list_Subs_Dicts
     else:
         filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)

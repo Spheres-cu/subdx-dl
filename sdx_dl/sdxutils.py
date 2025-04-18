@@ -16,7 +16,7 @@ import random
 from zipfile import ZipFile
 from rarfile import RarFile
 from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, validate_proxy, VideoMetadataExtractor
-from sdx_dl.sdxparser import logger, parser
+from sdx_dl.sdxparser import logger, args as parser_args
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
@@ -34,7 +34,7 @@ from rich.align import Align
 from rich.live import Live
 from rich.prompt import IntPrompt
 
-args = parser.parse_args()
+args = parser_args
 
 #obtained from https://flexget.com/Plugins/quality#qualities
 

@@ -5,7 +5,7 @@ import os
 import tempfile
 import argparse
 import logging
-from sdx_dl.sdxclasses import ChkVersionAction
+from sdx_dl.sdxclasses import ChkVersionAction, CheckConfigAction, CreateConfig
 from importlib.metadata import version
 from rich.logging import RichHandler
 from rich.traceback import install
@@ -16,9 +16,8 @@ def create_parser():
     formatter_class=argparse.RawTextHelpFormatter,
     usage="sdx-dl [options] search",
     description='A cli tool for download subtitle from https://www.subdivx.com with the better possible matching results.',
-    epilog='Project site: https://github.com/Spheres-cu/subdx-dl\n\
-    \nProject issues:https://github.com/Spheres-cu/subdx-dl/issues\n\
-    \nUsage examples:https://github.com/Spheres-cu/subdx-dl#examples\n'
+    epilog='Project issues:https://github.com/Spheres-cu/subdx-dl/issues\n\
+            \nUsage examples:https://github.com/Spheres-cu/subdx-dl#examples\n\n'
     )
 
     parser.add_argument('search', type=str,help="file, directory or movie/series title or IMDB Id to retrieve subtitles")
@@ -36,14 +35,19 @@ def create_parser():
     ## Download opts group
     download_opts = parser.add_argument_group('Download')
     download_opts.add_argument('--path', '-p', type=str, help="Path to download subtitles")
-    download_opts.add_argument('--proxy', '-P', type=str, help="Set a http(s) proxy(px) connection", metavar="px")
+    download_opts.add_argument('--proxy', '-x', type=str, help="Set a http(s) proxy(x) connection", metavar="x")
 
     ## Search opts group
     search_opts = parser.add_argument_group('Search by')
     search_opts.add_argument('--Season', '-S', action='store_true',default=False, help="Search by Season")
     search_opts.add_argument('--kword','-k',type=str,help="Add keywords to search among subtitles descriptions", metavar="kw")
     search_opts.add_argument('--title','-t',type=str,help="Set the title to search", metavar="t")
-    search_opts.add_argument('--search-imdb', '-si', action='store_true',default=False, help="Search first for the IMDB id or title")
+    search_opts.add_argument('--imdb', '-i', action='store_true',default=False, help="Search first for the IMDB id or title")
+
+    ## Config opts group
+    config_opts = parser.add_argument_group('Config').add_mutually_exclusive_group()
+    config_opts.add_argument('--show-config', '-sc', action=CheckConfigAction, help="Show config file")
+    config_opts.add_argument('--make-config', '-mc', action=CreateConfig, help="Make a config file")
 
     return parser
 

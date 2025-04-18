@@ -2,9 +2,10 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 # Copyright 2024 BSD 3-Clause License (see https://opensource.org/license/bsd-3-clause)
 
+from sdx_dl.sdxconsole import console
+
 ### Config Settings imports ###
 import os
-import pathlib
 from typing import Optional
 from pathlib import Path
 
@@ -1138,13 +1139,26 @@ def check_version(version:str, proxy):
 
     return msg
 
+### Get Remaining arguments
+def get_remain_arg(args = List[str] | str):
+    """ Get remainig arguments values"""
+    n = 0; arg = ""
+    for i in sys.argv:
+        if i in args:
+            arg = sys.argv[n + 1] if n + 1 < len(sys.argv) else arg
+            break
+        n = n + 1
+    return arg
+
+### Check version action class
 class ChkVersionAction(argparse.Action):
     """Class Check version. This class call for `check_version` function"""
     def __init__(self, nargs=0, **kw,):
         super().__init__(nargs=nargs, **kw)
     
-    def __call__(self, parser, namespace, values, option_string=None):
-        proxy = getattr(namespace, "proxy")
+    def __call__(self, parser, namespace, values, option_string=None):            
+        p = getattr(namespace, "proxy") or get_remain_arg(["-x", "--proxy"])
+        proxy = p if validate_proxy(p) else None
         print(check_version(version("subdx-dl"), proxy))
         exit (0)
 
@@ -1215,31 +1229,50 @@ class ConfigManager:
         Args:
             config_path (str): Path to the configuration file. Defaults to None.
         """
-        self.config_path = config_path if config_path else self.get_config_path()
+        self.config_path = config_path if config_path else self._get_path()
         self.config = {}
         
-        # Load existing config or create new one if it doesn't exist
+        # Load existing config if it exists
         self._load_config()
-
+        
+    @property
+    def _exists(self) -> bool:
+        """ Check if exists a config file"""
+        return os.path.isfile(self.config_path)
+    
+    @property
+    def _hasconfig(self) -> bool:
+        """ Check if config is empty"""
+        return len(self.config) > 0
+    
     def _load_config(self) -> None:
         """Load the configuration from file or create a new one if it doesn't exist."""
         try:
-            if os.path.exists(self.config_path):
+            if self._exists:
                 with open(self.config_path, 'r') as f:
                     self.config = json.load(f)
             else:
                 self.config = {}
-                self._save_config()
         except (json.JSONDecodeError, IOError) as e:
-            raise RuntimeError(f"Failed to load configuration: {str(e)}")
+            pass
+            console.print(":no_entry:[bold red] Failed to load configuration: [/]" + f'{e.__class__.__name__}\n',
+                    emoji=True, new_line_start=True)
+            self._save_config()
+            exit(1)
 
     def _save_config(self) -> None:
         """Save the current configuration to file."""
+        if not self._exists:
+            config_dir = Path(os.path.dirname(self.config_path))
+            config_dir.mkdir(parents=True, exist_ok=True)
         try:
             with open(self.config_path, 'w') as f:
                 json.dump(self.config, f, indent=4)
         except IOError as e:
-            raise RuntimeError(f"Failed to save configuration: {str(e)}")
+            pass
+            console.print(":no_entry:[bold red] Failed to save configuration: [/]" + f'{e.__class__.__name__}\n',
+                    emoji=True, new_line_start=True)
+            exit(1)
 
     def get(self, key: str, default: Optional[Any] = None) -> Any:
         """
@@ -1300,8 +1333,14 @@ class ConfigManager:
         """
         return self.config.copy()
     
+    def _print_config(self) -> None:
+        """
+        Pretty print the config dictionary.
+        """
+        console.print_json(data=self.config, indent=4, default=str)
+
     @staticmethod
-    def get_config_path(app_name: str = "subdx-dl", file_name: Optional[str] = "sdx-config.json") -> Path:
+    def _get_path(app_name: str = "subdx-dl", file_name: Optional[str] = "sdx-config.json") -> Path:
         """
         Get the appropriate local configuration path for the current platform.
         
@@ -1329,19 +1368,34 @@ class ConfigManager:
         
         config_dir = base_dir / app_name
         
-        # Create directory if it doesn't exist
-        config_dir.mkdir(parents=True, exist_ok=True)
-        
         if file_name:
             return config_dir / file_name
         return config_dir
-    
 
-class CreateSettings(argparse.Action):
+### Config action classes
+class CheckConfigAction(argparse.Action):
+    """Check config file class Action"""
     def __init__(self, nargs=0, **kw,):
         super().__init__(nargs=nargs, **kw)
     
     def __call__(self, parser, namespace, values, option_string=None):
         config = ConfigManager()
-        print("Config file was create:",f'{config.get_config_path()}')
+        if config._exists:
+            print("Config file:", f'{config._get_path()}')
+            config._print_config() if config._hasconfig else print("Config is empty!")
+        else:
+            print("Not exists config file")
+        exit (0)
+
+class CreateConfig(argparse.Action):
+    def __init__(self, nargs=0, **kw,):
+        super().__init__(nargs=nargs, **kw)
+    
+    def __call__(self, parser, namespace, values, option_string=None):
+        config = ConfigManager()
+        if not config._exists:
+            config._save_config()
+            print("Config file was create:",f'{config._get_path()}') 
+        else:
+            print("Already exists a config file:",f'{config._get_path()}')
         exit (0)
