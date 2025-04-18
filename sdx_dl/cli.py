@@ -3,7 +3,8 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
-from sdx_dl.sdxlib import get_subtitle_id, get_subtitle, logger, parser_args
+from sdx_dl.sdxparser import logger, args as parser_args
+from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
 from sdx_dl.sdxutils import _sub_extensions, extract_meta_data, NoResultsError, validate_proxy, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console
 from guessit import guessit
