@@ -77,6 +77,13 @@ def main():
         info = VideoMetadataExtractor.extract_specific(search, *properties, options=options)
         # logger.debug(f'Extracted: {info}')
 
+        def _clean_search(search):
+            """Remove special chars for direct search"""
+            search = f'{search}'
+            for i in [".", "-", "*", ":", ";", ","]:
+                search = search.replace(i, " ")
+            return search            
+
         try:
 
             if info["type"] == "episode":
@@ -93,13 +100,13 @@ def main():
                 title = f"{args.title}"
             else:
                 if info["type"] == "movie":
-                    title = f"{info['title'] if info['title'] is not None else search}"
+                    title = f"{info['title'] if info['title'] is not None else _clean_search(search)}"
                 else:
                     if all( i is not None for i in [ info["year"], info['title'] ] ):
                         title = f"{info['title']} ({info['year']})"
                     else:
-                        title = f"{info['title'] if info['title'] is not None else search}"
-            
+                        title = f"{info['title']}" if all(i is not None for i in [ info['title'], info['season'] ])\
+                                else _clean_search(search)
             inf_sub = {
                 'type': info["type"],
                 'season' : season,
