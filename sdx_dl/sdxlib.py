@@ -161,6 +161,7 @@ def get_subtitle(subid, topath):
             temp_file.close()
             os.unlink(temp_file.name)
             logger.error(f'No suitable subtitle download for : "{url}"')
+            if not args.quiet: console.print(":cross_mark: [bold red]No suitable subtitle to download[/]",emoji=True, new_line_start=True)
             exit(1)
 
         extract_subtitles(compressed_sub_file, topath)

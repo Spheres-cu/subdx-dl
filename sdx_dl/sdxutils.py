@@ -713,7 +713,7 @@ def get_selected_subtitle_id(table_title, results, metadata):
         page = 0
         res = 0
         with Live(
-            generate_results (table_title, results_pages, page, selected),auto_refresh=False, screen=True, transient=False
+            generate_results (table_title, results_pages, page, selected),auto_refresh=False, screen=False, transient=True
         ) as live:
             while True:
                 live.console.show_cursor(False)
@@ -852,7 +852,7 @@ def get_selected_subtitle_id(table_title, results, metadata):
         logger.debug('Download Canceled')
         return None
     
-    clean_screen()
+    # clean_screen()
     return res
 
 ### Extract Subtitles ###

@@ -1039,7 +1039,7 @@ class HTMLSession(BaseSession):
 
 def validate_proxy(proxy_str):
     """
-    Validation with IP address and port or domain.
+    Validation with IP address or domain and port.
     """
 
     ip_pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
@@ -1210,7 +1210,8 @@ class VideoMetadataExtractor:
         Args:
             metadata (dict): Metadata dictionary to print
         """
-        print(json.dumps(metadata, indent=4, default=str))
+        
+        console.print_json(data=metadata, indent=4, default=str)
 
 ### Class Config Settings
 class ConfigManager:

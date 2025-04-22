@@ -5,7 +5,7 @@ import os
 import tempfile
 import argparse
 import logging
-from sdx_dl.sdxclasses import ChkVersionAction, CheckConfigAction, CreateConfig
+from sdx_dl.sdxclasses import ChkVersionAction, CheckConfigAction, CreateConfig,console, validate_proxy
 from importlib.metadata import version
 from rich.logging import RichHandler
 from rich.traceback import install
@@ -51,35 +51,54 @@ def create_parser():
 
     return parser
 
+def create_logger(level:str = "DEBUG", verbose:bool=False):
+
+    # Setting logger
+    levels = ["CRITICAL", "ERROR", "WARNING","INFO", "DEBUG"]
+    LOGGER_LEVEL = levels[4]
+    LOGGER_FORMATTER_LONG = logging.Formatter('%(asctime)-12s %(levelname)-6s %(message)s', '%Y-%m-%d %H:%M:%S')
+    LOGGER_FORMATTER_SHORT = logging.Formatter(fmt='%(message)s', datefmt="[%X]")
+
+    level = level if level in levels else LOGGER_LEVEL
+    temp_log_dir = tempfile.gettempdir()
+    file_log = os.path.join(temp_log_dir, 'subdx-dl.log') 
+
+    global logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(level)
+    
+    if not verbose:
+        logfile = logging.FileHandler(file_log, mode='w', encoding='utf-8')
+        logfile.setFormatter(LOGGER_FORMATTER_LONG)
+        logfile.setLevel(level)
+        logger.addHandler(logfile)
+    else:
+        console = RichHandler(rich_tracebacks=True, tracebacks_show_locals=True)
+        console.setFormatter(LOGGER_FORMATTER_SHORT)
+        console.setLevel(level)
+        logger.addHandler(console)
+
 parser = create_parser()
 args = parser.parse_args()
 
-# Setting logger
-LOGGER_LEVEL = logging.DEBUG
-LOGGER_FORMATTER_LONG = logging.Formatter('%(asctime)-12s %(levelname)-6s %(message)s', '%Y-%m-%d %H:%M:%S')
-LOGGER_FORMATTER_SHORT = logging.Formatter(fmt='%(message)s', datefmt="[%X]")
+if args.verbose: args.__setattr__("quiet", True)
+create_logger(verbose=args.verbose)
 
-temp_log_dir = tempfile.gettempdir()
-file_log = os.path.join(temp_log_dir, 'subdx-dl.log')
+if (args.path and not os.path.isdir(args.path)):
+    if args.quiet:
+        logger.debug(f'Directory {args.path} do not exists')
+    else:
+        console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
+                    new_line_start=True, emoji=True)
+    exit(1)
 
-global logger
-logger = logging.getLogger(__name__)
+if (args.proxy and not validate_proxy(args.proxy)):
+    if args.quiet:
+        logger.debug(f'Incorrect proxy setting. Only http, https or IP/domain:PORT is accepted')
+    else:
+        console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
+                    new_line_start=True, emoji=True)
+    exit(1)
 
-def setup_logger(level):
-
-    logger.setLevel(level)
-
-setup_logger(LOGGER_LEVEL if not args.verbose else logging.DEBUG)
-
-logfile = logging.FileHandler(file_log, mode='w', encoding='utf-8')
-logfile.setFormatter(LOGGER_FORMATTER_LONG)
-logfile.setLevel(logging.DEBUG)
-logger.addHandler(logfile)
-
-if not args.quiet:
-    console = RichHandler(rich_tracebacks=True, tracebacks_show_locals=True)
-    console.setFormatter(LOGGER_FORMATTER_SHORT)
-    console.setLevel(logging.INFO if not args.verbose else logging.DEBUG)
-    logger.addHandler(console)
 
 

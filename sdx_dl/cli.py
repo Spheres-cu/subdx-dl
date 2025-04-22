@@ -5,7 +5,7 @@
 import os
 from sdx_dl.sdxparser import logger, args as parser_args
 from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
-from sdx_dl.sdxutils import _sub_extensions, extract_meta_data, NoResultsError, validate_proxy, VideoMetadataExtractor
+from sdx_dl.sdxutils import _sub_extensions, extract_meta_data, NoResultsError, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console
 from guessit import guessit
 from tvnamer.utils import FileFinder
@@ -121,22 +121,6 @@ def main():
             exit(1)
 
         return title, number, inf_sub
-
-    if args.path and not os.path.isdir(args.path):
-        if args.quiet:
-            logger.debug(f'Directory {args.path} do not exists')
-        else:
-            console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
-                        new_line_start=True, emoji=True)
-        exit(1)
-    
-    if (args.proxy and not validate_proxy(args.proxy) ):
-        if args.quiet:
-            logger.debug(f'Incorrect proxy setting. Only http, https or IP:PORT is accepted')
-        else:
-            console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
-                        new_line_start=True, emoji=True)
-        exit(1)
 
     if not os.path.exists(args.search):
         try:
