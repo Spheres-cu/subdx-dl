@@ -1474,7 +1474,7 @@ class SetConfigAction(argparse.Action):
         if config._hasconfig:
             config.set(key, value)
         else:
-            config.update({key, value})
+            config.update({key: value})
         
         console.print(":white_check_mark: Done!")
         exit(0)
