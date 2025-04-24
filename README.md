@@ -72,13 +72,20 @@ _optional arguments_:
 
 Download:
   --path PATH, -p PATH  Path to download subtitles
-  --proxy px, -P px     Set a http(s) proxy(px) connection
+  --proxy x, -x x       Set a http(s) proxy(x) connection
 
 Search by:
   --Season, -S          Search by Season
   --kword kw, -k kw     Add keywords to search among subtitles descriptions
   --title t, -t t       Set the title to search
-  --search-imdb, -si    Search first for the IMDB id or title
+  --imdb, -i            Search first for the IMDB id or title
+
+Config:
+  --view-config, -vc    View config file
+  --save-config, -sc    Save options to config file
+  --load-config, -lc    Load config file options
+  --config [o], -c [o]  Save an option[o] to config file
+  --reset [o], -r [o]   Reset an option[o] in the config file
 ```
 
 ## Examples
@@ -118,9 +125,9 @@ sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.mk
 _Search first for the __IMDB ID__ or  correct tv show __Title__ if don't know they name or it's in another language:_
 
 ```shell
-sdx-dl --search-imdb "Los Caza fantasmas"
+sdx-dl --imdb "Los Caza fantasmas"
 
-sdx-dl -si "Duna S1E3"
+sdx-dl -i "Duna S1E3"
 ```
 
 - _IMDB search:_
@@ -132,6 +139,22 @@ sdx-dl -si "Duna S1E3"
 ![![IMDB search TV show]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search03.png?raw=true)
 
 ![![IMDB search TV show results]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search04.png?raw=true)
+
+## Config options
+
+With config file arguments you can save some options for use any time, thats options are: quiet, verbose, force, no_choose, no_filter, nlines, path, proxy, Season, imdb.
+
+The arguments for settings this options are:
+
+--view-config, -vc to view what config you have saved.
+
+--save-config, -sc this argument can save all allowed options you pass in search session, keeping the options already saved, merging, with preferer the new passed options.
+
+--config, -c with this argument you can save an option to the config file. The options to save always be the allowed one.
+
+--reset, -r opposite to --config, -c this argument simply reset an option.
+
+--load-config, -lc this is for load all saved options and run the search with they. If you pass some others options those will merged, maintaining preference over the loaded options.
 
 ## Tips
 
@@ -147,6 +170,8 @@ sdx-dl -si "Duna S1E3"
 - If the search not found any records by a single chapter number (exe. S01E02) try search by the complete Seasson with ``` --Seasson -S ``` parameter.
 
 - If you don't wanna filter the search results for a better match and, instead,  improved response time use ``` --no-filter -nf ``` argument.
+
+- Sometimes our display is a little tiny and the amount of results don't fix well, a way to fix that is using the  --nlines, -nl argument with an amount of records who fix in the screen size.
 
 - __Very important!__: You need to be installed some rar decompression tool for example: [unrar](https://www.rarlab.com/) (preferred), [unar](https://theunarchiver.com/command-line), [7zip](https://www.7-zip.org/) or [bsdtar](https://github.com/libarchive/libarchive). Otherwise, subtitle file will do not decompress.
 
