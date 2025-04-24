@@ -1244,7 +1244,7 @@ class ConfigManager:
     @property
     def _hasconfig(self) -> bool:
         """ Check if config is empty"""
-        return len(self.config) > 0
+        return bool(self.config)
     
     def _load_config(self) -> None:
         """Load the configuration from file or create a new one if it doesn't exist."""
@@ -1333,12 +1333,36 @@ class ConfigManager:
             dict: A copy of the current configuration
         """
         return self.config.copy()
-    
+
+    def save_all(self, config:Dict[str, Any]):
+        """
+        Save all configuration values.
+        
+        Args:
+            dict: With all configuration values.
+        """
+
+        self.reset()
+        self.config = config.copy()
+        self._save_config()
+       
     def _print_config(self) -> None:
         """
         Pretty print the config dictionary.
         """
         console.print_json(data=self.config, indent=4, default=str)
+
+    def _merge_config(self, args:Dict[str, Any]):
+        """
+        Merge args values with config file
+        
+        Args:
+            dict: With arguments to merge
+        """
+
+        merged = {**args, **{k: v for k, v in self.config.items() if not args[k]}}
+
+        return merged
 
     @staticmethod
     def _get_path(app_name: str = "subdx-dl", file_name: Optional[str] = "sdx-config.json") -> Path:
@@ -1374,7 +1398,7 @@ class ConfigManager:
         return config_dir
 
 ### Config action classes
-class CheckConfigAction(argparse.Action):
+class ViewConfigAction(argparse.Action):
     """Check config file class Action"""
     def __init__(self, nargs=0, **kw,):
         super().__init__(nargs=nargs, **kw)
@@ -1388,15 +1412,96 @@ class CheckConfigAction(argparse.Action):
             print("Not exists config file")
         exit (0)
 
-class CreateConfig(argparse.Action):
+class SaveConfigAction(argparse.Action):
+    """Save allowed arguments to a config file. Existing values are update."""
     def __init__(self, nargs=0, **kw,):
         super().__init__(nargs=nargs, **kw)
     
     def __call__(self, parser, namespace, values, option_string=None):
+        allowed_values = ["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb"]
+        copied_config = namespace.__dict__.copy()
+
+        if all(not copied_config[k] for k in copied_config.keys()):
+            console.print(":no_entry: Nothing to save...")
+            exit(0)
+  
+        for k in namespace.__dict__.keys():
+            if k not in allowed_values: del copied_config[k]
+        
         config = ConfigManager()
-        if not config._exists:
-            config._save_config()
-            print("Config file was create:",f'{config._get_path()}') 
+
+        config.update(config._merge_config(copied_config)) if config._hasconfig else config.save_all(copied_config)
+        if not copied_config['quiet']: console.print(":heavy_check_mark:  Config was saved!")
+        
+        if not getattr(namespace, "search"):
+            exit(0)
+
+class SetConfigAction(argparse.Action):
+    """Save an option to config file"""
+    def __init__(self, nargs='?', **kw):
+        super().__init__(nargs=nargs, **kw)
+    
+    def __call__(self, parser, namespace, values, option_string = None):
+
+        if not values:
+            console.print(":no_entry: Not a valid option: ", self.choices)
+            exit(1)
+        
+        key, value = f'', None
+        config = ConfigManager()
+
+        if values in ["quiet", "verbose", "force", "no_choose", "no_filter", "Season", "imdb"]:
+            key, value = f'{values}', bool(True)
+        elif values == "path":
+            path = get_remain_arg("path")
+            if os.path.isdir(path):
+                key, value = f'{values}', path
+            else:
+                console.print(":no_entry:[bold red] Directory:[yellow] " + path + "[bold red] do not exists[/]")
+        elif values == "proxy":
+            proxy = get_remain_arg("proxy")
+            if validate_proxy(proxy):
+                key, value = f'{values}', proxy
+            else:
+                console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + proxy + "[/]")
+        elif values == "nlines":
+            lines = get_remain_arg("nlines") 
+            key, value = f'{values}', int(lines) if lines.isnumeric() and int(lines) in range(5,25,5) else 10
+        
+        if not value:
+            exit(1)
+
+        if config._hasconfig:
+            config.set(key, value)
         else:
-            print("Already exists a config file:",f'{config._get_path()}')
-        exit (0)
+            config.update({key, value})
+        
+        console.print(":white_check_mark: Done!")
+        exit(0)
+
+class ResetConfigAction(argparse.Action):
+    """Reset an option in the config file"""
+    def __init__(self, nargs='?', **kw):
+        super().__init__(nargs=nargs, **kw)
+    
+    def __call__(self, parser, namespace, values, option_string = None):
+
+        if not values:
+            console.print(":no_entry: Not a valid option: ", self.choices)
+            exit(1)
+        
+        key, value = f'', None
+        config = ConfigManager()
+
+        if values in ["quiet", "verbose", "force", "no_choose", "no_filter", "Season", "imdb"]:
+            key, value = f'{values}', bool(False)
+        elif values in ["path", "proxy", "nlines"]:
+            key, value = f'{values}', None
+        
+        if config._hasconfig:
+            config.set(key, value)
+        else:
+            config.update({key, value})
+        
+        console.print(":white_check_mark: Done!")
+        exit(0)

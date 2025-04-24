@@ -5,7 +5,8 @@ import os
 import tempfile
 import argparse
 import logging
-from sdx_dl.sdxclasses import ChkVersionAction, CheckConfigAction, CreateConfig,console, validate_proxy
+from sdx_dl.sdxclasses import console, validate_proxy
+from sdx_dl.sdxclasses import ChkVersionAction, ConfigManager, ViewConfigAction, SaveConfigAction, SetConfigAction, ResetConfigAction
 from importlib.metadata import version
 from rich.logging import RichHandler
 from rich.traceback import install
@@ -46,9 +47,19 @@ def create_parser():
 
     ## Config opts group
     config_opts = parser.add_argument_group('Config').add_mutually_exclusive_group()
-    config_opts.add_argument('--show-config', '-sc', action=CheckConfigAction, help="Show config file")
-    config_opts.add_argument('--make-config', '-mc', action=CreateConfig, help="Make a config file")
-
+    config_opts.add_argument('--view-config', '-vc', action=ViewConfigAction, help="View config file")
+    config_opts.add_argument('--save-config', '-sc', action=SaveConfigAction, help="Save options to config file")
+    config_opts.add_argument('--load-config', '-lc',action='store_true', default=False, help="Load config file options")
+    
+    config_opts.add_argument('--config', '-c',
+                            action=SetConfigAction,
+                            choices=["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb"],
+                            nargs='?',metavar="o",help="Save an option[o] to config file")
+    config_opts.add_argument('--reset', '-r',
+                            action=ResetConfigAction,
+                            choices=["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb"],
+                            metavar="o",help="Reset an option[o] in the config file")
+ 
     return parser
 
 def create_logger(level:str = "DEBUG", verbose:bool=False):
@@ -81,24 +92,36 @@ def create_logger(level:str = "DEBUG", verbose:bool=False):
 parser = create_parser()
 args = parser.parse_args()
 
+if args.load_config:
+    config = ConfigManager()
+    if config._exists and config._hasconfig:
+        copied_args = args.__dict__.copy()
+        new_args = config._merge_config(copied_args)
+
+        for k, v in new_args.items():
+            args.__setattr__(k, v)
+
 if args.verbose: args.__setattr__("quiet", True)
 create_logger(verbose=args.verbose)
 
-if (args.path and not os.path.isdir(args.path)):
-    if args.quiet:
-        logger.debug(f'Directory {args.path} do not exists')
-    else:
-        console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
-                    new_line_start=True, emoji=True)
-    exit(1)
+if args.load_config:
+     logger.debug("Config loaded!")
+else:
+    if (args.path and not os.path.isdir(args.path)):
+        if args.quiet:
+            logger.debug(f'Directory {args.path} do not exists')
+        else:
+            console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
+                        new_line_start=True, emoji=True)
+        exit(1)
 
-if (args.proxy and not validate_proxy(args.proxy)):
-    if args.quiet:
-        logger.debug(f'Incorrect proxy setting. Only http, https or IP/domain:PORT is accepted')
-    else:
-        console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
-                    new_line_start=True, emoji=True)
-    exit(1)
+    if (args.proxy and not validate_proxy(args.proxy)):
+        if args.quiet:
+            logger.debug(f'Incorrect proxy setting. Only http, https or IP/domain:PORT is accepted')
+        else:
+            console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
+                        new_line_start=True, emoji=True)
+        exit(1)
 
 
 
