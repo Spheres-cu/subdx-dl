@@ -122,7 +122,7 @@ def main():
 
         return title, number, inf_sub
 
-    if not os.path.exists(args.search):
+    if not os.path.isfile(args.search):
         try:
             search = f"{os.path.basename(args.search)}"
             title, number, inf_sub = guess_search(search)
@@ -167,7 +167,7 @@ def main():
         try:
             title, number, inf_sub = guess_search(filename)
 
-            metadata = extract_meta_data(filename, args.kword)
+            metadata = extract_meta_data(filename, args.kword, is_file=True)
 
             subid = get_subtitle_id(
                 title, number, metadata, inf_sub)

@@ -76,38 +76,41 @@ def get_subtitle_id(title, number, metadata, inf_sub):
         logger.debug(f'No suitable data were found for: "{buscar}"')
         return None
 
-    # finding the best result looking for metadata keywords
-    # in the description and max downloads
+    # Finding the best result looking for metadata keywords
+    # in the description and max downloads or order by max
+    # downloads if not exists any metadata
 
-    downloads = []
-    for x in filtered_list_Subs_Dicts: 
-         downloads.append(int(x['descargas']))
-    max_dl = max(downloads)
     results = []
     
-    for subs_dict in filtered_list_Subs_Dicts:
-        description = subs_dict['descripcion']
-        score = 0
-        
-        for keyword in metadata.keywords:
-            if keyword.lower() in description:
-                score += .75
-        for quality in metadata.quality:
-            if quality.lower() in description:
-                score += .25
-        for codec in metadata.codec:
-            if codec.lower() in description:
-                score += .25
-        for audio in metadata.audio:
-            if audio.lower() in description:
-                score += .25
-        if  max_dl == int(subs_dict['descargas']):
-                score += .5
-        
-        subs_dict['score'] = score
-        results.append(subs_dict)
+    if (metadata.hasdata):
+        max_dl = max( [ int(x['descargas']) for x in filtered_list_Subs_Dicts ] )
 
-    results = sorted(results, key=lambda item: (item['score'], item['descargas']), reverse=True)
+        for subs_dict in filtered_list_Subs_Dicts:
+            description = subs_dict['descripcion']
+            score = 0
+            
+            for keyword in metadata.keywords:
+                if keyword.lower() in description:
+                    score += .75
+            for quality in metadata.quality:
+                if quality.lower() in description:
+                    score += .25
+            for codec in metadata.codec:
+                if codec.lower() in description:
+                    score += .25
+            for audio in metadata.audio:
+                if audio.lower() in description:
+                    score += .25
+            if  max_dl == int(subs_dict['descargas']):
+                    score += .5
+            
+            subs_dict['score'] = score
+            results.append(subs_dict)
+
+        results = sorted(results, key=lambda item: (item['score'], item['descargas']), reverse=True)
+    
+    else:
+        results = sorted(filtered_list_Subs_Dicts, key=lambda item: (item['descargas']), reverse=True)
 
     # Print subtitles search infos
     # Construct Table for console output

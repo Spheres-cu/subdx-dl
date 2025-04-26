@@ -21,6 +21,7 @@ from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
 from collections import namedtuple
+from itertools import chain
 from datetime import datetime, timedelta
 from readchar import readkey, key
 from sdx_dl.sdxconsole import console
@@ -37,25 +38,7 @@ from rich.prompt import IntPrompt
 args = parser_args
 
 #obtained from https://flexget.com/Plugins/quality#qualities
-
-_qualities = ('1080i', '1080p', '2160p', '8bits', '10bit', '1280x720',
-              '1920x1080', '360p', '368p', '480', '480p', '576p',
-               '720i', '720p', 'bdrip', 'brrip', 'bdscr', 'bluray',
-               'blurayrip', 'cam', 'dl', 'dsrdsrip', 'dvb', 'dvdrip',
-               'dvdripdvd', 'dvdscr', 'hdtv', 'hr', 'ppvrip',
-               'preair', 'sdtvpdtv', 'tvrip', 'web', 'web-dl',
-               'web-dlwebdl', 'webrip', 'workprint', 'avc')
-_keywords = (
-'2hd', 'adrenaline', 'amzn', 'asap', 'axxo', 'compulsion', 'crimson', 'ctrlhd', 
-'ctrlhd', 'ctu', 'dimension', 'ebp', 'gttv','ettv', 'eztv', 'fanta', 'fov', 'fqm', 'ftv', 
-'galaxyrg', 'galaxytv', 'hazmatt', 'immerse', 'internal', 'ion10', 'killers', 'loki', 
-'lol', 'mement', 'minx', 'notv', 'phoenix', 'rarbg', 'sfm', 'sva', 'sparks', 'turbo', 
-'torrentgalaxy', 'psa', 'nf', 'rrb', 'pcok', 'edith', 'successfulcrab', 'megusta', 'ethel',
-'ntb', 'flux', 'yts', 'rbb', 'xebec', 'rubik')
-
-_codecs = ('xvid', 'x264', 'h264', 'x265', 'hevc')
-
-_audio = ('dts-hd', 'dts', 'ma', '5.1', 'ddp5.1', 'hdr', 'atmos' )
+_audio = ('dts-hd', 'dts', 'dd5.1', 'ddp5.1','atmos', 'truehd', 'aac', 'opus', 'flac', 'dolby')
 
 _sub_extensions = ['.srt', '.ssa', '.ass', '.sub']
 
@@ -65,7 +48,7 @@ SUBDIVX_SEARCH_URL = 'https://www.subdivx.com/inc/ajax.php'
 
 SUBDIVX_DOWNLOAD_PAGE = 'https://www.subdivx.com/'
 
-Metadata = namedtuple('Metadata', 'keywords quality codec audio')
+Metadata = namedtuple('Metadata', 'keywords quality codec audio hasdata')
 
 signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
 
@@ -74,7 +57,7 @@ lst_ua = GenerateUserAgent.generate_all()
 ua = random.choice(lst_ua)
 headers={"user-agent" : ua}
 
-if (args.proxy and validate_proxy(args.proxy)):
+if args.proxy:
     proxie = f"{args.proxy}"
     if not (any(p in proxie for p in ["http", "https"])):
         proxie = "http://" + proxie
@@ -187,52 +170,51 @@ def load_data_connection():
 headers['Cookie'], _f_token, _f_search = check_data_connection()
 
 #### sdxlib utils ####
-def extract_meta_data(filename, kword):
-    """Extract metadata from a filename based in matchs of keywords
-    the lists of keywords includen quality and codec for videos."""
+def extract_meta_data(search, kword, is_file:bool=False):
+    """
+    Extract metadata from search based in matchs of keywords.
 
+    The lists of keywords includen quality and codec for videos.
+    """
     extractor = VideoMetadataExtractor()
-    extracted_kwords = extractor.extract_specific(f"{filename}", 'screen_size', 'video_codec','audio_channels',\
-                        'release_group', 'source')
+    extracted_kwords = extractor.extract_specific(f"{search}", 'screen_size', 'video_codec', 'audio_codec',
+                                                'release_group', 'source', options="-s")
+    
+    if ( all(x is None for x in extracted_kwords.values()) ):
+            keywords = [x for x in f'{kword}'.split()[:4]] if kword else []
+            quality, codec, audio = [], [], []
+            return Metadata(keywords, quality, codec, audio, bool(keywords))
+
     words = f""
 
     def clean_words(word):
         """clean words"""
+        word = f'{word}'
         clean = [".", "-"]
         for i in clean:
             word = word.replace(i, '')
-        return f"{word}"
+        return word
     
-    for k in extracted_kwords.keys():
+    for k in ["release_group", "source"]:
         value = extracted_kwords[k]
         if (value):
-            words += f"{value} " if k not in ['video_codec', 'source'] else f"{clean_words(value)} "
+            words += f"{value} " if k not in 'source' else f"{clean_words(value)} "
     
     words = words.strip()
-    # logger.debug(f'Extracted kwords:{words}')
-    
-    f = filename.lower()[:-4] if os.path.isfile(filename) else filename.lower()
+    search = f'{search}'
 
-    def _match(options):
-        try:
-            matches = [option for option in options if option in f]
-        except IndexError:
-            matches = []
-        return matches
+    f = search.lower()[:-4] if is_file else search.lower()
     
-    keywords = _match(_keywords)
-    quality = _match(_qualities)
-    codec = _match(_codecs)
-    audio = _match(_audio)
-    
-    #Split keywords and add to the list
-    if (words):
-        keywords = keywords + [x for x in words.split(' ') if x not in keywords]
-    
+    quality = [f"{extracted_kwords['screen_size']}"] if extracted_kwords['screen_size'] else []
+    codec = [clean_words(extracted_kwords['video_codec'])] if extracted_kwords['video_codec'] else []
+    audio = [o for o in _audio if o in f] or []
+    keywords = [x for x in words.split()] if words else []
+
+    #Split input keywords and add to the list   
     if (kword):
-        keywords += kword.split(' ')
+        keywords += f'{kword}'.split()[:4]
     
-    return Metadata(keywords, quality, codec, audio)
+    return Metadata(keywords, quality, codec, audio, True)
 
 ### Filters searchs functions ###
 def match_text(title, number, inf_sub, text):
@@ -356,24 +338,21 @@ def clean_screen():
     """Clean the screen"""
     os.system('clear' if os.name != 'nt' else 'cls')
 
-def highlight_text(text,  metadata):
-    """Highlight all text  matches  metadata of the file"""
-    highlighted = f"{text}"
+def highlight_text(text, metadata):
+    """Highlight all `text`  matches  `metadata`"""
     
-    for keyword in metadata.keywords:
-        if keyword.lower() in text.lower():
-            Match_keyword = re.search(keyword, text, re.IGNORECASE).group(0)
-            highlighted = highlighted.replace(f'{Match_keyword}', f'{"[white on green4]" + Match_keyword + "[default on default]"}', 1)
+    # make a list of keywords and escaped it. Sort list for efficiency
+    keywords = list(chain(*metadata[:4]))
+    keywords = [re.escape(word) for word in keywords]
+    keywords.sort(key=len, reverse=True)
 
-    for quality in metadata.quality:
-        if quality.lower() in text.lower():
-            Match_quality = re.search(quality, text, re.IGNORECASE).group(0)
-            highlighted = highlighted.replace(f'{Match_quality}', f'{"[white on green4]" + Match_quality + "[default on default]"}', 1)
+    # compile a pattern
+    matches_compile = re.compile(r'\b(?:' + '|'.join(keywords) + r')\b', flags=re.I)
 
-    for codec in metadata.codec:
-        if codec.lower() in text.lower():
-            Match_codec = re.search(codec, text, re.IGNORECASE).group(0)
-            highlighted = highlighted.replace (f'{Match_codec}', f'{"[white on green4]" + Match_codec + "[default on default]"}', 1)
+    def _highlight(matches):
+        return "[white on green4]" + f'{matches.group(0)}' + "[default on default]"
+
+    highlighted = matches_compile.sub(_highlight, text)
     
     return highlighted
 
@@ -696,7 +675,7 @@ def get_rows():
 def get_comments_rows():
     """Get Terminal available rows for comments"""
     lines = shutil.get_terminal_size().lines
-    fixed_lines = lines - 15
+    fixed_lines = lines - 20
     available_lines = fixed_lines if (fixed_lines > 0) else lines
     if args.nlines:
         num_lines = args.nlines
@@ -739,8 +718,7 @@ def get_selected_subtitle_id(table_title, results, metadata):
                     results_pages = paginate(results_pages, get_rows())
                 
                 if ch in ["F", "f"]:
-                      results_pages = sorted(results, key=lambda item: (item['score'], item['descargas']), reverse=True)
-                      results_pages = paginate(results_pages, get_rows())
+                      results_pages = paginate(results, get_rows())
                 
                 if ch == key.DOWN:
                     selected = min(len(results_pages['pages'][page]) - 1, selected + 1)
@@ -750,7 +728,7 @@ def get_selected_subtitle_id(table_title, results, metadata):
                     subtitle_selected =  results_pages['pages'][page][selected]['titulo']
                     parser = HTML2BBCode()
                     description = str(parser.feed(description_selected))
-                    description = highlight_text(description, metadata)
+                    description = highlight_text(description, metadata) if metadata.hasdata else description
 
                     layout_description = make_screen_layout()
                     layout_description["description"].update(make_description_panel(description))
@@ -843,12 +821,12 @@ def get_selected_subtitle_id(table_title, results, metadata):
                 live.update(generate_results(table_title, results_pages, page, selected), refresh=True)
 
     except KeyboardInterrupt:
-        clean_screen()
+        if not args.verbose:clean_screen()
         logger.debug('Interrupted by user')
         exit(1)
 
     if (res == -1):
-        clean_screen()
+        if not args.verbose:clean_screen()
         logger.debug('Download Canceled')
         return None
     

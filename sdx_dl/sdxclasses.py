@@ -1158,7 +1158,12 @@ class ChkVersionAction(argparse.Action):
     
     def __call__(self, parser, namespace, values, option_string=None):            
         p = getattr(namespace, "proxy") or get_remain_arg(["-x", "--proxy"])
-        proxy = p if validate_proxy(p) else None
+        if not p:
+            config = ConfigManager()
+            proxy = config.get("proxy")
+        else:
+            proxy = p if validate_proxy(p) else None
+        
         print(check_version(version("subdx-dl"), proxy))
         exit (0)
 
