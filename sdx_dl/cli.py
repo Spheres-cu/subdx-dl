@@ -5,7 +5,7 @@
 import os
 from sdx_dl.sdxparser import logger, args as parser_args
 from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
-from sdx_dl.sdxutils import _sub_extensions, extract_meta_data, NoResultsError, VideoMetadataExtractor
+from sdx_dl.sdxutils import _sub_extensions, NoResultsError, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console
 from guessit import guessit
 from tvnamer.utils import FileFinder
@@ -67,7 +67,7 @@ def subtitle_renamer(filepath, inf_sub):
 def main():
     args = parser_args
   
-    def guess_search(search):
+    def guess_search(search:str):
         """ Parse search parameter. """
 
         excludes = "--exclude ".join(('', 'other ', 'country ', 'language ', 'audio_codec '))
@@ -75,14 +75,12 @@ def main():
         properties = ('type','title','season','episode','year')
         season = True if args.Season else False
         info = VideoMetadataExtractor.extract_specific(search, *properties, options=options)
-        # logger.debug(f'Extracted: {info}')
 
-        def _clean_search(search):
-            """Remove special chars for direct search"""
-            search = f'{search}'
+        def _clean_search(search_param:str):
+            """Remove special chars for `search_param`"""
             for i in [".", "-", "*", ":", ";", ","]:
-                search = search.replace(i, " ")
-            return search            
+                search_param = search_param.replace(i, " ")
+            return search_param            
 
         try:
 
@@ -126,10 +124,9 @@ def main():
         try:
             search = f"{os.path.basename(args.search)}"
             title, number, inf_sub = guess_search(search)
-            metadata = extract_meta_data(args.search, args.kword)
             
             subid = get_subtitle_id(
-                title, number, metadata, inf_sub)
+                title, number, inf_sub)
         
         except NoResultsError as e:
             logger.error(str(e))
@@ -167,10 +164,8 @@ def main():
         try:
             title, number, inf_sub = guess_search(filename)
 
-            metadata = extract_meta_data(filename, args.kword, is_file=True)
-
             subid = get_subtitle_id(
-                title, number, metadata, inf_sub)
+                title, number, inf_sub)
 
         except NoResultsError as e:
             logger.error(str(e))

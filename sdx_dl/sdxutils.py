@@ -12,10 +12,9 @@ import certifi
 import urllib3
 import tempfile
 import html2text
-import random
 from zipfile import ZipFile
 from rarfile import RarFile
-from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, validate_proxy, VideoMetadataExtractor
+from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, VideoMetadataExtractor
 from sdx_dl.sdxparser import logger, args as parser_args
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
@@ -53,17 +52,16 @@ Metadata = namedtuple('Metadata', 'keywords quality codec audio hasdata')
 signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
 
 # Configure connections
-lst_ua = GenerateUserAgent.generate_all()
-ua = random.choice(lst_ua)
+ua = GenerateUserAgent.random_browser()
 headers={"user-agent" : ua}
 
 if args.proxy:
     proxie = f"{args.proxy}"
     if not (any(p in proxie for p in ["http", "https"])):
         proxie = "http://" + proxie
-    s = urllib3.ProxyManager(proxie, num_pools=8, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
+    s = urllib3.ProxyManager(proxie, headers=headers, cert_reqs="CERT_REQUIRED", retries=2, timeout=15)
 else:
-    s = urllib3.PoolManager(num_pools=8, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=False, timeout=30)
+    s = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=15)
 
 # Network connections Errors
 def Network_Connection_Error(e: HTTPError) -> str:
@@ -170,7 +168,7 @@ def load_data_connection():
 headers['Cookie'], _f_token, _f_search = check_data_connection()
 
 #### sdxlib utils ####
-def extract_meta_data(search, kword, is_file:bool=False):
+def extract_meta_data(search, kword, is_file:bool=False) -> Metadata:
     """
     Extract metadata from search based in matchs of keywords.
 
@@ -181,9 +179,9 @@ def extract_meta_data(search, kword, is_file:bool=False):
                                                 'release_group', 'source', options="-s")
     
     if ( all(x is None for x in extracted_kwords.values()) ):
-            keywords = [x for x in f'{kword}'.split()[:4]] if kword else []
-            quality, codec, audio = [], [], []
-            return Metadata(keywords, quality, codec, audio, bool(keywords))
+        keywords = [x for x in f'{kword}'.split()[:4]] if kword else []
+        quality, codec, audio = [], [], []
+        return Metadata(keywords, quality, codec, audio, bool(keywords))
 
     words = f""
 
@@ -215,6 +213,64 @@ def extract_meta_data(search, kword, is_file:bool=False):
         keywords += f'{kword}'.split()[:4]
     
     return Metadata(keywords, quality, codec, audio, True)
+
+if not args.no_filter:
+    metadata = extract_meta_data(args.search, args.kword, os.path.isfile(args.search))
+else:
+    metadata = Metadata([], [], [], [], False)
+
+def sort_results(results_list):
+    """
+    Finding the `Metadata` (keywords, quality, codec, audio) in the description
+
+    and order by `score`.
+    
+    ### Score:
+
+    The scale of `scores`: `0.125` by `Metadata` and `0.5` for max `download`.
+
+    `Score`-->`Metadata`: 0.125 --> 1 , 0.25 --> 2 , ... 0.50 --> 4
+    """
+    max_dl = max( [ int(x['descargas']) for x in results_list ] )
+    results = []
+
+    # compile patterns
+    compile_keywords = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.keywords, key=len, reverse=True))) + r')\b', flags=re.I)
+    compile_quality = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.quality, key=len, reverse=True))) + r')\b', flags=re.I)
+    compile_codec = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.codec, key=len, reverse=True))) + r')\b', flags=re.I)
+    compile_audio = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.audio, key=len, reverse=True))) + r')\b', flags=re.I)
+
+    for subs_dict in results_list:
+        description = f"{subs_dict['descripcion']}"
+        score = 0
+        meta = False
+        
+        if metadata.keywords and compile_keywords.search(description):
+            score += .125
+            meta = True
+
+        if metadata.quality and compile_quality.search(description):
+            score += .125
+            meta = True
+
+        if metadata.codec and compile_codec.search(description):
+            score += .125
+            meta = True
+
+        if metadata.audio and compile_audio.search(description):
+            score += .125
+            meta = True
+
+        if  max_dl == int(subs_dict['descargas']):
+            score += .5
+
+        subs_dict['score'] = score
+        subs_dict['meta']  = True if meta else False
+        results.append(subs_dict)
+
+    results = sorted(results, key=lambda item: (item['score']), reverse=True)
+      
+    return results     
 
 ### Filters searchs functions ###
 def match_text(title, number, inf_sub, text):
@@ -274,7 +330,6 @@ def match_text(title, number, inf_sub, text):
   if not r:
     match_type = 'any'
 
-#   logger.debug(f'Match type for: {text} :{match_type}')
   return match_type 
 
 def get_filtered_results (title, number, inf_sub, list_Subs_Dicts):
@@ -338,16 +393,14 @@ def clean_screen():
     """Clean the screen"""
     os.system('clear' if os.name != 'nt' else 'cls')
 
-def highlight_text(text, metadata):
+def highlight_text(text):
     """Highlight all `text`  matches  `metadata`"""
     
     # make a list of keywords and escaped it. Sort list for efficiency
     keywords = list(chain(*metadata[:4]))
-    keywords = [re.escape(word) for word in keywords]
-    keywords.sort(key=len, reverse=True)
 
     # compile a pattern
-    matches_compile = re.compile(r'\b(?:' + '|'.join(keywords) + r')\b', flags=re.I)
+    matches_compile = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(keywords, key=len, reverse=True))) + r')\b', flags=re.I)
 
     def _highlight(matches):
         return "[white on green4]" + f'{matches.group(0)}' + "[default on default]"
@@ -375,34 +428,15 @@ def convert_datetime(string_datetime:str):
         date_time_str = datetime.combine(date_obj, time_obj).strftime('%d/%m/%Y %H:%M')
 
     except ValueError as e:
-        # logger.debug(f'Value Error parsing: {string_datetime} Error: {e}')
         return "--- --"
     
     return date_time_str
 
-def get_list_Dict(Data):
-    """ Checking if ``Data`` is a list of dictionarys."""
-
-    if isinstance(Data, list) and all(isinstance(item, dict)  
-        for item in Data):  
-            list_of_dicts = Data
-    else:
-        return None
-    
-    return list_of_dicts
-
-def clean_list_subs(list_dict_subs):
-    """ Clean not used Items from list of subtitles dictionarys ``list_dict_subs``
-        
-        Convert to datetime Items ``fecha_subida``.
+def convert_date(list_dict_subs):
+    """   
+    Convert to datetime Items ``fecha_subida``.
     """
-    list_Item_Subs = ['id', 'titulo', 'descripcion', 'descargas', 'comentarios', 'fecha_subida', 'nick']
-    
     for dictionary in list_dict_subs:
-        for i in list(dictionary.keys()):
-            if i not in list_Item_Subs:
-                del dictionary[i]
-    
         dictionary['fecha_subida'] = convert_datetime(str(dictionary['fecha_subida']))
 
     return list_dict_subs
@@ -447,8 +481,6 @@ def get_aadata(search):
                     raise NoResultsError(f'Site message: {site_msg}')
             else:
                 json_aaData = json.loads(page)
-                # For testing
-                # store_aadata(page)
     
     except HTTPError as e:
         HTTPErrorsMessageException(e)
@@ -528,20 +560,15 @@ def parse_list_comments(list_dict_comments):
        * Convert to datetime Items ``fecha_creacion``.
        * Convert ``nick`` to text
     """
-    list_Item_Comments = ['comentario', 'nick',  'fecha_creacion']
     parser = html2text.HTML2Text()
     parser.ignore_images = True
     parser.ignore_links = True
 
     for dictionary in list_dict_comments:
-        for i in list(dictionary.keys()):
-            if i not in list_Item_Comments:
-                del dictionary[i]
-    
         dictionary['fecha_creacion'] = convert_datetime(str(dictionary['fecha_creacion']))
         dictionary['nick'] = parser.handle(dictionary['nick']).strip()
 
-    return get_list_Dict(list_dict_comments)
+    return list_dict_comments
 
 def make_comments_table(title, results, page) -> Table:
     """Define a comments Table."""
@@ -549,7 +576,7 @@ def make_comments_table(title, results, page) -> Table:
     BG_STYLE = Style(color="white", bgcolor="gray0", bold=False)
 
     comment_table = Table(box=box.SIMPLE, title="\n" + title, caption="Prev.:[[bold green]\u2190[/]] Next:[[bold green]\u2192[/]] "\
-                    "Back:[[bold green]A[/]] Download:[[bold green]D[/]]\n\n"\
+                    "Back:[[bold green]A[/]] Download:[[bold green]D[/]] Metadata?:[green]Green[/]\n\n"\
                     "Pag.[bold white] " + str(page + 1) + "[/] of [bold white]" + str(results['pages_no']) + "[/] " \
                     "of [bold green]" + str(results['total']) + "[/] comment(s)",
                     show_header=True, header_style="bold yellow", title_style="bold green",
@@ -565,7 +592,8 @@ def make_comments_table(title, results, page) -> Table:
  
     for item in results['pages'][page]:
         try:
-            comentario = str(html2text.html2text(item['comentario'])).strip()
+            comentario = html2text.html2text(item['comentario']).strip()
+            if metadata.hasdata: comentario = highlight_text(comentario)
             usuario = str(item['nick'])
             fecha = str(item['fecha_creacion'])
 
@@ -603,15 +631,15 @@ def not_comments(text) -> Panel:
 def generate_results(title, results, page, selected) -> Layout:
     """Generate Selectable results Table."""
 
-    SELECTED = Style(color="green", bgcolor="gray35", bold=True)
+    SELECTED = Style(color="white", bgcolor="gray35", bold=True)
     layout_results = make_layout() 
 
     table = Table(box=box.SIMPLE, title=">> " + f'{title}\n' +\
                 "[italic]Pag.[bold white] " + f"{page + 1}" + "[/] of [bold white]" + f"{results['pages_no']}" +\
                 "[/] of [bold green]" + f"{results['total']}" + "[/] result(s)[/]", 
                 caption="\nDw:[bold green]\u2193[/] Up:[bold green]\u2191[/] Nx:[bold green]\u2192[/] Pv:[bold green]\u2190[/] "\
-                "Dl:[bold green]ENTER[/] Descrip.:[bold green]D[/] Coments.:[bold green]C[/] Exit:[bold green]S[/]\n" \
-                "Order by Date:[bold green]\u2193 PgDn[/] [bold green]\u2191 PgUp[/] Default:[bold green]F[/]",
+                "Dl:[bold green]ENTER[/] Descrip.:[bold green]D[/] Comments:[bold green]C[/] Exit:[bold green]S[/]\n" \
+                "Date:[bold green]\u2193 PgDn[/] [bold green]\u2191 PgUp[/] Default:[bold green]F[/] Metadata?:[green]Green[/]",
                 title_style="bold green", show_header=True, header_style="bold yellow", caption_style="bold bright_yellow",
                 show_edge=False, pad_edge=False)
     
@@ -626,7 +654,8 @@ def generate_results(title, results, page, selected) -> Layout:
  
     for item in results['pages'][page]:
         try:
-            titulo = str(html2text.html2text(item['titulo'])).strip()
+            titulo = html2text.html2text(item['titulo']).strip()
+            if metadata.hasdata: titulo = "[green]" + titulo + "[/]" if item['meta'] else titulo
             descargas = str(item['descargas'])
             usuario = str(item['nick'])
             fecha = str(item['fecha_subida'])
@@ -639,7 +668,7 @@ def generate_results(title, results, page, selected) -> Layout:
     
     for i, row in enumerate(rows):
         row[0] =  "[bold red]\u25cf[/]" + row[0] if i == selected else " " + row[0]
-        table.add_row(*row, style=SELECTED if i == selected else "bold white")
+        table.add_row(*row, style=SELECTED if i == selected else "white")
 
     layout_results["table"].update(table)
     
@@ -683,7 +712,7 @@ def get_comments_rows():
 
     return available_lines
 
-def get_selected_subtitle_id(table_title, results, metadata):
+def get_selected_subtitle_id(table_title, results):
     """Show subtitles search results for obtain download id."""
     
     try:
@@ -728,7 +757,7 @@ def get_selected_subtitle_id(table_title, results, metadata):
                     subtitle_selected =  results_pages['pages'][page][selected]['titulo']
                     parser = HTML2BBCode()
                     description = str(parser.feed(description_selected))
-                    description = highlight_text(description, metadata) if metadata.hasdata else description
+                    description = highlight_text(description) if metadata.hasdata else description
 
                     layout_description = make_screen_layout()
                     layout_description["description"].update(make_description_panel(description))
@@ -766,7 +795,7 @@ def get_selected_subtitle_id(table_title, results, metadata):
                         if show_comments:
                             with console.status("[bold yellow][i]CARGANDO COMENTARIOS...[/]", spinner='aesthetic'):
                               aaData = get_comments_data(subid)
-                            comments = get_list_Dict(aaData['aaData']) if aaData is not None else None
+                            comments = aaData['aaData'] if aaData is not None else None
                             comments = parse_list_comments(comments) if comments is not None else None
                             comments = paginate(comments, get_comments_rows()) if comments is not None else None
                             
@@ -916,16 +945,16 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath):
 
         if not args.quiet:
             clean_screen()
-            console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
+            console.print(":white_check_mark: Done download subtitles!", emoji=True, new_line_start=True)
     else:
         for name in compressed_sub_file.infolist():
             # don't unzip stub __MACOSX folders
-            if any(name.filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in name.filename:
+            if any(name.filename.endswith(ext) for ext in _sub_extensions + _compressed_extensions) and '__MACOSX' not in name.filename:
                 logger.debug(' '.join(['Decompressing subtitle:', name.filename, 'to', topath]))
                 compressed_sub_file.extract(name, topath)
         compressed_sub_file.close()
         logger.debug(f"Done extract subtitle!")
-        if not args.quiet: console.print(":white_check_mark: Done extract subtitle!", emoji=True, new_line_start=True)
+        if not args.quiet: console.print(":white_check_mark: Done download subtitle!", emoji=True, new_line_start=True)
 
 ### Search IMDB ###
 
@@ -936,7 +965,6 @@ def get_imdb_search(title, number, inf_sub):
         title = f'{title}'
         number = f'{number}'
         year = int(number[1:5]) if (inf_sub['type']  == "movie") and (number != "") else None
-        # logger.debug(f'Year: {year} Number {number} Title {title}')
 
         if inf_sub['type'] == "movie":
             res = imdb.get_by_name(title, year, tv=False) if year is not None else imdb.search(title, tv=False)
@@ -948,7 +976,6 @@ def get_imdb_search(title, number, inf_sub):
     
     try:
         results = json.loads(res) if year is not None else json.loads(res)['results']
-        # logger.debug(f'Search IMDB json: {str(json.dumps(results, default=str))}')
     except JSONDecodeError as e:
         msg = e.__str__()
         logger.debug(f'Could not decode json results: Error JSONDecodeError:"{msg}"')
@@ -1018,27 +1045,3 @@ def make_IMDB_table(title, results, type):
     search = f"{results[res-1]['id']}" if type == "movie" else f"{results[res-1]['name']}"
 
     return search if res else None
-
-
-### Store aadata test ###
-def store_aadata(aadata):
-    """Store aadata."""
-    temp_dir = tempfile.gettempdir()
-    aadata_path = os.path.join(temp_dir, 'sdx-aadata')
-
-    with open(aadata_path, 'wb') as file:
-        file.write(aadata)
-        file.close()
-    logger.debug('Store aadata')
-
-def load_aadata():
-    """Load aadata."""
-    temp_dir = tempfile.gettempdir()
-    aadata_path = os.path.join(temp_dir, 'sdx-aadata')
-    if os.path.exists(aadata_path):
-        with open(aadata_path, 'r') as aadata_file:
-            sdx_aadata = aadata_file.read()
-    else:
-        return None
-
-    return sdx_aadata

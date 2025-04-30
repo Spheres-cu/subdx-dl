@@ -175,50 +175,83 @@ class NoResultsError(Exception):
     pass
 
 ### Generate a user agent class ###
-
-_TOKEN: str = "Mozilla/5.0"
-_WINDOWS_PREFIX: str = "Windows NT 10.0; Win64; x64"
-_MAC_PREFIX: str = "Macintosh; Intel Mac OS X"
-_LINUX_PREFIX: str = "X11; Ubuntu; Linux x86_64"
-
 class GenerateUserAgent:
-    """Class containing methods for generating user agents."""
+    """
+    Class containing methods for generating user agents.
+    """
 
     @staticmethod
-    def firefox() -> list[str]:
+    def _token() -> str:
+        return "Mozilla/5.0"
+    
+    @staticmethod
+    def _platform() -> str:
+        _WINDOWS_PREFIX: str = "Windows NT 10.0; Win64; x64"
+        _MAC_PREFIX: str = "Macintosh; Intel Mac OS X"
+        _LINUX_PREFIX: str = "X11; Ubuntu; Linux x86_64"
+
+        if sys.platform == "win32":
+            # Windows
+            platform = _WINDOWS_PREFIX
+        elif sys.platform == "darwin":
+            # macOS
+            platform = _MAC_PREFIX
+        else:
+            # Linux and other UNIX-like systems
+            platform = _LINUX_PREFIX
+        return f'{platform}'
+
+    @classmethod
+    def firefox(self) -> list[str]:
         """Generate a list of common firefox user agents
 
         Returns:
             list[str]: The list of common firefox user agents
         """
-        return [f"{_TOKEN} ({platform}; rv:{version}.0) Gecko/20100101 Firefox/{version}.0" for platform in (f"{_MAC_PREFIX} 10.15", _WINDOWS_PREFIX, _LINUX_PREFIX) for version in range(119, 132)]
+        return [f"{self._token()} ({self._platform()}; rv:{version}.0) Gecko/20100101 Firefox/{version}.0" for version in range(120, 138)]
 
-    @staticmethod
-    def chrome() -> list[str]:
+    @classmethod
+    def chrome(self) -> list[str]:
         """Generate a list of common chrome user agents
 
         Returns:
             list[str]: The list of common chrome user agents
         """
-        return [f"{_TOKEN} ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 Safari/537.36" for platform in (f"{_MAC_PREFIX} 10_15_7", _WINDOWS_PREFIX, "X11; Linux x86_64") for version in range(119, 128)]
+        return [f"{self._token()} ({self._platform()}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 Safari/537.36" for version in range(120, 135)]
 
-    @staticmethod
-    def safari() -> list[str]:
+    @classmethod
+    def opera(self) -> list[str]:
+        """Generate a list of common opera user agents
+
+        Returns:
+            list[str]: The list of common opera user agents
+        """
+        return [f"{self._token()} ({self._platform()}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version}.0.0.0 Safari/537.36 OPR/{opr}.0.0.0"
+            for version in range(120, 135, 5) for opr in range(103, 118, 5)]
+
+    @classmethod
+    def safari(self) -> list[str]:
         """Generate a list of common safari user agents
 
         Returns:
             list[str]: The list of common safari user agents
         """
-        return [f"{_TOKEN} ({_MAC_PREFIX} 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{major}.{minor} Safari/605.1.15" for major, minors in [(16, range(5, 7)), (17, range(0, 7))] for minor in minors]
+        if sys.platform == "darwin":
+            return [f"{self._token()} ({self._platform()} 14_7_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{major}.{minor} Safari/605.1.15" for major, minors in [(16, range(5, 7)), (17, range(0, 7))] for minor in minors]
+        else:
+            return []
 
-    @staticmethod
-    def safari_mobile() -> list[str]:
+    @classmethod
+    def safari_mobile(self) -> list[str]:
         """Generate a list of common mobile safari user agents
 
         Returns:
             list[str]: The list of common safari mobile user agents
         """
-        return [f"{_TOKEN} (iPhone; CPU iPhone OS {major}_{minor} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{major}.{minor} Mobile/15E148 Safari/604.1" for major, minors in [(16, range(5, 8)), (17, range(0, 7))] for minor in minors]
+        if sys.platform == "darwin":
+            return [f"{self._token()} (iPhone; CPU iPhone OS {major}_{minor} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{major}.{minor} Mobile/15E148 Safari/604.1" for major, minors in [(16, range(5, 8)), (17, range(0, 7))] for minor in minors]
+        else:
+            return []
 
     @staticmethod
     def generate_all() -> list[str]:
@@ -227,9 +260,36 @@ class GenerateUserAgent:
         Returns:
             list[str]: The list of common user agents for all supported browsers in GenerateUserAgent.
         """
-        return GenerateUserAgent.firefox() + GenerateUserAgent.chrome() + GenerateUserAgent.safari() + GenerateUserAgent.safari_mobile()
-    # for manipulate incoming data/json from IMDB (for invalid json string)
+        if sys.platform == "darwin":
+            return GenerateUserAgent.safari() + GenerateUserAgent.safari_mobile() + GenerateUserAgent.opera()
+        else:
+            return GenerateUserAgent.firefox() + GenerateUserAgent.chrome() + GenerateUserAgent.opera()
+        
+    @staticmethod
+    def generate_random() -> list[str]:
+        """Convenience method, Generate random user agents for all supported browsers
 
+        Returns:
+            list[str]: The list of random user agents for all supported browsers in GenerateUserAgent.
+        """
+        if sys.platform == "darwin":
+            return random.choice([GenerateUserAgent.safari() + GenerateUserAgent.safari_mobile() + GenerateUserAgent.opera()])
+        else:
+            return random.choice([GenerateUserAgent.firefox(), GenerateUserAgent.chrome(), GenerateUserAgent.opera()])
+        
+    @staticmethod
+    def random_browser() -> str:
+        """Convenience method, Generate a random user agents for one supported browser
+
+        Returns:
+            str: With the random user agents for one supported browser in GenerateUserAgent.
+        """
+        if sys.platform == "darwin":
+            browser = random.choice([GenerateUserAgent.safari() + GenerateUserAgent.safari_mobile() + GenerateUserAgent.opera()])
+            return random.choice(browser)
+        else:
+            browser = random.choice([GenerateUserAgent.firefox(), GenerateUserAgent.chrome(), GenerateUserAgent.opera()])
+            return random.choice(browser)
 
 ### IMDB search classes ###
 class ImdbParser:
@@ -302,8 +362,7 @@ class IMDB:
     """
     def __init__(self):
         self.session = HTMLSession()
-        lst_ua = GenerateUserAgent.chrome() + GenerateUserAgent.firefox()
-        ua = random.choice(lst_ua)
+        ua = GenerateUserAgent.random_browser()
         self.headers = {
            "Accept": "application/json, text/plain, */*",
            "Accept-Language": "es-ES,es,q=0.6",
@@ -973,8 +1032,7 @@ def user_agent(style=None) -> _UserAgent:
 
     if (not useragent) and style:
         # useragent = UserAgent()
-        lst_ua = GenerateUserAgent.chrome()
-        ua = random.choice(lst_ua)
+        ua = GenerateUserAgent.random_browser()
         useragent = ua
 
     return useragent[style] if style else DEFAULT_USER_AGENT

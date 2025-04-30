@@ -6,7 +6,7 @@ from zipfile import is_zipfile
 from rarfile import is_rarfile, RarCannotExec, RarExecError
 from sdx_dl.sdxutils import *
 
-def get_subtitle_id(title, number, metadata, inf_sub):
+def get_subtitle_id(title, number, inf_sub):
     
     """
     Get a list of subtitles of subtitles searched by ``title`` and season/episode
@@ -52,12 +52,11 @@ def get_subtitle_id(title, number, metadata, inf_sub):
     else:
         logger.debug(f'Found subtitles records for: "{buscar}"')
     
-    # Checking Json Data Items
-    aaData_Items = get_list_Dict(json_aaData['aaData'])
+    # Get Json Data Items
+    aaData_Items = json_aaData['aaData']
     
     if aaData_Items is not None:
-        # Cleaning Items
-        list_Subs_Dicts = clean_list_subs(aaData_Items)
+        list_Subs_Dicts = convert_date(aaData_Items)
     else:
         if not args.quiet: console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
         logger.debug(f'No suitable data were found for: "{buscar}"')
@@ -75,42 +74,11 @@ def get_subtitle_id(title, number, metadata, inf_sub):
         if not args.quiet: console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
         logger.debug(f'No suitable data were found for: "{buscar}"')
         return None
-
-    # Finding the best result looking for metadata keywords
-    # in the description and max downloads or order by max
-    # downloads if not exists any metadata
-
-    results = []
     
-    if (metadata.hasdata):
-        max_dl = max( [ int(x['descargas']) for x in filtered_list_Subs_Dicts ] )
-
-        for subs_dict in filtered_list_Subs_Dicts:
-            description = subs_dict['descripcion']
-            score = 0
-            
-            for keyword in metadata.keywords:
-                if keyword.lower() in description:
-                    score += .75
-            for quality in metadata.quality:
-                if quality.lower() in description:
-                    score += .25
-            for codec in metadata.codec:
-                if codec.lower() in description:
-                    score += .25
-            for audio in metadata.audio:
-                if audio.lower() in description:
-                    score += .25
-            if  max_dl == int(subs_dict['descargas']):
-                    score += .5
-            
-            subs_dict['score'] = score
-            results.append(subs_dict)
-
-        results = sorted(results, key=lambda item: (item['score'], item['descargas']), reverse=True)
-    
+    if metadata.hasdata:
+        results = sort_results(filtered_list_Subs_Dicts)
     else:
-        results = sorted(filtered_list_Subs_Dicts, key=lambda item: (item['descargas']), reverse=True)
+        results = results = sorted(filtered_list_Subs_Dicts, key=lambda item: (item['descargas']), reverse=True)
 
     # Print subtitles search infos
     # Construct Table for console output
@@ -119,7 +87,7 @@ def get_subtitle_id(title, number, metadata, inf_sub):
     results_pages = paginate(results, 10)
 
     if (args.no_choose == False):
-        res = get_selected_subtitle_id(table_title, results, metadata)
+        res = get_selected_subtitle_id(table_title, results)
         if res is None: return None
     else:
         # get first subtitle
