@@ -136,10 +136,6 @@ sdx-dl -i "Duna S1E3"
 
 ![![IMDB search film reults]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search02.png?raw=true)
 
-![![IMDB search TV show]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search03.png?raw=true)
-
-![![IMDB search TV show results]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search04.png?raw=true)
-
 ## Config options
 
 With config file arguments you can save some options for use any time, thats options are: quiet, verbose, force, no_choose, no_filter, nlines, path, proxy, Season, imdb.
@@ -177,18 +173,10 @@ The arguments for settings this options are:
 
 ## Some Captures
 
-- _Performing search:_
-  
-![Performing search](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot01.png?raw=true)
+### _Performing search:_
 
 - _Navigable searches results:_
-
-![Navigable searches results](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot02.jpg?raw=true)
-
 - _Subtitle description:_
-
-![Subtitle description](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot03.jpg?raw=true)
-
 - _User comments:_
-
-![![Subtitle description]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/screenshot04.jpg?raw=true)
+  
+![Performing search](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/search_view.gif?raw=true)
