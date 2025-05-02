@@ -1539,7 +1539,7 @@ class SetConfigAction(argparse.Action):
         else:
             config.update({key: value})
         
-        console.print(":white_check_mark: Done!")
+        console.print("\u2713 Done!")
         exit(0)
 
 class ResetConfigAction(argparse.Action):
@@ -1566,5 +1566,5 @@ class ResetConfigAction(argparse.Action):
         else:
             config.update({key, value})
         
-        console.print(":white_check_mark: Done!")
+        console.print("\u2713 Done!")
         exit(0)

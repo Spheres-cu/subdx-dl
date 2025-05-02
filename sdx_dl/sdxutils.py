@@ -12,8 +12,8 @@ import certifi
 import urllib3
 import tempfile
 import html2text
-from zipfile import ZipFile
-from rarfile import RarFile
+from zipfile import ZipFile, is_zipfile
+from rarfile import RarFile, is_rarfile
 from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, VideoMetadataExtractor
 from sdx_dl.sdxparser import logger, args as parser_args
 from json import JSONDecodeError
@@ -863,8 +863,21 @@ def get_selected_subtitle_id(table_title, results):
     return res
 
 ### Extract Subtitles ###
-def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath):
+def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
+
+    def _is_compressed(filename: str) -> bool:
+        """Check if a file is a supported archive based on its extension."""
+        return any(filename.endswith(ext) for ext in _compressed_extensions)
+
+    def _uncompress(source, topath:str):
+        """Decompress compressed file"""
+        compressed = RarFile(source) if is_rarfile(source) else ZipFile(source) if is_zipfile(source) else None
+        if compressed:
+            compressed.extractall(topath)
+            compressed.close()
+        else:
+            logger.debug(f'Unsupported archive format')
 
     # In case of existence of various subtitles choose which to download
     if len(compressed_sub_file.infolist()) > 1 :
@@ -878,7 +891,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath):
             if i.is_dir() or os.path.basename(i.filename).startswith("._"):
                 continue
             i.filename = os.path.basename(i.filename)
-            list_sub.append(i.filename)
+            list_sub.append(f'{i.filename}')
         
         if not args.no_choose:
             clean_screen()
@@ -888,7 +901,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath):
             table.add_column("Subtítulos", justify="center" , no_wrap=True)
 
             for i in list_sub:
-                table.add_row(str(count + 1), str(i))
+                table.add_row(str(count + 1), i)
                 count += 1
                 choices.append(str(count))
         
@@ -925,36 +938,54 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath):
                 for sub in csf.infolist():
                     if not sub.is_dir():
                         sub.filename = os.path.basename(sub.filename)
-                    if any(sub.filename.endswith(ext) for ext in _sub_extensions + _compressed_extensions) and '__MACOSX' not in sub.filename:
+                    if any(sub.filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in sub.filename:
                         logger.debug(' '.join(['Decompressing subtitle:', sub.filename, 'to', topath]))
                         csf.extract(sub, topath)
+                    elif _is_compressed(sub.filename):
+                        with csf.open(sub) as source:
+                            _uncompress(source, topath)
+                        logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))
+                        
             compressed_sub_file.close()
         else:
-            if any(list_sub[res - 1].endswith(ext) for ext in _sub_extensions + _compressed_extensions) and '__MACOSX' not in list_sub[res - 1]:
+            selected = f'{list_sub[res - 1]}'
+            if any(selected.endswith(ext) for ext in _sub_extensions + _compressed_extensions) and '__MACOSX' not in selected:
                 with compressed_sub_file as csf:
                     for sub in csf.infolist():
                         if not sub.is_dir():
                             sub.filename = os.path.basename(sub.filename)
-                            if list_sub[res - 1] == sub.filename :
-                                logger.debug(' '.join(['Decompressing subtitle:', list_sub[res - 1], 'to', topath]))
-                                csf.extract(sub, topath)
+                            if selected == sub.filename:
+                                if _is_compressed(sub.filename):
+                                    with csf.open(sub) as source:
+                                        _uncompress(source, topath=topath)
+                                    logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))
+                                else:
+                                    logger.debug(' '.join(['Decompressing subtitle:', selected, 'to', topath]))
+                                    csf.extract(sub, topath)
                                 break
+
             compressed_sub_file.close()
 
         logger.debug(f"Done extract subtitles!")
 
         if not args.quiet:
             clean_screen()
-            console.print(":white_check_mark: Done download subtitles!", emoji=True, new_line_start=True)
+            console.print("\u2713 Done download subtitles!", emoji=True, new_line_start=True)
     else:
         for name in compressed_sub_file.infolist():
             # don't unzip stub __MACOSX folders
-            if any(name.filename.endswith(ext) for ext in _sub_extensions + _compressed_extensions) and '__MACOSX' not in name.filename:
+            if any(name.filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in name.filename:
                 logger.debug(' '.join(['Decompressing subtitle:', name.filename, 'to', topath]))
                 compressed_sub_file.extract(name, topath)
+            elif _is_compressed(name.filename):
+                with compressed_sub_file.open(name) as source:
+                    _uncompress(source, topath=topath)
+                logger.debug(' '.join(['Decompressed file:', name.filename, 'to', topath]))
+    
         compressed_sub_file.close()
+
         logger.debug(f"Done extract subtitle!")
-        if not args.quiet: console.print(":white_check_mark: Done download subtitle!", emoji=True, new_line_start=True)
+        if not args.quiet: console.print("\u2713 Done download subtitle!", emoji=True, new_line_start=True)
 
 ### Search IMDB ###
 

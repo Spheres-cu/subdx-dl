@@ -2,8 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from tempfile import NamedTemporaryFile
-from zipfile import is_zipfile
-from rarfile import is_rarfile, RarCannotExec, RarExecError
+from rarfile import RarCannotExec, RarExecError
 from sdx_dl.sdxutils import *
 
 def get_subtitle_id(title, number, inf_sub):
@@ -95,7 +94,7 @@ def get_subtitle_id(title, number, inf_sub):
     
     return res
 
-def get_subtitle(subid, topath):
+def get_subtitle(subid, topath:str):
     """Download a subtitle with id ``subid`` to a destination ``path``."""
 
     url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{subid}'}"
@@ -105,47 +104,39 @@ def get_subtitle(subid, topath):
     SUCCESS = False
 
     # get direct download link
+    if not args.quiet: console.print("\u2193 Downloading Subtitle...",emoji=True,new_line_start=True)
+    logger.debug(f"Trying Download from link: {url}")
     try:
-        with console.status("Downloading Subtitle... ", spinner="dots4") as status:
-            status.start() if not args.quiet else status.stop()
-
-            # Download file
-            logger.debug(f"Trying Download from link: {url}")
-            try:
-                temp_file.write(s.request('GET', url, headers=headers).data)
-                temp_file.seek(0)
-            except HTTPError as e:
-                HTTPErrorsMessageException(e)
-                exit(1)
-
+        download_url = s.request('GET', url, headers=headers)
+        if download_url:
+            logger.debug(f"Downloaded from: {SUBDIVX_DOWNLOAD_PAGE}{download_url.geturl()}")
+            temp_file.write(download_url.data)
+            temp_file.seek(0)
             # Checking if the file is zip or rar then decompress
-            compressed_sub_file = ZipFile(temp_file) if is_zipfile(temp_file.name) else RarFile(temp_file) if is_rarfile(temp_file.name) else None
+            compressed_sub_file = ZipFile(temp_file) if is_zipfile(temp_file) else RarFile(temp_file) if is_rarfile(temp_file) else None
+            if compressed_sub_file: SUCCESS = True
+    except HTTPError as e:
+        HTTPErrorsMessageException(e)
+        exit(1)
 
-            if compressed_sub_file is not None:
-                SUCCESS = True
-                logger.debug(f"Downloaded from: {url}")
-            else:
-                SUCCESS = False
-                time.sleep(2)
+    if SUCCESS:
+        try:
+            extract_subtitles(compressed_sub_file, topath)
+        except (RarCannotExec, RarExecError):
+                console.clear()
+                temp_dir = tempfile.gettempdir()
+                shutil.copyfile(os.path.join(temp_dir, temp_file.name), os.path.join(topath, f'{subid}.rar')) 
 
-        if not SUCCESS :
-            temp_file.close()
-            os.unlink(temp_file.name)
-            logger.error(f'No suitable subtitle download for : "{url}"')
-            if not args.quiet: console.print(":cross_mark: [bold red]No suitable subtitle to download[/]",emoji=True, new_line_start=True)
-            exit(1)
-
-        extract_subtitles(compressed_sub_file, topath)
-        
-    except (RarCannotExec, RarExecError):
-            console.clear()
-            temp_dir = tempfile.gettempdir()
-            shutil.copyfile(os.path.join(temp_dir, temp_file.name), os.path.join(topath, f'{subid}.rar')) 
-
-            console.print(":warning: [bold red] Cannot find working tool:[bold yellow] please install rar decompressor tool like: unrar (preferred), unar, 7zip or bsdtar\n\r" \
-                           "Subtitle file will do not decompress[/]", emoji=True, new_line_start=True)
-            logger.debug(f"Cannot find a working tool, please install rar decompressor tool") 
-            time.sleep(2)
+                console.print(":warning: [bold red] Cannot find working tool:[bold yellow] please install rar decompressor tool like: unrar (preferred), unar, 7zip or bsdtar\n\r" \
+                            "Subtitle file will do not decompress[/]", emoji=True, new_line_start=True)
+                logger.debug(f"Cannot find a working tool, please install rar decompressor tool")
+    else:
+        temp_file.close()
+        os.unlink(temp_file.name)
+        logger.error(f'No suitable subtitle download for : "{url}"')
+        if not args.quiet: console.print(":cross_mark: [bold red]No suitable subtitle to download[/]",emoji=True, new_line_start=True)
+        exit(1)
+        time.sleep(2)
             
     # Cleaning
     temp_file.close()

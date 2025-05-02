@@ -70,7 +70,7 @@ def main():
     def guess_search(search:str):
         """ Parse search parameter. """
 
-        excludes = "--exclude ".join(('', 'other ', 'country ', 'language ', 'audio_codec '))
+        excludes = "--exclude ".join(('', 'country ', 'language ', 'audio_codec '))
         options = "-i -s -n " + excludes
         properties = ('type','title','season','episode','year')
         season = True if args.Season else False
@@ -133,7 +133,7 @@ def main():
             subid = None
             
         if (subid is not None):
-            topath = os.getcwd() if args.path is None else args.path
+            topath = os.getcwd() if args.path is None else f'{args.path}'
             get_subtitle(subid, topath)
 
     elif os.path.exists(args.search):
@@ -159,7 +159,7 @@ def main():
                         new_line_start=True, emoji=True)
             continue
 
-        filename = os.path.basename(filepath)
+        filename = f'{os.path.basename(filepath)}'
         
         try:
             title, number, inf_sub = guess_search(filename)
@@ -172,9 +172,9 @@ def main():
             subid = None
         
         if args.path is None:
-            topath = os.path.dirname(filepath) if os.path.isfile(filepath) else filepath
+            topath = f'{os.path.dirname(filepath)}' if os.path.isfile(filepath) else f'{filepath}'
         else:
-            topath = args.path
+            topath = f'{args.path}'
 
         if (subid is not None):
             with subtitle_renamer(filepath, inf_sub=inf_sub):
