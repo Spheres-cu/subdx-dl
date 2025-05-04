@@ -445,26 +445,15 @@ def get_aadata(search):
     """Get a json data with the ``search`` results."""
    
     try:
+        retries = urllib3.util.Retry(total=3, backoff_factor=1)
         fields={'buscar'+ _f_search: search, 'filtros': '', 'tabla': 'resultados', 'token': _f_token}
         page = s.request(
             'POST',
             SUBDIVX_SEARCH_URL,
             headers=headers,
-            fields=fields
+            fields=fields,
+            retries=retries
         ).data
-
-        if not page: 
-            logger.debug('Could not load page!')
-            attempts = 2
-            for _ in range(attempts):
-                logger.debug(f'Request Attempts #: {_}')
-                backoff_delay(2, attempts)
-                page = s.request('POST', SUBDIVX_SEARCH_URL, headers=headers, fields=fields).data
-                if not page : 
-                    continue
-                else:
-                    json_aaData = json.loads(page)
-                    break
 
         if not page :
             console.clear()
@@ -472,15 +461,10 @@ def get_aadata(search):
             logger.debug('Could not load results page')
             exit(1)
         else :
-            if json.loads(page)['sEcho'] == "0":
-                backoff_delay()
-                page = s.request('POST', SUBDIVX_SEARCH_URL, headers=headers, fields=fields).data
-                json_aaData = json.loads(page) if page else None
-                if json.loads(page)['sEcho'] == "0":
-                    site_msg = str(json.loads(page)['mensaje'])
-                    raise NoResultsError(f'Site message: {site_msg}')
-            else:
-                json_aaData = json.loads(page)
+            json_aaData = json.loads(page)
+            if json_aaData['sEcho'] == "0":
+                site_msg = str(json.loads(page)['mensaje'])
+                raise NoResultsError(f'Site message: {site_msg}')
     
     except HTTPError as e:
         HTTPErrorsMessageException(e)
