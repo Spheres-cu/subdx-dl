@@ -77,7 +77,7 @@ def get_subtitle_id(title, number, inf_sub):
     if metadata.hasdata:
         results = sort_results(filtered_list_Subs_Dicts)
     else:
-        results = results = sorted(filtered_list_Subs_Dicts, key=lambda item: (item['descargas']), reverse=True)
+        results = sorted(filtered_list_Subs_Dicts, key=lambda item: (item['descargas']), reverse=True)
 
     # Print subtitles search infos
     # Construct Table for console output
