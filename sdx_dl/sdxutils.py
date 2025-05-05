@@ -12,6 +12,7 @@ import certifi
 import urllib3
 import tempfile
 import html2text
+import urllib3.util
 from zipfile import ZipFile, is_zipfile
 from rarfile import RarFile, is_rarfile
 from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, VideoMetadataExtractor
