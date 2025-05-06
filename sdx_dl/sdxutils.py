@@ -13,8 +13,8 @@ import urllib3
 import tempfile
 import html2text
 import urllib3.util
-from zipfile import ZipFile, is_zipfile
-from rarfile import RarFile, is_rarfile
+from zipfile import ZipFile, is_zipfile, ZipInfo
+from rarfile import RarFile, is_rarfile, RarInfo
 from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, VideoMetadataExtractor
 from sdx_dl.sdxparser import logger, args as parser_args
 from json import JSONDecodeError
@@ -457,7 +457,7 @@ def get_aadata(search):
         ).data
 
         if not page :
-            console.clear()
+            if not args.quiet: console.clear()
             console.print(":no_entry: [bold red]Couldn't load results page. Try later![/]", emoji=True, new_line_start=True)
             logger.debug('Could not load results page')
             exit(1)
@@ -465,7 +465,15 @@ def get_aadata(search):
             json_aaData = json.loads(page)
             if json_aaData['sEcho'] == "0":
                 site_msg = str(json.loads(page)['mensaje'])
-                raise NoResultsError(f'Site message: {site_msg}')
+                console.print(":information_source: [bold red]Site messsage:[/] " + site_msg, emoji=True, new_line_start=True)
+                backoff_delay(backoff_factor=1)
+                page = s.request('POST', SUBDIVX_SEARCH_URL, headers=headers, fields=fields, retries=retries).data
+                if page:
+                    json_aaData = json.loads(page)
+                    if json_aaData['sEcho'] == "0":
+                        raise NoResultsError(f'Site message: {site_msg}')
+                else:
+                    exit(1)
     
     except HTTPError as e:
         HTTPErrorsMessageException(e)
@@ -851,6 +859,10 @@ def get_selected_subtitle_id(table_title, results):
 def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
 
+    def _is_supported(sub:RarInfo | ZipInfo):
+        filename = f'{os.path.basename(sub.filename)}'
+        return any(filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in filename
+
     def _is_compressed(filename: str) -> bool:
         """Check if a file is a supported archive based on its extension."""
         return any(filename.endswith(ext) for ext in _compressed_extensions)
@@ -859,7 +871,12 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
         """Decompress compressed file"""
         compressed = RarFile(source) if is_rarfile(source) else ZipFile(source) if is_zipfile(source) else None
         if compressed:
-            compressed.extractall(topath)
+            for sub in compressed.infolist():
+                if _is_compressed(sub.filename):
+                    source = compressed.open(sub)
+                    _uncompress(source, topath)
+                else:
+                    compressed.extract(sub, topath)
             compressed.close()
         else:
             logger.debug(f'Unsupported archive format')
@@ -921,34 +938,27 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
         if res == 0:
             with compressed_sub_file as csf:
                 for sub in csf.infolist():
-                    if not sub.is_dir():
-                        sub.filename = os.path.basename(sub.filename)
-                    if any(sub.filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in sub.filename:
+                    if _is_supported(sub) and not sub.is_dir():
                         logger.debug(' '.join(['Decompressing subtitle:', sub.filename, 'to', topath]))
                         csf.extract(sub, topath)
                     elif _is_compressed(sub.filename):
                         with csf.open(sub) as source:
                             _uncompress(source, topath)
-                        logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))
-                        
+                        logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))           
             compressed_sub_file.close()
         else:
             selected = f'{list_sub[res - 1]}'
-            if any(selected.endswith(ext) for ext in _sub_extensions + _compressed_extensions) and '__MACOSX' not in selected:
-                with compressed_sub_file as csf:
-                    for sub in csf.infolist():
-                        if not sub.is_dir():
-                            sub.filename = os.path.basename(sub.filename)
-                            if selected == sub.filename:
-                                if _is_compressed(sub.filename):
-                                    with csf.open(sub) as source:
-                                        _uncompress(source, topath=topath)
-                                    logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))
-                                else:
-                                    logger.debug(' '.join(['Decompressing subtitle:', selected, 'to', topath]))
-                                    csf.extract(sub, topath)
-                                break
-
+            with compressed_sub_file as csf:
+                for sub in csf.infolist():
+                    if selected == os.path.basename(sub.filename):
+                        if _is_supported(sub):
+                            logger.debug(' '.join(['Decompressing subtitle:', selected, 'to', topath]))
+                            csf.extract(sub, topath)
+                        elif _is_compressed(sub.filename):
+                            with csf.open(sub) as source:
+                                _uncompress(source, topath=topath)
+                            logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))
+                        break
             compressed_sub_file.close()
 
         logger.debug(f"Done extract subtitles!")
@@ -959,14 +969,13 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
     else:
         for name in compressed_sub_file.infolist():
             # don't unzip stub __MACOSX folders
-            if any(name.filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in name.filename:
+            if _is_supported(name):
                 logger.debug(' '.join(['Decompressing subtitle:', name.filename, 'to', topath]))
                 compressed_sub_file.extract(name, topath)
             elif _is_compressed(name.filename):
                 with compressed_sub_file.open(name) as source:
                     _uncompress(source, topath=topath)
                 logger.debug(' '.join(['Decompressed file:', name.filename, 'to', topath]))
-    
         compressed_sub_file.close()
 
         logger.debug(f"Done extract subtitle!")
