@@ -60,7 +60,7 @@ if args.proxy:
     proxie = f"{args.proxy}"
     if not (any(p in proxie for p in ["http", "https"])):
         proxie = "http://" + proxie
-    s = urllib3.ProxyManager(proxie, headers=headers, cert_reqs="CERT_REQUIRED", retries=2, timeout=15)
+    s = urllib3.ProxyManager(proxie, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),  retries=2, timeout=15)
 else:
     s = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=15)
 
