@@ -1155,7 +1155,10 @@ def get_version_description(version:str, proxies):
 
     description = f""
     soup = BeautifulSoup(response, 'html5lib')
-    data_items = [li.text.strip() for li in soup.find('div', attrs={'data-test-selector': 'body-content'}).find_all('li')]
+    try:
+        data_items = [li.text.strip() for li in soup.find('div', attrs={'data-test-selector': 'body-content'}).find_all('li')]
+    except AttributeError:
+        return description
 
     for result in data_items:
         text = f"\u25cf {result}"
