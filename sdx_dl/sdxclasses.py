@@ -17,6 +17,8 @@ from typing import Dict, Any
 import re
 import argparse
 import urllib3
+import certifi
+from bs4 import BeautifulSoup
 from importlib.metadata import version
 from urllib3.exceptions import HTTPError
 
@@ -1122,12 +1124,12 @@ def validate_proxy(proxy_str):
     return True
 
 ### Check version ###
-ua = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+ua = GenerateUserAgent.random_browser()
 headers={"user-agent" : ua}
 
 def ExceptionErrorMessage(e: Exception):
     """Parse ``Exception`` error message."""
-    if isinstance(e, (requests.exceptions.ConnectionError, urllib3.exceptions.HTTPError)):
+    if isinstance(e, (HTTPError)):
         msg = e.__str__().split(":")[1].split("(")[0]
     else:
         msg = e.__str__()
@@ -1137,33 +1139,28 @@ def ExceptionErrorMessage(e: Exception):
 
 def get_version_description(version:str, proxies):
     """Get new `version` description."""
+    if proxies:
+        if not (any(p in proxies for p in ["http", "https"])):
+            proxies = "http://" + proxies
+        session = urllib3.ProxyManager(proxies, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=10)
+    else:
+        session = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=10)
 
-    verify = False if proxies is not None else True
-    session = HTMLSession()
-    session.headers={
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-EN,es,q=0.6",
-    "User-Agent": ua,
-    "Referer": "https://github.com/Spheres-cu/subdx-dl"
-    }
     url = f"https://github.com/Spheres-cu/subdx-dl/releases/tag/{version}"
     
     try:
-        response = session.get(url, proxies=proxies, verify=verify)
+        response = session.request('GET', url).data
     except (HTTPError, Exception) as e:
         ExceptionErrorMessage(e)
 
-    results = response.html.xpath("//div[@data-test-selector='body-content']/ul/li")
     description = f""
-    try:
-        for result in results:
-            for i in range(len(result.find('li'))):
-                item = result.find('li')[i]
-                text = f"\u25cf {item.text}"
-                description = description + text + "\n"
+    soup = BeautifulSoup(response, 'html5lib')
+    data_items = [li.text.strip() for li in soup.find('div', attrs={'data-test-selector': 'body-content'}).find_all('li')]
 
-    except IndexError:
-        pass
+    for result in data_items:
+        text = f"\u25cf {result}"
+        description = description + text + "\n"
+    
     return description
 
 def check_version(version:str, proxy):
@@ -1171,22 +1168,19 @@ def check_version(version:str, proxy):
     if (proxy):
         if not (any(p in proxy for p in ["http", "https"])):
             proxy = "http://" + proxy
-        
-        proxies = {"http" : proxy, "https" : proxy} if validate_proxy(proxy) else None
+        session = urllib3.ProxyManager(proxy, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=10)
     else:
-        proxies = None
-
-    verify = False if proxies is not None else True
-    
+        session = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=10)
+  
     try:
         _page_version = f"https://raw.githubusercontent.com/Spheres-cu/subdx-dl/refs/heads/main/sdx_dl/__init__.py"
-        _dt_version = requests.get(_page_version, headers=headers, proxies=proxies, verify=verify, timeout=10).content
+        _dt_version = session.request('GET', _page_version, headers=headers,timeout=10).data
         _g_version = f"{_dt_version}".split('"')[1]
 
         if _g_version > version:
 
             msg = "\nNew version available! -> " + _g_version + ":\n\n"\
-                   + get_version_description(_g_version, proxies) + "\n"\
+                   + get_version_description(_g_version, proxy) + "\n"\
                   "Please update your current version: " + f"{version}\r\n"        
         else:
             msg = "\nNo new version available\n"\
