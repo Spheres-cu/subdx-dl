@@ -23,6 +23,7 @@ def get_subtitle_id(title, number, inf_sub):
     if args.imdb:
         if not args.quiet:
             console.print(":earth_americas: [bold yellow]Searching in IMDB ... " +  f"{title} {number}", new_line_start=True, emoji=True) 
+        logger.debug(f'Searching in IMDB: {str(title + " " + number)}')
         search = get_imdb_search(title, number, inf_sub)
         buscar = search
         if buscar is not None and inf_sub['type'] == 'episode':
