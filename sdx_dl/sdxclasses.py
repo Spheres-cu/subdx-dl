@@ -1124,9 +1124,6 @@ def validate_proxy(proxy_str):
     return True
 
 ### Check version ###
-ua = GenerateUserAgent.random_browser()
-headers={"user-agent" : ua}
-
 def ExceptionErrorMessage(e: Exception):
     """Parse ``Exception`` error message."""
     if isinstance(e, (HTTPError)):
@@ -1137,37 +1134,11 @@ def ExceptionErrorMessage(e: Exception):
     print("Error occurred: " + error_class + ":" + msg)
     exit(1)
 
-def get_version_description(version:str, proxies):
-    """Get new `version` description."""
-    if proxies:
-        if not (any(p in proxies for p in ["http", "https"])):
-            proxies = "http://" + proxies
-        session = urllib3.ProxyManager(proxies, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=10)
-    else:
-        session = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=10)
-
-    url = f"https://github.com/Spheres-cu/subdx-dl/releases/tag/{version}"
-    
-    try:
-        response = session.request('GET', url).data
-    except (HTTPError, Exception) as e:
-        ExceptionErrorMessage(e)
-
-    description = f""
-    soup = BeautifulSoup(response, 'html5lib')
-    try:
-        data_items = [li.text.strip() for li in soup.find('div', attrs={'data-test-selector': 'body-content'}).find_all('li')]
-    except AttributeError:
-        return description
-
-    for result in data_items:
-        text = f"\u25cf {result}"
-        description = description + text + "\n"
-    
-    return description
-
 def check_version(version:str, proxy):
     """Check for new version."""
+    ua = GenerateUserAgent.random_browser()
+    headers={"user-agent" : ua}
+    
     if (proxy):
         if not (any(p in proxy for p in ["http", "https"])):
             proxy = "http://" + proxy
@@ -1175,19 +1146,38 @@ def check_version(version:str, proxy):
     else:
         session = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=10)
   
+    def get_version_description(version:str):
+        """Get new `version` description."""
+        url = f"https://github.com/Spheres-cu/subdx-dl/releases/tag/{version}"
+        
+        response = session.request('GET', url).data
+
+        description = f""
+        soup = BeautifulSoup(response, 'html5lib')
+        try:
+            data_items = [li.text.strip() for li in soup.find('div', attrs={'data-test-selector': 'body-content'}).find_all('li')]
+        except AttributeError:
+            return description
+
+        for result in data_items:
+            text = f"\u25cf {result}"
+            description = description + text + "\n"
+        
+        return description
+
     try:
         _page_version = f"https://raw.githubusercontent.com/Spheres-cu/subdx-dl/refs/heads/main/sdx_dl/__init__.py"
-        _dt_version = session.request('GET', _page_version, headers=headers,timeout=10).data
+        _dt_version = session.request('GET', _page_version).data
         _g_version = f"{_dt_version}".split('"')[1]
 
         if _g_version > version:
 
             msg = "\nNew version available! -> " + _g_version + ":\n\n"\
-                   + get_version_description(_g_version, proxy) + "\n"\
-                  "Please update your current version: " + f"{version}\r\n"        
+                   + get_version_description(_g_version) + "\n"\
+                  "Please update your current version: " + version +"\r\n"        
         else:
             msg = "\nNo new version available\n"\
-                  "Current version: " + f"{version}\r\n"
+                  "Current version: " + version + "\r\n"
 
     except (HTTPError, Exception) as e:
         ExceptionErrorMessage(e)
