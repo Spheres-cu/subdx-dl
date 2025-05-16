@@ -3,10 +3,10 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
-from sdx_dl.sdxparser import logger, args as parser_args
-from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
-from sdx_dl.sdxutils import _sub_extensions, NoResultsError, VideoMetadataExtractor
-from sdx_dl.sdxconsole import console
+from .sdxparser import logger, args as parser_args
+from .sdxlib import get_subtitle_id, get_subtitle
+from .sdxutils import _sub_extensions, NoResultsError, VideoMetadataExtractor
+from .sdxconsole import console
 from guessit import guessit
 from tvnamer.utils import FileFinder
 from contextlib import contextmanager
@@ -19,11 +19,11 @@ _extensions = [
 ]
 
 @contextmanager
-def subtitle_renamer(filepath, inf_sub):
+def subtitle_renamer(filepath:str, inf_sub:dict):
     """Dectect new subtitles files in a directory and rename with
        filepath basename."""
 
-    def extract_name(filepath):
+    def extract_name(filepath:str):
         """.Extract Filename."""
         filename, fileext = os.path.splitext(filepath)
         if fileext in ('.part', '.temp', '.tmp'):
@@ -66,12 +66,17 @@ def subtitle_renamer(filepath, inf_sub):
 
 def main():
     args = parser_args
-  
+    inf_sub = {}
     def guess_search(search:str):
         """ Parse search parameter. """
 
-        excludes = "--exclude ".join(('', 'country ', 'language ', 'audio_codec '))
-        options = "-i -s -n " + excludes
+        # Custom configuration
+        options = {
+            'single_value': True,
+            'excludes': ['country', 'language', 'audio_codec', 'other'],
+            'output_input_string': True,
+            'name_only': True
+        }
         properties = ('type','title','season','episode','year')
         season = True if args.Season else False
         info = VideoMetadataExtractor.extract_specific(search, *properties, options=options)
@@ -177,7 +182,7 @@ def main():
             topath = f'{args.path}'
 
         if (subid is not None):
-            with subtitle_renamer(filepath, inf_sub=inf_sub):
+            with subtitle_renamer(str(filepath), inf_sub=inf_sub):
                 get_subtitle(subid, topath)
 
 if __name__ == '__main__':
