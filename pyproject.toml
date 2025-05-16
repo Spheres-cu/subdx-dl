@@ -34,7 +34,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-license = "GPL-3.0-or-later AND BSD-3-Clause-Modification"
+license = "GPL-3.0-or-later"
 license-files = [
     "LICENSE*"
 ]
