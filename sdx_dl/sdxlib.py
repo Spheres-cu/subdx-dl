@@ -1,11 +1,20 @@
 # Copyright (C) 2024 Spheres-cu (https://github.com/Spheres-cu) subdx-dl
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import os
+import time
+import shutil
+import tempfile
 from tempfile import NamedTemporaryFile
 from rarfile import RarCannotExec, RarExecError
-from sdx_dl.sdxutils import *
+from zipfile import ZipFile, is_zipfile
+from rarfile import RarFile, is_rarfile
+from .sdxparser import args, logger
+from .sdxconsole import console
+from .sdxutils import get_imdb_search, get_aadata, convert_date, get_filtered_results, sort_results, get_selected_subtitle_id,\
+HTTPErrorsMessageException, clean_screen,paginate, extract_subtitles, metadata, SUBDIVX_DOWNLOAD_PAGE, HTTPError, headers, s
 
-def get_subtitle_id(title, number, inf_sub):
+def get_subtitle_id(title:str, number:str, inf_sub:dict):
     
     """
     Get a list of subtitles of subtitles searched by ``title`` and season/episode
@@ -102,27 +111,28 @@ def get_subtitle(subid, topath:str):
     
     if not args.quiet: clean_screen()
     temp_file = NamedTemporaryFile(delete=False)
-    SUCCESS = False
 
     # get direct download link
     if not args.quiet: console.print("\u2193 Downloading Subtitle...",emoji=True,new_line_start=True)
     logger.debug(f"Trying Download from link: {url}")
     try:
         download_url = s.request('GET', url, headers=headers)
-        if download_url:
-            logger.debug(f"Downloaded from: {SUBDIVX_DOWNLOAD_PAGE}{download_url.geturl()}")
-            temp_file.write(download_url.data)
-            temp_file.seek(0)
-            # Checking if the file is zip or rar then decompress
-            compressed_sub_file = ZipFile(temp_file) if is_zipfile(temp_file) else RarFile(temp_file) if is_rarfile(temp_file) else None
-            if compressed_sub_file: SUCCESS = True
     except HTTPError as e:
         HTTPErrorsMessageException(e)
         exit(1)
 
-    if SUCCESS:
+    if download_url:
+        logger.debug(f"Downloaded from: {SUBDIVX_DOWNLOAD_PAGE}{download_url.geturl()}")
+        temp_file.write(download_url.data)
+        temp_file.seek(0)
+        # Checking if the file is zip or rar then decompress
         try:
-            extract_subtitles(compressed_sub_file, topath)
+            if is_zipfile(temp_file):
+                compressed_sub_file = ZipFile(temp_file)
+                extract_subtitles(compressed_sub_file, topath)
+            elif is_rarfile(temp_file):
+                compressed_sub_file = RarFile(temp_file)
+                extract_subtitles(compressed_sub_file, topath)
         except (RarCannotExec, RarExecError):
                 console.clear()
                 temp_dir = tempfile.gettempdir()
@@ -142,4 +152,3 @@ def get_subtitle(subid, topath:str):
     # Cleaning
     temp_file.close()
     os.unlink(temp_file.name)
-
