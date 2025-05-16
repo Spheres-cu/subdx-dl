@@ -5,8 +5,8 @@ import os
 import tempfile
 import argparse
 import logging
-from sdx_dl.sdxclasses import console, validate_proxy
-from sdx_dl.sdxclasses import ChkVersionAction, ConfigManager, ViewConfigAction, SaveConfigAction, SetConfigAction, ResetConfigAction
+from .sdxclasses import console, validate_proxy
+from .sdxclasses import ChkVersionAction, ConfigManager, ViewConfigAction, SaveConfigAction, SetConfigAction, ResetConfigAction
 from importlib.metadata import version
 from rich.logging import RichHandler
 from rich.traceback import install
@@ -122,6 +122,3 @@ else:
             console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
                         new_line_start=True, emoji=True)
         exit(1)
-
-
-
