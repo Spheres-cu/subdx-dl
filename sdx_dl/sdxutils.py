@@ -15,8 +15,9 @@ import html2text
 import urllib3.util
 from zipfile import ZipFile, is_zipfile, ZipInfo
 from rarfile import RarFile, is_rarfile, RarInfo
-from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, IMDB, VideoMetadataExtractor
-from sdx_dl.sdxparser import logger, args as parser_args
+from .sdxparser import logger, args as parser_args
+from .sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, VideoMetadataExtractor
+from .sdximdb import IMDB
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
@@ -24,7 +25,7 @@ from collections import namedtuple
 from itertools import chain
 from datetime import datetime, timedelta
 from readchar import readkey, key
-from sdx_dl.sdxconsole import console
+from .sdxconsole import console
 from rich import box
 from rich.layout import Layout
 from rich.console import Group
@@ -129,9 +130,10 @@ def exp_time_Cookie():
 
 def get_data_connection():
     """ Retrieve sdx data connection."""
+    cookie_sdx, _f_token, _f_search = f'', f'', f''
     try:
         sdx_request = s.request('GET', SUBDIVX_DOWNLOAD_PAGE, timeout=10)
-        cookie_sdx = sdx_request.headers.get('Set-Cookie').split(';')[0]
+        cookie_sdx = f"{sdx_request.headers.get('Set-Cookie')}".split(';')[0]
         _vdata = BeautifulSoup(sdx_request.data, 'html5lib')
         _f_search = _vdata('div', id="vs")[0].text.replace("v", "").replace(".", "")
         _f_tk = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
@@ -176,8 +178,8 @@ def extract_meta_data(search, kword, is_file:bool=False) -> Metadata:
     The lists of keywords includen quality and codec for videos.
     """
     extractor = VideoMetadataExtractor()
-    extracted_kwords = extractor.extract_specific(f"{search}", 'screen_size', 'video_codec', 'audio_codec',
-                                                'release_group', 'source', options="-s")
+    extracted_kwords = extractor.extract_specific(f"{search}", 'screen_size', 'video_codec',
+                                                'release_group', 'source','streaming_service','other', options="-as")
     
     if ( all(x is None for x in extracted_kwords.values()) ):
         keywords = [x for x in f'{kword}'.split()[:4]] if kword else []
@@ -189,13 +191,13 @@ def extract_meta_data(search, kword, is_file:bool=False) -> Metadata:
     def clean_words(word):
         """clean words"""
         word = f'{word}'
-        clean = [".", "-"]
+        clean = [".", "-dl","-"]
         for i in clean:
-            word = word.replace(i, '')
+            word = word.lower().replace(i, '')
         return word
     
-    for k in ["release_group", "source"]:
-        value = extracted_kwords[k]
+    for k in ["release_group", "source", "streaming_service", "other"]:
+        value = extracted_kwords[k]['raw'] if extracted_kwords[k] else None
         if (value):
             words += f"{value} " if k not in 'source' else f"{clean_words(value)} "
     
@@ -204,8 +206,8 @@ def extract_meta_data(search, kword, is_file:bool=False) -> Metadata:
 
     f = search.lower()[:-4] if is_file else search.lower()
     
-    quality = [f"{extracted_kwords['screen_size']}"] if extracted_kwords['screen_size'] else []
-    codec = [clean_words(extracted_kwords['video_codec'])] if extracted_kwords['video_codec'] else []
+    quality = [f"{extracted_kwords['screen_size']['value']}"] if extracted_kwords['screen_size'] else []
+    codec = [clean_words(extracted_kwords['video_codec']['value'])] if extracted_kwords['video_codec'] else []
     audio = [o for o in _audio if o in f] or []
     keywords = [x for x in words.split()] if words else []
 
@@ -213,6 +215,7 @@ def extract_meta_data(search, kword, is_file:bool=False) -> Metadata:
     if (kword):
         keywords += f'{kword}'.split()[:4]
     
+    # logger.debug(f'Keywords: {keywords} quality: {quality} codec: {codec} audio: {audio}')
     return Metadata(keywords, quality, codec, audio, True)
 
 if not args.no_filter:
@@ -286,6 +289,8 @@ def match_text(title, number, inf_sub, text):
   aka = "aka"
   search = f"{title} {number}"
   match_type = None
+  rnumber = False
+  raka = False
   
   # Setting searchs Patterns
   re_full_match = re.compile(rf"^{re.escape(search)}$", re.I)
@@ -442,9 +447,9 @@ def convert_date(list_dict_subs):
 
     return list_dict_subs
 
-def get_aadata(search):
+def get_aadata(search:str):
     """Get a json data with the ``search`` results."""
-   
+    json_aaData = {}
     try:
         retries = urllib3.util.Retry(total=3, backoff_factor=1)
         fields={'buscar'+ _f_search: search, 'filtros': '', 'tabla': 'resultados', 'token': _f_token}
@@ -528,7 +533,7 @@ def make_description_panel(description) -> Panel:
     return descriptions_panel
 
 ## Get Comments functions ##
-def get_comments_data(subid:int):
+def get_comments_data(subid:str):
     """Get comments Json data"""
 
     fields={'getComentarios': subid}
@@ -778,19 +783,21 @@ def get_selected_subtitle_id(table_title, results):
                 if ch in ["C", "c"]:
                     cpage = 0
                     subtitle_selected =  results_pages['pages'][page][selected]['titulo']
-                    subid = int(results_pages['pages'][page][selected]['id'])
+                    subid = str(results_pages['pages'][page][selected]['id'])
                     layout_comments = make_layout()
                     title = html2text.html2text(subtitle_selected).strip()
                     show_comments = True if results_pages['pages'][page][selected]['comentarios'] != 0 else False
                     comment_msg = ":neutral_face: [bold red][i]¡No hay comentarios para este subtítulo![/]" if not show_comments else "" 
+                    comments = {}
 
                     with console.screen(hide_cursor=True) as screen_comments:
                         if show_comments:
                             with console.status("[bold yellow][i]CARGANDO COMENTARIOS...[/]", spinner='aesthetic'):
                               aaData = get_comments_data(subid)
-                            comments = aaData['aaData'] if aaData is not None else None
-                            comments = parse_list_comments(comments) if comments is not None else None
-                            comments = paginate(comments, get_comments_rows()) if comments is not None else None
+                            if aaData: 
+                                comments = aaData['aaData']
+                                comments = parse_list_comments(comments)
+                                comments = paginate(comments, get_comments_rows())
                             
                             if comments is None:
                                 show_comments = False
@@ -860,7 +867,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
 
     def _is_supported(sub:RarInfo | ZipInfo):
-        filename = f'{os.path.basename(sub.filename)}'
+        filename = f'{os.path.basename(str(sub.filename))}'
         return any(filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in filename
 
     def _is_compressed(filename: str) -> bool:
@@ -983,12 +990,15 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
 
 ### Search IMDB ###
 
-def get_imdb_search(title, number, inf_sub):
+def get_imdb_search(title:str, number:str, inf_sub:dict):
     """Get the IMDB ``id`` or ``title`` for search subtitles"""
     try:
         imdb = IMDB()
-        title = f'{title}'
-        number = f'{number}'
+        if args.proxy:
+            proxies = {'http': proxie, 'https': proxie}
+            imdb.session.proxies.update(proxies)
+            imdb.session.verify = False
+        
         year = int(number[1:5]) if (inf_sub['type']  == "movie") and (number != "") else None
 
         if inf_sub['type'] == "movie":
