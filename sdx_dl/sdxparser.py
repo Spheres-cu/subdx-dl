@@ -2,6 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
+import sys
 import tempfile
 import argparse
 import logging
@@ -94,9 +95,9 @@ args = parser.parse_args()
 
 if args.load_config:
     config = ConfigManager()
-    if config._exists and config._hasconfig:
+    if config.exists and config.hasconfig:
         copied_args = args.__dict__.copy()
-        new_args = config._merge_config(copied_args)
+        new_args = config.merge_config(copied_args)
 
         for k, v in new_args.items():
             args.__setattr__(k, v)
@@ -106,19 +107,20 @@ create_logger(verbose=args.verbose)
 
 if args.load_config:
      logger.debug("Config loaded!")
-else:
-    if (args.path and not os.path.isdir(args.path)):
+
+if args.path:
+    if not (os.path.isdir(args.path) and os.access(args.path, os.W_OK)):
         if args.quiet:
             logger.debug(f'Directory {args.path} do not exists')
         else:
-            console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists[/]",
-                        new_line_start=True, emoji=True)
-        exit(1)
+            console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists or don't have access[/]",
+                        new_line_start=True, emoji=True) 
+        sys.exit(1)
 
-    if (args.proxy and not validate_proxy(args.proxy)):
-        if args.quiet:
-            logger.debug(f'Incorrect proxy setting. Only http, https or IP/domain:PORT is accepted')
-        else:
-            console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
-                        new_line_start=True, emoji=True)
-        exit(1)
+if (args.proxy and not validate_proxy(args.proxy)):
+    if args.quiet:
+        logger.debug(f'Incorrect proxy setting. Only http, https or IP/domain:PORT is accepted')
+    else:
+        console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
+                    new_line_start=True, emoji=True)
+    sys.exit(1)
