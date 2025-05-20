@@ -13,15 +13,15 @@ import urllib3
 import tempfile
 import html2text
 import urllib3.util
+import typing
 from zipfile import ZipFile, is_zipfile, ZipInfo
-from rarfile import RarFile, is_rarfile, RarInfo
+from rarfile import RarFile, is_rarfile, RarInfo # type: ignore
 from .sdxparser import logger, args as parser_args
-from .sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, VideoMetadataExtractor
-from .sdximdb import IMDB
+from .sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, VideoMetadataExtractor 
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
-from collections import namedtuple
+from typing import Dict, Any, NamedTuple, NewType
 from itertools import chain
 from datetime import datetime, timedelta
 from readchar import readkey, key
@@ -41,7 +41,7 @@ args = parser_args
 #obtained from https://flexget.com/Plugins/quality#qualities
 _audio = ('dts-hd', 'dts', 'dd5.1', 'ddp5.1','atmos', 'truehd', 'aac', 'opus', 'flac', 'dolby')
 
-_sub_extensions = ['.srt', '.ssa', '.ass', '.sub']
+sub_extensions = ['.srt', '.ssa', '.ass', '.sub']
 
 _compressed_extensions = ['.zip', '.rar']
 
@@ -49,7 +49,16 @@ SUBDIVX_SEARCH_URL = 'https://www.subdivx.com/inc/ajax.php'
 
 SUBDIVX_DOWNLOAD_PAGE = 'https://www.subdivx.com/'
 
-Metadata = namedtuple('Metadata', 'keywords quality codec audio hasdata')
+Metadata = NamedTuple(
+    'Metadata',
+    [('keywords', list[str]),
+    ('quality', list[str]),
+    ('codec', list[str]),
+    ('audio', list[str]),
+    ('hasdata', bool)]
+)
+
+listDict = NewType('listDict', list[Dict[str,Any]])
 
 signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
 
@@ -141,13 +150,13 @@ def get_data_connection():
         _f_token = json.loads(_r_ftoken)['token']
     except HTTPError as e:
         HTTPErrorsMessageException(e)
-        exit(1)
+        sys.exit(1)
     except JSONDecodeError as e:
         console.print(":no_entry: [bold red]Couldn't load results page![/]: " + e.__str__(), emoji=True, new_line_start=True)
 
     return cookie_sdx, _f_token, _f_search
 
-def stor_data_connection(sdx_cookie, token, f_search):
+def stor_data_connection(sdx_cookie:str, token:str, f_search:str):
     """ Store sdx cookies."""
     temp_dir = tempfile.gettempdir()
     cookiesdx_path = os.path.join(temp_dir, sdx_data_connection_name)
@@ -171,7 +180,7 @@ def load_data_connection():
 headers['Cookie'], _f_token, _f_search = check_data_connection()
 
 #### sdxlib utils ####
-def extract_meta_data(search, kword, is_file:bool=False) -> Metadata:
+def extract_meta_data(search:str, kword:str, is_file:bool=False) -> Metadata:
     """
     Extract metadata from search based in matchs of keywords.
 
@@ -188,7 +197,7 @@ def extract_meta_data(search, kword, is_file:bool=False) -> Metadata:
 
     words = f""
 
-    def clean_words(word):
+    def clean_words(word:str):
         """clean words"""
         word = f'{word}'
         clean = [".", "-dl","-"]
@@ -223,7 +232,7 @@ if not args.no_filter:
 else:
     metadata = Metadata([], [], [], [], False)
 
-def sort_results(results_list):
+def sort_results(results_list:list[Dict[str,Any]]) -> list[Dict[str,Any]]:
     """
     Finding the `Metadata` (keywords, quality, codec, audio) in the description
 
@@ -236,7 +245,7 @@ def sort_results(results_list):
     `Score`-->`Metadata`: 0.125 --> 1 , 0.25 --> 2 , ... 0.50 --> 4
     """
     max_dl = max( [ int(x['descargas']) for x in results_list ] )
-    results = []
+    results = listDict([])
 
     # compile patterns
     compile_keywords = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.keywords, key=len, reverse=True))) + r')\b', flags=re.I)
@@ -277,7 +286,7 @@ def sort_results(results_list):
     return results     
 
 ### Filters searchs functions ###
-def match_text(title, number, inf_sub, text):
+def match_text(title:str, number:str, inf_sub:Dict[str, Any], text:str):
   """Filter Search results with the best match possible"""
 
   # Setting Patterns
@@ -338,14 +347,14 @@ def match_text(title, number, inf_sub, text):
 
   return match_type 
 
-def get_filtered_results (title, number, inf_sub, list_Subs_Dicts):
+def get_filtered_results (title:str, number:str, inf_sub:Dict[str, Any], list_Subs_Dicts:list[Dict[str,Any]]):
     """Filter subtitles search for the best match results"""
     
-    filtered_results = []
-    lst_full = []
-    lst_pattern = []
-    lst_partial = []
-    lst_any = []
+    filtered_results = listDict([])
+    lst_full = listDict([])
+    lst_pattern = listDict([])
+    lst_partial = listDict([])
+    lst_any = listDict([])
 
     if inf_sub['type'] == "movie" and inf_sub['number'] == "":
         return list_Subs_Dicts
@@ -399,7 +408,8 @@ def clean_screen():
     """Clean the screen"""
     os.system('clear' if os.name != 'nt' else 'cls')
 
-def highlight_text(text):
+@typing.no_type_check
+def highlight_text(text:str):
     """Highlight all `text`  matches  `metadata`"""
     
     # make a list of keywords and escaped it. Sort list for efficiency
@@ -408,18 +418,18 @@ def highlight_text(text):
     # compile a pattern
     matches_compile = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(keywords, key=len, reverse=True))) + r')\b', flags=re.I)
 
+    @typing.no_type_check
     def _highlight(matches):
-        return "[white on green4]" + f'{matches.group(0)}' + "[default on default]"
+        return "[white on green4]" + f'{matches.group(0)}' + "[default on default]" 
 
-    highlighted = matches_compile.sub(_highlight, text)
+    highlighted = matches_compile.sub(_highlight, text) 
     
     return highlighted
 
-def backoff_delay(backoff_factor = 2, attempts = 2):
+def backoff_delay(backoff_factor:float = 2, attempts:int = 2) -> None:
     """ backoff algorithm: backoff_factor * (2 ** attempts)."""
-    delay = backoff_factor * (2 ** attempts)
+    delay:float = backoff_factor * (2 ** attempts)
     time.sleep(delay)
-    return delay
 
 def convert_datetime(string_datetime:str):
     """
@@ -433,12 +443,12 @@ def convert_datetime(string_datetime:str):
         time_obj = datetime.strptime(string_datetime, '%Y-%m-%d %H:%M:%S').time()
         date_time_str = datetime.combine(date_obj, time_obj).strftime('%d/%m/%Y %H:%M')
 
-    except ValueError as e:
+    except ValueError:
         return "--- --"
     
     return date_time_str
 
-def convert_date(list_dict_subs):
+def convert_date(list_dict_subs:list[Dict[str,Any]]) -> list[Dict[str,Any]]:
     """   
     Convert to datetime Items ``fecha_subida``.
     """
@@ -447,12 +457,12 @@ def convert_date(list_dict_subs):
 
     return list_dict_subs
 
-def get_aadata(search:str):
+def get_aadata(search:str) -> Any:
     """Get a json data with the ``search`` results."""
-    json_aaData = {}
+    json_aaData:Any = ''
     try:
         retries = urllib3.util.Retry(total=3, backoff_factor=1)
-        fields={'buscar'+ _f_search: search, 'filtros': '', 'tabla': 'resultados', 'token': _f_token}
+        fields:Dict[str, Any]={'buscar'+ _f_search: search, 'filtros': '', 'tabla': 'resultados', 'token': _f_token}
         page = s.request(
             'POST',
             SUBDIVX_SEARCH_URL,
@@ -465,24 +475,25 @@ def get_aadata(search:str):
             if not args.quiet: console.clear()
             console.print(":no_entry: [bold red]Couldn't load results page. Try later![/]", emoji=True, new_line_start=True)
             logger.debug('Could not load results page')
-            exit(1)
+            sys.exit(1)
         else :
             json_aaData = json.loads(page)
             if json_aaData['sEcho'] == "0":
                 site_msg = str(json.loads(page)['mensaje'])
-                console.print(":information_source: [bold red]Site messsage:[/] " + site_msg, emoji=True, new_line_start=True)
-                backoff_delay(backoff_factor=1)
+                logger.debug(f'Site messsage: {site_msg}')
+                backoff_delay(backoff_factor=1.5)
                 page = s.request('POST', SUBDIVX_SEARCH_URL, headers=headers, fields=fields, retries=retries).data
+                
                 if page:
                     json_aaData = json.loads(page)
                     if json_aaData['sEcho'] == "0":
                         raise NoResultsError(f'Site message: {site_msg}')
                 else:
-                    exit(1)
+                    sys.exit(1)
     
     except HTTPError as e:
         HTTPErrorsMessageException(e)
-        exit(1)
+        sys.exit(1)
 
     except JSONDecodeError as msg:
         logger.debug(f'Error JSONDecodeError: "{msg.__str__()}"')
@@ -513,7 +524,7 @@ def make_screen_layout() -> Layout:
 
     return layout
 
-def make_description_panel(description) -> Panel:
+def make_description_panel(description:str) -> Panel:
     """Define a description Panel."""
     descriptions = Table.grid(padding=1)
     descriptions.add_column()
@@ -552,7 +563,7 @@ def get_comments_data(subid:str):
 
     return json_comments
 
-def parse_list_comments(list_dict_comments):
+def parse_list_comments(list_dict_comments:listDict):
     """ Parse comments :
        * Remove not used Items
        * Convert to datetime Items ``fecha_creacion``.
@@ -568,7 +579,7 @@ def parse_list_comments(list_dict_comments):
 
     return list_dict_comments
 
-def make_comments_table(title, results, page) -> Table:
+def make_comments_table(title:str, results:Dict[str,Any], page:int) -> Table:
     """Define a comments Table."""
 
     BG_STYLE = Style(color="white", bgcolor="gray0", bold=False)
@@ -585,9 +596,10 @@ def make_comments_table(title, results, page) -> Table:
     comment_table.add_column("Usuario", justify="center", vertical="middle")
     comment_table.add_column("Fecha", justify="center", vertical="middle")
 
-    count = page * results['per_page']
-    rows = []
- 
+    count = int(page * results['per_page'])
+    rows: list[list[str]] = []
+    items:list[str] = []
+    
     for item in results['pages'][page]:
         try:
             comentario = html2text.html2text(item['comentario']).strip()
@@ -607,7 +619,7 @@ def make_comments_table(title, results, page) -> Table:
 
     return comment_table
 
-def not_comments(text) -> Panel:
+def not_comments(text:str) -> Panel:
     """Show Not Comments Panel"""
 
     not_comment_panel = Panel(
@@ -626,7 +638,7 @@ def not_comments(text) -> Panel:
 
 ### Show results and get subtitles ###
 
-def generate_results(title, results, page, selected) -> Layout:
+def generate_results(title:str, results:Dict[str, Any], page:int, selected:int) -> Layout:
     """Generate Selectable results Table."""
 
     SELECTED = Style(color="white", bgcolor="gray35", bold=True)
@@ -647,8 +659,9 @@ def generate_results(title, results, page, selected) -> Layout:
     table.add_column("Usuario", justify="center", vertical="middle")
     table.add_column("Fecha", justify="center", vertical="middle")
 
-    count = page * results['per_page']
-    rows = []
+    count = int(page * results['per_page'])
+    rows: list[list[str]] = []
+    items:list[str] = []
  
     for item in results['pages'][page]:
         try:
@@ -672,7 +685,7 @@ def generate_results(title, results, page, selected) -> Layout:
     
     return layout_results
 
-def paginate(items, per_page):
+def paginate(items:list[Any], per_page:int) -> Dict[str, Any]:
     """ Paginate `items` in perpage lists 
     and return a `Dict` with:
      * Total items
@@ -681,12 +694,14 @@ def paginate(items, per_page):
      * List of pages.
     """
     pages = [items[i:i+per_page] for i in range(0, len(items), per_page)]
-    return {
+    results:Dict[str, Any] = {}
+    results = {
         'total': len(items),
         'pages_no': len(pages),
         'per_page': per_page,
         'pages': pages
     }
+    return results
 
 def get_rows():
     """Get Terminal available rows"""
@@ -710,14 +725,15 @@ def get_comments_rows():
 
     return available_lines
 
-def get_selected_subtitle_id(table_title, results):
+def get_selected_subtitle_id(table_title:str, results:list[Dict[str,Any]]) -> str:
     """Show subtitles search results for obtain download id."""
-    
+
+    results_pages = paginate(results, get_rows())
+    selected = 0
+    page = 0
+    res = f""
+
     try:
-        results_pages = paginate(results, get_rows())
-        selected = 0
-        page = 0
-        res = 0
         with Live(
             generate_results (table_title, results_pages, page, selected),auto_refresh=False, screen=False, transient=True
         ) as live:
@@ -751,10 +767,10 @@ def get_selected_subtitle_id(table_title, results):
                     selected = min(len(results_pages['pages'][page]) - 1, selected + 1)
 
                 if ch in ["D", "d"]:
-                    description_selected = results_pages['pages'][page][selected]['descripcion']
+                    description_selected = str(results_pages['pages'][page][selected]['descripcion'])
                     subtitle_selected =  results_pages['pages'][page][selected]['titulo']
                     parser = HTML2BBCode()
-                    description = str(parser.feed(description_selected))
+                    description = parser.html_to_bbcode(description_selected)
                     description = highlight_text(description) if metadata.hasdata else description
 
                     layout_description = make_screen_layout()
@@ -775,10 +791,10 @@ def get_selected_subtitle_id(table_title, results):
                                 break
 
                             if ch_exit in ["D", "d"]:
-                                res = results_pages['pages'][page][selected]['id']
+                                res = f"{results_pages['pages'][page][selected]['id']}"
                                 break
                                 
-                    if res != 0: break
+                    if res != "": break
                 
                 if ch in ["C", "c"]:
                     cpage = 0
@@ -799,7 +815,7 @@ def get_selected_subtitle_id(table_title, results):
                                 comments = parse_list_comments(comments)
                                 comments = paginate(comments, get_comments_rows())
                             
-                            if comments is None:
+                            if not comments:
                                 show_comments = False
                                 comment_msg = ":neutral_face: [bold red][i]¡No se pudieron cargar los comentarios![/]"
                         
@@ -830,7 +846,7 @@ def get_selected_subtitle_id(table_title, results):
                                 res = subid
                                 break
 
-                    if res != 0: break
+                    if res != "": break
 
                 if ch == key.RIGHT :
                     page = min(results_pages["pages_no"] - 1, page + 1)
@@ -841,7 +857,7 @@ def get_selected_subtitle_id(table_title, results):
                     selected = 0
 
                 if ch == key.ENTER:
-                    res = results_pages['pages'][page][selected]['id']
+                    res = f"{results_pages['pages'][page][selected]['id']}"
                     break
 
                 if ch in ["S", "s"]:
@@ -852,33 +868,35 @@ def get_selected_subtitle_id(table_title, results):
     except KeyboardInterrupt:
         if not args.verbose:clean_screen()
         logger.debug('Interrupted by user')
-        exit(1)
+        sys.exit(1)
 
     if (res == -1):
         if not args.verbose:clean_screen()
         logger.debug('Download Canceled')
-        return None
+        return f""
     
     # clean_screen()
     return res
 
 ### Extract Subtitles ###
+@typing.no_type_check
 def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
 
     def _is_supported(sub:RarInfo | ZipInfo):
         filename = f'{os.path.basename(str(sub.filename))}'
-        return any(filename.endswith(ext) for ext in _sub_extensions) and '__MACOSX' not in filename
+        return any(filename.endswith(ext) for ext in sub_extensions) and '__MACOSX' not in filename
 
     def _is_compressed(filename: str) -> bool:
         """Check if a file is a supported archive based on its extension."""
         return any(filename.endswith(ext) for ext in _compressed_extensions)
-
-    def _uncompress(source, topath:str):
+    
+    @typing.no_type_check
+    def _uncompress(source:Any, topath:str):
         """Decompress compressed file"""
         compressed = RarFile(source) if is_rarfile(source) else ZipFile(source) if is_zipfile(source) else None
         if compressed:
-            for sub in compressed.infolist():
+            for sub in compressed.infolist(): 
                 if _is_compressed(sub.filename):
                     source = compressed.open(sub)
                     _uncompress(source, topath)
@@ -889,15 +907,15 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
             logger.debug(f'Unsupported archive format')
 
     # In case of existence of various subtitles choose which to download
-    if len(compressed_sub_file.infolist()) > 1 :
-        res = 0
-        count = 0
-        choices = []
+    if len(compressed_sub_file.infolist()) > 1 : 
+        res:int = 0
+        count:int = 0
+        choices:list[str] = []
         choices.append(str(count))
-        list_sub = []
+        list_sub:list[str] = []
 
         for i in compressed_sub_file.infolist():
-            if i.is_dir() or os.path.basename(i.filename).startswith("._"):
+            if i.is_dir() or os.path.basename(i.filename).startswith("._"):# type: ignore
                 continue
             i.filename = os.path.basename(i.filename)
             list_sub.append(f'{i.filename}')
@@ -951,7 +969,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
                     elif _is_compressed(sub.filename):
                         with csf.open(sub) as source:
                             _uncompress(source, topath)
-                        logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))           
+                        logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))         
             compressed_sub_file.close()
         else:
             selected = f'{list_sub[res - 1]}'
@@ -990,8 +1008,9 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
 
 ### Search IMDB ###
 
-def get_imdb_search(title:str, number:str, inf_sub:dict):
+def get_imdb_search(title:str, number:str, inf_sub:Dict[str, Any]):
     """Get the IMDB ``id`` or ``title`` for search subtitles"""
+    from .sdximdb import IMDB
     try:
         imdb = IMDB()
         if args.proxy:
@@ -1002,9 +1021,9 @@ def get_imdb_search(title:str, number:str, inf_sub:dict):
         year = int(number[1:5]) if (inf_sub['type']  == "movie") and (number != "") else None
 
         if inf_sub['type'] == "movie":
-            res = imdb.get_by_name(title, year, tv=False) if year is not None else imdb.search(title, tv=False)
+            res = imdb.get_by_name(title, year, tv=False) if year is not None else imdb.search(title, tv=False) # type: ignore
         else:
-            res = imdb.search(title, tv=True)
+            res = imdb.search(title, tv=True) # type: ignore
     except Exception:
         pass
         return None
@@ -1034,10 +1053,10 @@ def get_imdb_search(title:str, number:str, inf_sub:dict):
         else:
             return f'{search} {number}' if search is not None else None
 
-def make_IMDB_table(title, results, type):
+def make_IMDB_table(title:str, results:list[Any], type:str):
     """Define a IMDB Table."""
     count = 0
-    choices = []
+    choices:list[str] = []
     choices.append(str(count))
 
     BG_STYLE = Style(color="white", bgcolor="gray0", bold=False)
@@ -1052,7 +1071,7 @@ def make_IMDB_table(title, results, type):
     imdb_table.add_column("IMDB", justify="center", vertical="middle")
     imdb_table.add_column("Tipo", justify="center", vertical="middle")
 
-    rows = []
+    rows:list[list[str]] = []
  
     for item in results:
         try:
