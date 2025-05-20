@@ -2,19 +2,21 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
+import sys
 import time
 import shutil
 import tempfile
 from tempfile import NamedTemporaryFile
-from rarfile import RarCannotExec, RarExecError
+from rarfile import RarCannotExec, RarExecError # type: ignore
+from rarfile import RarFile, is_rarfile# type: ignore
 from zipfile import ZipFile, is_zipfile
-from rarfile import RarFile, is_rarfile
 from .sdxparser import args, logger
 from .sdxconsole import console
-from .sdxutils import get_imdb_search, get_aadata, convert_date, get_filtered_results, sort_results, get_selected_subtitle_id,\
-HTTPErrorsMessageException, clean_screen,paginate, extract_subtitles, metadata, SUBDIVX_DOWNLOAD_PAGE, HTTPError, headers, s
+from typing import Dict, Any
+from .sdxutils import (get_imdb_search, get_aadata, convert_date, get_filtered_results, sort_results, get_selected_subtitle_id,
+HTTPErrorsMessageException, clean_screen, paginate, extract_subtitles, metadata, SUBDIVX_DOWNLOAD_PAGE, HTTPError, headers, s) # type: ignore
 
-def get_subtitle_id(title:str, number:str, inf_sub:dict):
+def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any]):
     
     """
     Get a list of subtitles of subtitles searched by ``title`` and season/episode
@@ -29,6 +31,9 @@ def get_subtitle_id(title:str, number:str, inf_sub:dict):
     Return the subtitle `id`
     """
     buscar = None
+    res = ""
+    list_Subs_Dicts:list[Dict[str,Any]] = []
+    
     if args.imdb:
         if not args.quiet:
             console.print(":earth_americas: [bold yellow]Searching in IMDB ... " +  f"{title} {number}", new_line_start=True, emoji=True) 
@@ -57,7 +62,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:dict):
     if json_aaData["iTotalRecords"] == 0 :
         if not args.quiet: console.print(":no_entry:[bold red] Not subtitles records found for:[yellow]" + buscar +"[/]")
         logger.debug(f'Not subtitles records found for: "{buscar}"')
-        return None
+        return res
     else:
         logger.debug(f'Found subtitles records for: "{buscar}"')
     
@@ -69,7 +74,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:dict):
     else:
         if not args.quiet: console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
         logger.debug(f'No suitable data were found for: "{buscar}"')
-        return None
+        return res
     
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
@@ -82,7 +87,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:dict):
     if not filtered_list_Subs_Dicts:
         if not args.quiet: console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
         logger.debug(f'No suitable data were found for: "{buscar}"')
-        return None
+        return res
     
     if metadata.hasdata:
         results = sort_results(filtered_list_Subs_Dicts)
@@ -97,17 +102,17 @@ def get_subtitle_id(title:str, number:str, inf_sub:dict):
 
     if (args.no_choose == False):
         res = get_selected_subtitle_id(table_title, results)
-        if res is None: return None
+        return res
     else:
         # get first subtitle
-        res = results_pages['pages'][0][0]['id']
+        res = f"{results_pages['pages'][0][0]['id']}"
     
     return res
 
-def get_subtitle(subid, topath:str):
+def get_subtitle(subid:str, topath:str):
     """Download a subtitle with id ``subid`` to a destination ``path``."""
 
-    url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + f'{subid}'}"
+    url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + subid}"
     
     if not args.quiet: clean_screen()
     temp_file = NamedTemporaryFile(delete=False)
@@ -119,7 +124,7 @@ def get_subtitle(subid, topath:str):
         download_url = s.request('GET', url, headers=headers)
     except HTTPError as e:
         HTTPErrorsMessageException(e)
-        exit(1)
+        sys.exit(1)
 
     if download_url:
         logger.debug(f"Downloaded from: {SUBDIVX_DOWNLOAD_PAGE}{download_url.geturl()}")
@@ -146,7 +151,7 @@ def get_subtitle(subid, topath:str):
         os.unlink(temp_file.name)
         logger.error(f'No suitable subtitle download for : "{url}"')
         if not args.quiet: console.print(":cross_mark: [bold red]No suitable subtitle to download[/]",emoji=True, new_line_start=True)
-        exit(1)
+        sys.exit(1)
         time.sleep(2)
             
     # Cleaning
