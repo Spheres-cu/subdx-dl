@@ -2,6 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 # Copyright 2025 BSD 3-Clause License (see https://opensource.org/license/bsd-3-clause)
 
+# type: ignore
 ####  IMDB imports ###
 import json
 import random
