@@ -1,51 +1,64 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ['setuptools']
+build-backend = 'setuptools.build_meta'
 
 [project]
-name = "subdx-dl"
-dynamic = ["version"]
+name = 'subdx-dl'
+dynamic = ['version']
 
 authors = [
-  { name ="Spheres-cu", email="sasuke.pc@gmail.com" },
+  { name ='Spheres-cu', email='sasuke.pc@gmail.com' },
 ]
 
 maintainers = [
-  {name = "C. S. M.", email = "sasuke.pc@gmail.com"}
+  {name = 'C. S. M.', email = 'sasuke.pc@gmail.com'}
 ]
 
-description = "A command line tool to download the best matching subtitle from subdivx.com"
-readme = "README.md"
-requires-python = ">=3.10"
-keywords = ["cli-tool", "subdivx", "subdivx-downloader", "subtitles"]
+description = 'A command line tool to download the best matching subtitle from subdivx.com'
+readme = 'README.md'
+requires-python = '>=3.10'
+keywords = ['cli-tool', 'subdivx', 'subdivx-downloader', 'subtitles']
 
 dependencies = [
-    "beautifulsoup4", "html5lib", "tvnamer", "guessit", "rarfile", "urllib3", "certifi", "rich", "readchar", "html2text", "lxml",
-     "lxml_html_clean", "pyquery", "parse", "w3lib", 'importlib-metadata; python_version<"3.10"',
+  'beautifulsoup4 >= 4.13.4',
+  'html5lib  >= 1.1',
+  'guessit >= 3.8.0',
+  'rarfile >= 4.2',
+  'urllib3 >= 2.4.0',
+  'certifi >= 2025.4.26',
+  'rich >= 14.0.0',
+  'readchar >= 4.2.1',
+  'html2text >= 2025.4.15',
+  'lxml[html_clean] >= 5.4.0',
+  'pyquery == 2.0.1',
+  'parse == 1.20.2',
+  'w3lib >= 2.3.1',
+  'requests >= 2.32.3, < 3',
+  'importlib-metadata; python_version<"3.10"',
 ]
 
 classifiers = [
-    "Programming Language :: Python :: 3.10",
-    "Development Status :: 5 - Production/Stable",
-    "Environment :: Console",
-    "Operating System :: OS Independent"
+    'Programming Language :: Python :: 3.10',
+    'Development Status :: 5 - Production/Stable',
+    'Environment :: Console',
+    'Operating System :: OS Independent'
 ]
 
-license = "GPL-3.0-or-later AND BSD-3-Clause-Modification"
+license = 'GPL-3.0-or-later AND BSD-3-Clause-Modification'
 license-files = [
-    "LICENSE*"
+    'LICENSE*'
 ]
 
 [project.urls]
-Homepage = "https://github.com/Spheres-cu/subdx-dl"
-Issues = "https://github.com/Spheres-cu/subdx-dl/issues"
-Examples = "https://github.com/Spheres-cu/subdx-dl#examples"
+Homepage = 'https://github.com/Spheres-cu/subdx-dl'
+Issues = 'https://github.com/Spheres-cu/subdx-dl/issues'
+Examples = 'https://github.com/Spheres-cu/subdx-dl#examples'
 
 [tool.setuptools]
-packages = ["sdx_dl"]
+packages = ['sdx_dl']
 
 [project.scripts]
-sdx-dl = "sdx_dl:cli.main"
+sdx-dl = 'sdx_dl:cli.main'
 
 [tool.setuptools.dynamic]
-version = {attr = "sdx_dl.__version__"}
+version = {attr = 'sdx_dl.__version__'}
