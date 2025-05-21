@@ -14,9 +14,9 @@ from .sdxparser import args, logger
 from .sdxconsole import console
 from typing import Dict, Any
 from .sdxutils import (get_imdb_search, get_aadata, convert_date, get_filtered_results, sort_results, get_selected_subtitle_id,
-HTTPErrorsMessageException, clean_screen, paginate, extract_subtitles, metadata, SUBDIVX_DOWNLOAD_PAGE, HTTPError, headers, s) # type: ignore
+HTTPErrorsMessageException, clean_screen, paginate, extract_subtitles, Metadata, metadata, SUBDIVX_DOWNLOAD_PAGE, HTTPError, headers, s) # type: ignore
 
-def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any]):
+def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any], metadata: Metadata=metadata):
     
     """
     Get a list of subtitles of subtitles searched by ``title`` and season/episode
@@ -90,7 +90,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any]):
         return res
     
     if metadata.hasdata:
-        results = sort_results(filtered_list_Subs_Dicts)
+        results = sort_results(filtered_list_Subs_Dicts, metadata)
     else:
         results = sorted(filtered_list_Subs_Dicts, key=lambda item: (item['descargas']), reverse=True)
 
@@ -101,7 +101,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any]):
     results_pages = paginate(results, 10)
 
     if (args.no_choose == False):
-        res = get_selected_subtitle_id(table_title, results)
+        res = get_selected_subtitle_id(table_title, results, metadata)
         return res
     else:
         # get first subtitle

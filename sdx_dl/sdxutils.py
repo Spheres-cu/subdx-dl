@@ -232,7 +232,7 @@ if not args.no_filter:
 else:
     metadata = Metadata([], [], [], [], False)
 
-def sort_results(results_list:list[Dict[str,Any]]) -> list[Dict[str,Any]]:
+def sort_results(results_list:list[Dict[str,Any]], metadata:Metadata=metadata) -> list[Dict[str,Any]]:
     """
     Finding the `Metadata` (keywords, quality, codec, audio) in the description
 
@@ -409,7 +409,7 @@ def clean_screen():
     os.system('clear' if os.name != 'nt' else 'cls')
 
 @typing.no_type_check
-def highlight_text(text:str):
+def highlight_text(text:str, metadata:Metadata=metadata):
     """Highlight all `text`  matches  `metadata`"""
     
     # make a list of keywords and escaped it. Sort list for efficiency
@@ -579,7 +579,7 @@ def parse_list_comments(list_dict_comments:listDict):
 
     return list_dict_comments
 
-def make_comments_table(title:str, results:Dict[str,Any], page:int) -> Table:
+def make_comments_table(title:str, results:Dict[str,Any], page:int, metadata:Metadata=metadata) -> Table:
     """Define a comments Table."""
 
     BG_STYLE = Style(color="white", bgcolor="gray0", bold=False)
@@ -603,7 +603,7 @@ def make_comments_table(title:str, results:Dict[str,Any], page:int) -> Table:
     for item in results['pages'][page]:
         try:
             comentario = html2text.html2text(item['comentario']).strip()
-            if metadata.hasdata: comentario = highlight_text(comentario)
+            if metadata.hasdata: comentario = highlight_text(comentario, metadata)
             usuario = str(item['nick'])
             fecha = str(item['fecha_creacion'])
 
@@ -638,7 +638,7 @@ def not_comments(text:str) -> Panel:
 
 ### Show results and get subtitles ###
 
-def generate_results(title:str, results:Dict[str, Any], page:int, selected:int) -> Layout:
+def generate_results(title:str, results:Dict[str, Any], page:int, selected:int, metadata:Metadata=metadata) -> Layout:
     """Generate Selectable results Table."""
 
     SELECTED = Style(color="white", bgcolor="gray35", bold=True)
@@ -725,7 +725,7 @@ def get_comments_rows():
 
     return available_lines
 
-def get_selected_subtitle_id(table_title:str, results:list[Dict[str,Any]]) -> str:
+def get_selected_subtitle_id(table_title:str, results:list[Dict[str,Any]], metadata:Metadata=metadata) -> str:
     """Show subtitles search results for obtain download id."""
 
     results_pages = paginate(results, get_rows())
@@ -735,7 +735,7 @@ def get_selected_subtitle_id(table_title:str, results:list[Dict[str,Any]]) -> st
 
     try:
         with Live(
-            generate_results (table_title, results_pages, page, selected),auto_refresh=False, screen=False, transient=True
+            generate_results (table_title, results_pages, page, selected, metadata),auto_refresh=False, screen=False, transient=True
         ) as live:
             while True:
                 live.console.show_cursor(False)
@@ -771,7 +771,7 @@ def get_selected_subtitle_id(table_title:str, results:list[Dict[str,Any]]) -> st
                     subtitle_selected =  results_pages['pages'][page][selected]['titulo']
                     parser = HTML2BBCode()
                     description = parser.html_to_bbcode(description_selected)
-                    description = highlight_text(description) if metadata.hasdata else description
+                    description = highlight_text(description, metadata) if metadata.hasdata else description
 
                     layout_description = make_screen_layout()
                     layout_description["description"].update(make_description_panel(description))
@@ -822,7 +822,7 @@ def get_selected_subtitle_id(table_title:str, results:list[Dict[str,Any]]) -> st
                         while True:
                             if show_comments :
                                 layout_comments['table'].update(Align.center(
-                                    Group(Align.center(make_comments_table(title, comments, cpage), vertical="top")), vertical='top'
+                                    Group(Align.center(make_comments_table(title, comments, cpage, metadata), vertical="top")), vertical='top'
                                     )
                                 )
                             else :
@@ -863,7 +863,7 @@ def get_selected_subtitle_id(table_title:str, results:list[Dict[str,Any]]) -> st
                 if ch in ["S", "s"]:
                     res = -1
                     break
-                live.update(generate_results(table_title, results_pages, page, selected), refresh=True)
+                live.update(generate_results(table_title, results_pages, page, selected, metadata), refresh=True)
 
     except KeyboardInterrupt:
         if not args.verbose:clean_screen()

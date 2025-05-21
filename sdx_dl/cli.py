@@ -6,7 +6,7 @@ import os
 import sys
 from .sdxparser import logger, args as parser_args
 from .sdxlib import get_subtitle_id, get_subtitle
-from .sdxutils import sub_extensions, NoResultsError, VideoMetadataExtractor
+from .sdxutils import sub_extensions, NoResultsError, VideoMetadataExtractor, Metadata, extract_meta_data
 from .sdxclasses import FindFiles
 from typing import Dict, Any
 from .sdxconsole import console
@@ -188,12 +188,13 @@ def main():
             continue
 
         filename = f'{os.path.basename(filepath)}'
+        metadata:Metadata = extract_meta_data(filename, args.kword, True)
         
         try:
             title, number, inf_sub = guess_search(filename)
 
             subid = get_subtitle_id(
-                title, number, inf_sub)
+                title, number, inf_sub, metadata)
 
         except NoResultsError as e:
             logger.error(str(e))
