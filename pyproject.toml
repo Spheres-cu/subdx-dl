@@ -29,7 +29,8 @@ dependencies = [
   'rich >= 14.0.0',
   'readchar >= 4.2.1',
   'html2text >= 2025.4.15',
-  'lxml[html_clean] >= 5.4.0',
+  'lxml >= 5.4.0',
+  'lxml_html_clean >= 0.4.2',
   'pyquery == 2.0.1',
   'parse == 1.20.2',
   'w3lib >= 2.3.1',
@@ -56,6 +57,7 @@ Examples = 'https://github.com/Spheres-cu/subdx-dl#examples'
 
 [tool.setuptools]
 packages = ['sdx_dl']
+include-package-data = true
 
 [project.scripts]
 sdx-dl = 'sdx_dl:cli.main'
