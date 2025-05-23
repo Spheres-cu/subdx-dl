@@ -6,12 +6,14 @@ import sys
 import tempfile
 import argparse
 import logging
-from .sdxclasses import console, validate_proxy
-from .sdxclasses import ChkVersionAction, ConfigManager, ViewConfigAction, SaveConfigAction, SetConfigAction, ResetConfigAction
+from sdx_dl.sdxconsole import console
+from sdx_dl.sdxclasses import ChkVersionAction, ConfigManager, ViewConfigAction, SaveConfigAction, SetConfigAction, ResetConfigAction, validate_proxy
 from importlib.metadata import version
 from rich.logging import RichHandler
 from rich.traceback import install
 install(show_locals=True)
+
+__all__ = ["args", "logger"]
 
 def create_parser():
     parser = argparse.ArgumentParser(prog='sdx-dl',

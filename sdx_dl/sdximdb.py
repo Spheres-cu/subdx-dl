@@ -29,6 +29,8 @@ from parse import search as parse_search
 from parse import findall, Result
 from w3lib.encoding import html_to_unicode
 
+__all__ = ["IMDB"]
+
 ### IMDB search classes ###
 class ImdbParser:
     """

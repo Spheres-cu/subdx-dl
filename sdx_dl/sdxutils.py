@@ -16,8 +16,8 @@ import urllib3.util
 import typing
 from zipfile import ZipFile, is_zipfile, ZipInfo
 from rarfile import RarFile, is_rarfile, RarInfo # type: ignore
-from .sdxparser import logger, args as parser_args
-from .sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, VideoMetadataExtractor 
+from sdx_dl.sdxparser import logger, args as parser_args
+from sdx_dl.sdxclasses import HTML2BBCode, NoResultsError, GenerateUserAgent, VideoMetadataExtractor 
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
@@ -35,6 +35,12 @@ from rich.table import Table
 from rich.align import Align
 from rich.live import Live
 from rich.prompt import IntPrompt
+
+__all__ = [
+"get_imdb_search", "get_aadata", "convert_date", "get_filtered_results", "sort_results", "get_selected_subtitle_id",
+"HTTPErrorsMessageException", "clean_screen", "paginate", "extract_subtitles", "sub_extensions", "Metadata", "metadata",
+"SUBDIVX_DOWNLOAD_PAGE", "HTTPError", "headers", "s"
+]
 
 args = parser_args
 
@@ -130,7 +136,7 @@ def check_data_connection():
 def exp_time_Cookie():
     """Compare modified time and return `True` if is expired."""
     # Get data connection modified time and convert it to datetime
-    temp_dir = tempfile.gettempdir()
+    temp_dir:str = tempfile.gettempdir()
     sdx_dc_path = os.path.join(temp_dir, sdx_data_connection_name)
     csdx_ti_m = datetime.fromtimestamp(os.path.getmtime(sdx_dc_path))
     delta_csdx = datetime.now() - csdx_ti_m
@@ -1010,7 +1016,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
 
 def get_imdb_search(title:str, number:str, inf_sub:Dict[str, Any]):
     """Get the IMDB ``id`` or ``title`` for search subtitles"""
-    from .sdximdb import IMDB
+    from sdx_dl.sdximdb import IMDB
     try:
         imdb = IMDB()
         if args.proxy:

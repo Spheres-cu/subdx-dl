@@ -1,7 +1,7 @@
 # Copyright (C) 2024 Spheres-cu (https://github.com/Spheres-cu) subdx-dl
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from .sdxconsole import console
+from sdx_dl.sdxconsole import console
 
 ### Config Settings imports ###
 import os
@@ -31,6 +31,21 @@ from pygments.lexers import guess_lexer
 ####  Generate user agents imports ###
 import sys
 import random
+
+__all__ = [
+    "HTML2BBCode",
+    "NoResultsError",
+    "GenerateUserAgent",
+    "VideoMetadataExtractor",
+    "validate_proxy",
+    "ChkVersionAction",
+    "ConfigManager",
+    "ViewConfigAction",
+    "SaveConfigAction",
+    "SetConfigAction",
+    "ResetConfigAction",
+    "FindFiles"
+]
 
 ####  HTML2BBCode class ###
 class HTML2BBCode:
@@ -292,7 +307,7 @@ def ExceptionErrorMessage(e: Exception):
     print("Error occurred: " + error_class + ":" + msg)
     sys.exit(1)
 
-def check_version(version:str, proxy:str):
+def _check_version(version:str, proxy:str):
     """Check for new version."""
     ua = GenerateUserAgent.random_browser()
     headers={"user-agent" : ua}
@@ -345,7 +360,7 @@ def check_version(version:str, proxy:str):
     return msg
 
 ### Get Remaining arguments
-def get_remain_arg(args: List[str] | str) -> str:
+def _get_remain_arg(args: List[str] | str) -> str:
     """ Get remainig arguments values"""
     n = 0; arg = ""
     for i in sys.argv:
@@ -364,15 +379,15 @@ class ChkVersionAction(argparse.Action):
     
     @typing.no_type_check
     def __call__(self, parser, namespace, values, option_string=None):       
-        p = getattr(namespace, "proxy") or get_remain_arg(["-x", "--proxy"])
+        p = getattr(namespace, "proxy") or _get_remain_arg(["-x", "--proxy"])
         if not p:
             config = ConfigManager()
             proxy = config.get("proxy")
         else:
             proxy = p if validate_proxy(p) else None
         
-        print(check_version(version("subdx-dl"), proxy))
-        exit (0)
+        print(_check_version(version("subdx-dl"), proxy))
+        sys.exit(0)
 
 ### Class VideoExtractor ###
 class VideoMetadataExtractor:
@@ -492,7 +507,7 @@ class ConfigManager:
             console.print(":no_entry:[bold red] Failed to load configuration: [/]" + f'{e.__class__.__name__}\n',
                     emoji=True, new_line_start=True)
             self._save_config()
-            exit(1)
+            sys.exit(1)
 
     def _save_config(self) -> None:
         """Save the current configuration to file."""
@@ -506,7 +521,7 @@ class ConfigManager:
             pass
             console.print(":no_entry:[bold red] Failed to save configuration: [/]" + f'{e.__class__.__name__}\n',
                     emoji=True, new_line_start=True)
-            exit(1)
+            sys.exit(1)
 
     def get(self, key: str, default: Optional[Any] = None) -> Any:
         """
@@ -645,7 +660,7 @@ class ViewConfigAction(argparse.Action):
             config.print_config() if config.hasconfig else print("Config is empty!")
         else:
             print("Not exists config file")
-        exit (0)
+        sys.exit(0)
 
 class SaveConfigAction(argparse.Action):
     """Save allowed arguments to a config file. Existing values are update."""
@@ -660,7 +675,7 @@ class SaveConfigAction(argparse.Action):
 
         if all(not copied_config[k] for k in copied_config.keys()):
             console.print(":no_entry: Nothing to save...")
-            exit(0)
+            sys.exit(0)
   
         for k in namespace.__dict__.keys():
             if k not in allowed_values: del copied_config[k]
@@ -671,7 +686,7 @@ class SaveConfigAction(argparse.Action):
         if not copied_config['quiet']: console.print(":heavy_check_mark:  Config was saved!")
         
         if not getattr(namespace, "search"):
-            exit(0)
+            sys.exit(0)
 
 class SetConfigAction(argparse.Action):
     """Save an option to config file"""
@@ -684,7 +699,7 @@ class SetConfigAction(argparse.Action):
 
         if not values:
             console.print(":no_entry: Not a valid option: ", self.choices)
-            exit(1)
+            sys.exit(1)
         
         key, value = f'', None
         config = ConfigManager()
@@ -692,23 +707,23 @@ class SetConfigAction(argparse.Action):
         if values in ["quiet", "verbose", "force", "no_choose", "no_filter", "Season", "imdb"]:
             key, value = f'{values}', bool(True)
         elif values == "path":
-            path = get_remain_arg("path")
+            path = _get_remain_arg("path")
             if os.path.isdir(path) and os.access(path, os.W_OK):
                 key, value = f'{values}', path
             else:
                 console.print(":no_entry:[bold red] Directory:[yellow] " + path + "[bold red] do not exists or don't have access[/]")
         elif values == "proxy":
-            proxy = get_remain_arg("proxy")
+            proxy = _get_remain_arg("proxy")
             if validate_proxy(proxy):
                 key, value = f'{values}', proxy
             else:
                 console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + proxy + "[/]")
         elif values == "nlines":
-            lines = get_remain_arg("nlines") 
+            lines = _get_remain_arg("nlines") 
             key, value = f'{values}', int(lines) if lines.isnumeric() and int(lines) in range(5,25,5) else 10
         
         if not value:
-            exit(1)
+            sys.exit(1)
 
         if config.hasconfig:
             config.set(key, value)
@@ -716,7 +731,7 @@ class SetConfigAction(argparse.Action):
             config.update({key: value})
         
         console.print("\u2713 Done!")
-        exit(0)
+        sys.exit(0)
 
 class ResetConfigAction(argparse.Action):
     """Reset an option in the config file"""
@@ -729,7 +744,7 @@ class ResetConfigAction(argparse.Action):
 
         if not values:
             console.print(":no_entry: Not a valid option: ", self.choices)
-            exit(1)
+            sys.exit(1)
         
         key, value = f'', None
         config = ConfigManager()
@@ -745,7 +760,7 @@ class ResetConfigAction(argparse.Action):
             config.update({key: value})
         
         console.print("\u2713 Done!")
-        exit(0)
+        sys.exit(0)
 
 ### Findfiles class ###
 extension_pattern = '(\\.[a-zA-Z0-9]+)$'

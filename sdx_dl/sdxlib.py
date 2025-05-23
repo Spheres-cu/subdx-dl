@@ -8,13 +8,15 @@ import shutil
 import tempfile
 from tempfile import NamedTemporaryFile
 from rarfile import RarCannotExec, RarExecError # type: ignore
-from rarfile import RarFile, is_rarfile# type: ignore
+from rarfile import RarFile, is_rarfile # type: ignore
 from zipfile import ZipFile, is_zipfile
-from .sdxparser import args, logger
-from .sdxconsole import console
+from sdx_dl.sdxparser import args, logger
+from sdx_dl.sdxconsole import console
 from typing import Dict, Any
-from .sdxutils import (get_imdb_search, get_aadata, convert_date, get_filtered_results, sort_results, get_selected_subtitle_id,
+from sdx_dl.sdxutils import (get_imdb_search, get_aadata, convert_date, get_filtered_results, sort_results, get_selected_subtitle_id,
 HTTPErrorsMessageException, clean_screen, paginate, extract_subtitles, Metadata, metadata, SUBDIVX_DOWNLOAD_PAGE, HTTPError, headers, s) # type: ignore
+
+__all__ = ["get_subtitle_id", "get_subtitle"]
 
 def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any], metadata: Metadata=metadata):
     
