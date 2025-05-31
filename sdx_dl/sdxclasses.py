@@ -270,7 +270,7 @@ class GenerateUserAgent:
 
 ### validate proxy settings ###
 
-def validate_proxy(proxy_str:str):
+def validate_proxy(proxy_str:str) -> bool:
     """
     Validation with IP address or domain and port.
     """
@@ -283,7 +283,7 @@ def validate_proxy(proxy_str:str):
     if not match:
         return False
         
-    protocol, user, password, host, port = match.groups() # type: ignore
+    protocol, _, _, host, port = match.groups() 
     
     if not (re.match(ip_pattern, host) or re.match(host_pattern, host)):
         return False
@@ -300,11 +300,11 @@ def validate_proxy(proxy_str:str):
 def ExceptionErrorMessage(e: Exception):
     """Parse ``Exception`` error message."""
     if isinstance(e, (HTTPError)):
-        msg = e.__str__().split(":")[1].split("(")[0]
+        msg = e.__str__().split(":", maxsplit=1)[1].split("(")[0]
     else:
         msg = e.__str__()
     error_class = e.__class__.__name__
-    print("Error occurred: " + error_class + ":" + msg)
+    console.print("Error occurred: " + error_class + ":" + msg)
     sys.exit(1)
 
 def _check_version(version:str, proxy:str):
