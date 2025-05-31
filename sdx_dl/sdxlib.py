@@ -13,8 +13,9 @@ from zipfile import ZipFile, is_zipfile
 from sdx_dl.sdxparser import args, logger
 from sdx_dl.sdxconsole import console
 from typing import Dict, Any
+from sdx_dl.sdxutils import extract_subtitles # type: ignore
 from sdx_dl.sdxutils import (get_imdb_search, get_aadata, convert_date, get_filtered_results, sort_results, get_selected_subtitle_id,
-HTTPErrorsMessageException, clean_screen, paginate, extract_subtitles, Metadata, metadata, SUBDIVX_DOWNLOAD_PAGE, HTTPError, headers, s) # type: ignore
+HTTPErrorsMessageException, clean_screen, paginate, Metadata, metadata, SUBDIVX_DOWNLOAD_PAGE, HTTPError, headers, conn)
 
 __all__ = ["get_subtitle_id", "get_subtitle"]
 
@@ -123,7 +124,7 @@ def get_subtitle(subid:str, topath:str):
     if not args.quiet: console.print("\u2193 Downloading Subtitle...",emoji=True,new_line_start=True)
     logger.debug(f"Trying Download from link: {url}")
     try:
-        download_url = s.request('GET', url, headers=headers)
+        download_url = conn.request('GET', url, headers=headers)
     except HTTPError as e:
         HTTPErrorsMessageException(e)
         sys.exit(1)
