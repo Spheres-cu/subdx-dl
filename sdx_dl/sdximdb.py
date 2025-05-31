@@ -139,7 +139,7 @@ class IMDB:
         except requests.exceptions.ConnectionError as e:
             response = self.session.get(url, verify=False)
 
-        results = response.html.xpath("//section[@data-testid='find-results-section-title']/div/ul/li") # type: ignore
+        results = response.html.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
         if tv is True:
             results = [result for result in results if "TV" in result.text]
         else:
@@ -187,7 +187,7 @@ class IMDB:
         """
         try:
             response = self.session.get(url)
-            result = response.html.xpath("//script[@type='application/ld+json']")[0].text # type: ignore
+            result = response.html.xpath("//script[@type='application/ld+json']")[0].text
             result = ''.join(result.splitlines())  # removing newlines
             result = f"""{result}"""
 
@@ -208,7 +208,7 @@ class IMDB:
             except json.decoder.JSONDecodeError as e:
                 try:
                     # removing reviewBody from json string
-                    parsed = to_parse.remove_review_body # type: ignore
+                    parsed = to_parse.remove_review_body 
                     result = json.loads(parsed)
                 except json.decoder.JSONDecodeError as e:
                     # invalid char(s) is/are not in description/trailer/reviewBody schema
@@ -343,7 +343,7 @@ class BaseParser:
         if self._html:
             return self._html
         else:
-            return etree.tostring(self.element, encoding='unicode').strip().encode(self.encoding) # type: ignore
+            return etree.tostring(self.element, encoding='unicode').strip().encode(self.encoding) 
 
     @property
     def html(self) -> _BaseHTML:
@@ -353,7 +353,7 @@ class BaseParser:
         if self._html:
             return self.raw_html.decode(self.encoding, errors='replace')
         else:
-            return etree.tostring(self.element, encoding='unicode').strip() # type: ignore
+            return etree.tostring(self.element, encoding='unicode').strip() 
 
     @html.setter
     def html(self, html: str) -> None:
@@ -408,7 +408,7 @@ class BaseParser:
             try:
                 self._lxml = soup_parse(self.html, features='html.parser')
             except ValueError:
-                self._lxml = lxml.html.fromstring(self.raw_html) # type: ignore
+                self._lxml = lxml.html.fromstring(self.raw_html) 
 
         return self._lxml
 
@@ -477,10 +477,10 @@ class BaseParser:
             elements = []
 
             for element in elements_copy:
-                element.raw_html = lxml_html_tostring(cleaner.clean_html(element.lxml)) # type: ignore
+                element.raw_html = lxml_html_tostring(cleaner.clean_html(element.lxml)) 
                 elements.append(element)
 
-        return _get_first_or_list(elements, first) # type: ignore
+        return _get_first_or_list(elements, first) 
 
     def xpath(self, selector: str, *, clean: bool = False, first: bool = False, _encoding: str = "") -> _XPath:
         """Given an XPath selector, returns a list of
@@ -515,10 +515,10 @@ class BaseParser:
             elements = []
 
             for element in elements_copy:
-                element.raw_html = lxml_html_tostring(cleaner.clean_html(element.lxml)) # type: ignore
+                element.raw_html = lxml_html_tostring(cleaner.clean_html(element.lxml)) 
                 elements.append(element)
 
-        return _get_first_or_list(elements, first) # type: ignore
+        return _get_first_or_list(elements, first) 
 
     def search(self, template: str) -> Result:
         """Search the :class:`Element <Element>` for the given Parse template.
@@ -526,7 +526,7 @@ class BaseParser:
         :param template: The Parse template to use.
         """
 
-        return parse_search(template, self.html) # type: ignore
+        return parse_search(template, self.html) 
 
     def search_all(self, template: str) -> _Result:
         """Search the :class:`Element <Element>` (multiple times) for the given parse
@@ -534,14 +534,14 @@ class BaseParser:
 
         :param template: The Parse template to use.
         """
-        return [r for r in findall(template, self.html)] # type: ignore
+        return [r for r in findall(template, self.html)] 
 
     @property
     def links(self) -> _Links:
         """All found links on page, in as–is form."""
 
         def gen():
-            for link in self.find('a'): # type: ignore
+            for link in self.find('a'): 
 
                 try:
                     href = link.attrs['href'].strip()
@@ -583,7 +583,7 @@ class BaseParser:
             for link in self.links:
                 yield self._make_absolute(link)
 
-        return set(gen()) # type: ignore
+        return set(gen()) 
 
     @property
     def base_url(self) -> _URL:
@@ -593,7 +593,7 @@ class BaseParser:
         # Support for <base> tag.
         base = self.find('base', first=True)
         if base:
-            result = base.attrs.get('href', '').strip() # type: ignore
+            result = base.attrs.get('href', '').strip() 
             if result:
                 return result
 
@@ -686,7 +686,7 @@ class HTML(BaseParser):
         def get_next():
             candidates = self.find('a', containing=next_symbol)
 
-            for candidate in candidates: # type: ignore
+            for candidate in candidates: 
                 if candidate.attrs.get('href'):
                     # Support 'next' rel (e.g. reddit).
                     if 'next' in candidate.attrs.get('rel', []):
@@ -702,7 +702,7 @@ class HTML(BaseParser):
 
             try:
                 # Resort to the last candidate.
-                return candidates[-1].attrs['href'] # type: ignore
+                return candidates[-1].attrs['href'] 
             except IndexError:
                 return None
 
@@ -710,12 +710,12 @@ class HTML(BaseParser):
         if __next:
             url = self._make_absolute(__next)
         else:
-            return None # type: ignore
+            return None 
 
         if fetch:
-            return self.session.get(url) # type: ignore
+            return self.session.get(url) 
         else:
-            return url # type: ignore
+            return url 
 
     def __iter__(self):
 
@@ -724,12 +724,12 @@ class HTML(BaseParser):
         while True:
             yield next
             try:
-                next = next.next(fetch=True, next_symbol=self.next_symbol).html # type: ignore
+                next = next.next(fetch=True, next_symbol=self.next_symbol).html 
             except AttributeError:
                 break
 
     def __next__(self):
-        return self.next(fetch=True, next_symbol=self.next_symbol).html # type: ignore
+        return self.next(fetch=True, next_symbol=self.next_symbol).html 
 
     def __aiter__(self):
         return self
@@ -744,13 +744,13 @@ class HTMLResponse(requests.Response):
 
     def __init__(self, session: Union['HTMLSession','HTMLSession']) -> None:
         super(HTMLResponse, self).__init__()
-        self._html = None  # type: ignore # type: HTML
+        self._html = None   # type: HTML
         self.session = session
 
     @property
     def html(self) -> HTML:
         if not self._html:
-            self._html = HTML(session=self.session, url=self.url, html=self.content, default_encoding=self.encoding) # type: ignore
+            self._html = HTML(session=self.session, url=self.url, html=self.content, default_encoding=self.encoding) 
 
         return self._html
 
@@ -810,7 +810,7 @@ class BaseSession(requests.Session):
         """ Change response enconding and replace it by a HTMLResponse. """
         if not response.encoding:
             response.encoding = DEFAULT_ENCODING
-        return HTMLResponse._from_response(response, self) # type: ignore
+        return HTMLResponse._from_response(response, self) 
 
 class HTMLSession(BaseSession):
 
@@ -823,7 +823,7 @@ class HTMLSession(BaseSession):
             self.loop = asyncio.get_event_loop()
             if self.loop.is_running():
                 raise RuntimeError("Cannot use HTMLSession within an existing event loop. Use AsyncHTMLSession instead.")
-            self._browser = self.loop.run_until_complete(super().browser) # type: ignore
+            self._browser = self.loop.run_until_complete(super().browser) 
         return self._browser
 
     def close(self):
