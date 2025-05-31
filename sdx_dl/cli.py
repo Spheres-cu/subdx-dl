@@ -8,7 +8,7 @@ from typing import Dict, Any
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxparser import logger, args as parser_args
 from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
-from sdx_dl.sdxutils import sub_extensions, Metadata, extract_meta_data
+from sdx_dl.sdxutils import sub_extensions, Metadata as Metadata, extract_meta_data
 from sdx_dl.sdxclasses import FindFiles, NoResultsError, VideoMetadataExtractor
 from guessit import guessit # type: ignore
 from contextlib import contextmanager
