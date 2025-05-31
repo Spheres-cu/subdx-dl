@@ -39,7 +39,7 @@ from rich.prompt import IntPrompt
 __all__ = [
 "get_imdb_search", "get_aadata", "convert_date", "get_filtered_results", "sort_results", "get_selected_subtitle_id",
 "HTTPErrorsMessageException", "clean_screen", "paginate", "extract_subtitles", "sub_extensions", "Metadata", "metadata",
-"SUBDIVX_DOWNLOAD_PAGE", "HTTPError", "headers", "s"
+"SUBDIVX_DOWNLOAD_PAGE", "HTTPError", "headers", "conn"
 ]
 
 args = parser_args
@@ -64,6 +64,8 @@ Metadata = NamedTuple(
     ('hasdata', bool)]
 )
 
+DataConn = NamedTuple('DataConn', [('cookie', str),('token', str), ('search', str)])
+
 listDict = NewType('listDict', list[Dict[str,Any]])
 
 signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
@@ -76,114 +78,119 @@ if args.proxy:
     proxie = f"{args.proxy}"
     if not (any(p in proxie for p in ["http", "https"])):
         proxie = "http://" + proxie
-    s = urllib3.ProxyManager(proxie, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),  retries=2, timeout=15)
+    conn = urllib3.ProxyManager(proxie, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),  retries=2, timeout=15)
 else:
-    s = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=15)
+    conn = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=2, timeout=15)
 
 # Network connections Errors
-def Network_Connection_Error(e: HTTPError) -> str:
-    """ Return a Network Connection Error message."""
-
-    msg = e.__str__()
-    error_class = e.__class__.__name__
-    Network_error_msg= {
-        'ConnectTimeoutError' : "Connection to host timed out",
-        'ReadTimeoutError'    : "Read timed out",
-        'NameResolutionError' : 'Failed to resolve host name',
-        'ProxyError'          : "Unable to connect to proxy",
-        'NewConnectionError'  : "Failed to establish a new connection",
-        'ProtocolError'       : "Connection aborted. Remote end closed connection without response",
-        'MaxRetryError'       : "Maxretries exceeded",
-        'SSLError'            : "Certificate verify failed: unable to get local issuer certificate",
-        'HTTPError' : msg
-    }
-    error_msg = f'{error_class} : {Network_error_msg[error_class] if error_class in Network_error_msg else msg }'
-    return error_msg
-
-def HTTPErrorsMessageException(e: HTTPError):
+def HTTPErrorsMessageException(e: HTTPError) -> None:
     """ Manage HTTP Network connection Errors Exceptions message:
         * Log HTTP Network connection Error message
         * Print HTTP Network connection error message.
     """
+    msg_err = e.__str__().split(":", maxsplit=1)[1].split("(")[0]
+    error_class = e.__class__.__name__
+    msg = f'{error_class}:{msg_err}'
 
-    msg = Network_Connection_Error(e)
-    if args.quiet: 
-        logger.debug(f'Some Network Connection Error occurred: {msg}')
-    else:
-        console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
-    
-    if logger.level == 10:
-        logger.debug(f'Network Connection Error occurred: {e.__str__()}')
-
+    if not args.quiet:clean_screen()
+    console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
+    logger.debug(f'Some Network Connection Error occurred: {msg}')
 
 ### Setting data connection ###
-sdx_data_connection_name = 'sdx_data_connection'
+class DataConnection:
+    """
+    Class for manage the connection data
 
-def check_data_connection():
-    """Check the time and existence of the `cookie` session and return data connection."""
-
-    sdx_data_connection = load_data_connection()
-
-    if sdx_data_connection is None or exp_time_Cookie() is True:
-        logger.debug(f'Getting data connection')
-        cookie, token, f_search = get_data_connection()
-        stor_data_connection(cookie, token, f_search)
-    else:
-        cookie, token, f_search = sdx_data_connection.split(";")
-        logger.debug(f'Loaded data connection')
-    return cookie, token, f_search
-
-def exp_time_Cookie():
-    """Compare modified time and return `True` if is expired."""
-    # Get data connection modified time and convert it to datetime
-    temp_dir:str = tempfile.gettempdir()
-    sdx_dc_path = os.path.join(temp_dir, sdx_data_connection_name)
-    csdx_ti_m = datetime.fromtimestamp(os.path.getmtime(sdx_dc_path))
-    delta_csdx = datetime.now() - csdx_ti_m
-    exp_c_time = timedelta(hours=2)
-    return delta_csdx > exp_c_time
-
-def get_data_connection():
-    """ Retrieve sdx data connection."""
-    cookie_sdx, _f_token, _f_search = f'', f'', f''
-    try:
-        sdx_request = s.request('GET', SUBDIVX_DOWNLOAD_PAGE, timeout=10)
-        cookie_sdx = f"{sdx_request.headers.get('Set-Cookie')}".split(';')[0]
-        _vdata = BeautifulSoup(sdx_request.data, 'html5lib')
-        _f_search = _vdata('div', id="vs")[0].text.replace("v", "").replace(".", "")
-        _f_tk = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
-        _r_ftoken = s.request('GET', _f_tk, headers={"Cookie":cookie_sdx},preload_content=False).data
-        _f_token = json.loads(_r_ftoken)['token']
-    except HTTPError as e:
-        HTTPErrorsMessageException(e)
-        sys.exit(1)
-    except JSONDecodeError as e:
-        console.print(":no_entry: [bold red]Couldn't load results page![/]: " + e.__str__(), emoji=True, new_line_start=True)
-
-    return cookie_sdx, _f_token, _f_search
-
-def stor_data_connection(sdx_cookie:str, token:str, f_search:str):
-    """ Store sdx cookies."""
-    temp_dir = tempfile.gettempdir()
-    cookiesdx_path = os.path.join(temp_dir, sdx_data_connection_name)
-    sdx_data_connection =f'{sdx_cookie};{token};{f_search}'
-    with open(cookiesdx_path, 'w') as file:
-        file.write(sdx_data_connection)
-        file.close()
+    Attributes:
+        _sdx_dc_path (str): Path to data connection file.
+        __cookie (str): The cookie value for connections.
+        __token (str):  The token for search requests.
+        __search (str): Search field suffix.
+        __data (DataConn): The entire data connection attributes.
+        :type DataConn: NamedTuple
+    """
+    def __init__(self) -> None:
+        self._sdx_dc_path = os.path.join(tempfile.gettempdir(), 'sdx_data_connection')
+        self.__cookie, self.__token, self.__search = self._get_connection_data()
+        self.__data = DataConn(self.__cookie, self.__token, self.__search)
     
-def load_data_connection():
-    """ Load stored sdx cookies return ``None`` if not exists."""
-    temp_dir = tempfile.gettempdir()
-    sdx_dc_path = os.path.join(temp_dir, sdx_data_connection_name)
-    if os.path.exists(sdx_dc_path):
-        with open(sdx_dc_path, 'r') as filecookie:
-            sdx_data_connection = filecookie.read()
-    else:
-        return None
+    @property
+    def cookie(self) -> str: return self.__data.cookie
 
-    return sdx_data_connection
+    @property
+    def token(self) -> str: return self.__data.token
 
-headers['Cookie'], _f_token, _f_search = check_data_connection()
+    @property
+    def search(self) -> str: return self.__data.search
+
+    def _get_connection_data(self):
+        """Return data connection"""
+        sdx_data_connection = self._load_data_connection()
+
+        if sdx_data_connection.count(";") != 2 or sdx_data_connection.count("=") != 1:
+            logger.debug(f'Getting data connection')
+            cookie, token, f_search = self._retrieve_data_connection()
+        else:
+            cookie, token, f_search = sdx_data_connection.split(";", maxsplit=2)
+            logger.debug(f'Loaded data connection')
+        
+        return cookie, token, f_search
+
+    def _exp_data_connection(self) -> bool:
+        """Compare modified time and return `True` if is expired."""
+        if not os.path.exists(self._sdx_dc_path): return True
+        
+        # Get data connection modified time and convert it to datetime
+        csdx_ti_m = datetime.fromtimestamp(os.path.getmtime(self._sdx_dc_path))
+        delta_csdx = datetime.now() - csdx_ti_m
+        exp_c_time = timedelta(hours=2)
+
+        return delta_csdx > exp_c_time
+
+    def _retrieve_data_connection(self):
+        """ Retrieve, save and return data connection."""
+        cookie_sdx, _f_token, _f_search = f'', f'', f''
+
+        try:
+            sdx_request = conn.request('GET', SUBDIVX_DOWNLOAD_PAGE, timeout=10)
+            cookie_sdx = f"{sdx_request.headers.get('Set-Cookie')}".split(';')[0]
+            _vdata = BeautifulSoup(sdx_request.data.decode(), 'lxml')
+            _f_search = str(_vdata('div', id="vs")[0].text.replace("v", "").replace(".", ""))
+            _f_tk = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
+            _r_ftoken = conn.request('GET', _f_tk, headers={"Cookie":cookie_sdx},preload_content=False).data
+            _f_token = f"{json.loads(_r_ftoken)['token']}"
+        except HTTPError as e:
+            HTTPErrorsMessageException(e)
+            sys.exit(1)
+        except JSONDecodeError as e:
+            console.print(":no_entry: [bold red]Couldn't load data connection. Try again![/]: " +\
+                        e.__str__(), emoji=True, new_line_start=True)
+            sys.exit(1)
+    
+        with open(self._sdx_dc_path, 'w') as file:
+            file.write(f'{cookie_sdx};{_f_token};{_f_search}')
+            file.close()
+
+        return cookie_sdx, _f_token, _f_search
+        
+    def _load_data_connection(self) -> str:
+        """ Load stored sdx data connection return empty string if not exists or expired"""
+        if not self._exp_data_connection():
+            with open(self._sdx_dc_path, 'r') as filecookie:
+                sdx_data_connection = filecookie.read()
+        else:
+            return f""
+
+        return sdx_data_connection
+    
+    def reset_data_connection(self) -> None:
+        """ Reset connection data """
+        with open(self._sdx_dc_path, 'w') as file:
+            file.write(f'')
+            file.close()
+    
+conn_data = DataConnection()
+headers['Cookie'] = conn_data.cookie
 
 #### sdxlib utils ####
 def extract_meta_data(search:str, kword:str, is_file:bool=False) -> Metadata:
@@ -198,8 +205,7 @@ def extract_meta_data(search:str, kword:str, is_file:bool=False) -> Metadata:
     
     if ( all(x is None for x in extracted_kwords.values()) ):
         keywords = [x for x in f'{kword}'.split()[:4]] if kword else []
-        quality, codec, audio = [], [], []
-        return Metadata(keywords, quality, codec, audio, bool(keywords))
+        return Metadata(keywords, [], [], [], bool(keywords))
 
     words = f""
 
@@ -353,7 +359,7 @@ def match_text(title:str, number:str, inf_sub:Dict[str, Any], text:str):
 
   return match_type 
 
-def get_filtered_results (title:str, number:str, inf_sub:Dict[str, Any], list_Subs_Dicts:list[Dict[str,Any]]):
+def get_filtered_results (title:str, number:str, inf_sub:Dict[str, Any], list_Subs_Dicts:list[Dict[str, Any]]) -> list[Dict[str, Any]]:
     """Filter subtitles search for the best match results"""
     
     filtered_results = listDict([])
@@ -410,12 +416,12 @@ def get_filtered_results (title:str, number:str, inf_sub:Dict[str, Any], list_Su
 
 ### Filters searchs functions ###
 
-def clean_screen():
+def clean_screen() -> None:
     """Clean the screen"""
     os.system('clear' if os.name != 'nt' else 'cls')
 
 @typing.no_type_check
-def highlight_text(text:str, metadata:Metadata=metadata):
+def highlight_text(text:str, metadata:Metadata=metadata) -> str:
     """Highlight all `text`  matches  `metadata`"""
     
     # make a list of keywords and escaped it. Sort list for efficiency
@@ -454,7 +460,7 @@ def convert_datetime(string_datetime:str):
     
     return date_time_str
 
-def convert_date(list_dict_subs:list[Dict[str,Any]]) -> list[Dict[str,Any]]:
+def convert_date(list_dict_subs:list[Dict[str, Any]]) -> list[Dict[str, Any]]:
     """   
     Convert to datetime Items ``fecha_subida``.
     """
@@ -467,9 +473,12 @@ def get_aadata(search:str) -> Any:
     """Get a json data with the ``search`` results."""
     json_aaData:Any = ''
     try:
-        retries = urllib3.util.Retry(total=3, backoff_factor=1)
-        fields:Dict[str, Any]={'buscar'+ _f_search: search, 'filtros': '', 'tabla': 'resultados', 'token': _f_token}
-        page = s.request(
+        retries = urllib3.util.Retry(total=2, backoff_factor=1)
+        fields:Dict[str, Any] = {'buscar' + conn_data.search: search,
+        'filtros': '', 'tabla': 'resultados', 'token': conn_data.token
+        }
+        
+        page = conn.request(
             'POST',
             SUBDIVX_SEARCH_URL,
             headers=headers,
@@ -480,15 +489,16 @@ def get_aadata(search:str) -> Any:
         if not page :
             if not args.quiet: console.clear()
             console.print(":no_entry: [bold red]Couldn't load results page. Try later![/]", emoji=True, new_line_start=True)
+            conn_data.reset_data_connection()
             logger.debug('Could not load results page')
             sys.exit(1)
         else :
             json_aaData = json.loads(page)
             if json_aaData['sEcho'] == "0":
                 site_msg = str(json.loads(page)['mensaje'])
-                logger.debug(f'Site messsage: {site_msg}')
+                logger.debug(f'Site message: {site_msg}')
                 backoff_delay(backoff_factor=1.5)
-                page = s.request('POST', SUBDIVX_SEARCH_URL, headers=headers, fields=fields, retries=retries).data
+                page = conn.request('POST', SUBDIVX_SEARCH_URL, headers=headers, fields=fields, retries=retries).data
                 
                 if page:
                     json_aaData = json.loads(page)
@@ -555,11 +565,11 @@ def get_comments_data(subid:str):
 
     fields={'getComentarios': subid}
     try:
-        page = s.request('POST', SUBDIVX_SEARCH_URL, fields=fields, headers=headers).data
+        page = conn.request('POST', SUBDIVX_SEARCH_URL, fields=fields, headers=headers).data
         json_comments = json.loads(page)
 
     except HTTPError as e:
-        msg = Network_Connection_Error(e)
+        msg = e.__str__().split(":", maxsplit=1)[1].split("(")[0]
         logger.debug(f'Could not load comments ID:{subid}: Network Connection Error:"{msg}"')
         return None
 
@@ -569,7 +579,7 @@ def get_comments_data(subid:str):
 
     return json_comments
 
-def parse_list_comments(list_dict_comments:listDict):
+def parse_list_comments(list_dict_comments:listDict) -> listDict:
     """ Parse comments :
        * Remove not used Items
        * Convert to datetime Items ``fecha_creacion``.
@@ -709,7 +719,7 @@ def paginate(items:list[Any], per_page:int) -> Dict[str, Any]:
     }
     return results
 
-def get_rows():
+def get_rows() -> int:
     """Get Terminal available rows"""
     lines = shutil.get_terminal_size().lines
     fixed_lines = lines - 10
@@ -720,7 +730,7 @@ def get_rows():
 
     return available_lines
 
-def get_comments_rows():
+def get_comments_rows() -> int:
     """Get Terminal available rows for comments"""
     lines = shutil.get_terminal_size().lines
     fixed_lines = lines - 20
@@ -886,10 +896,28 @@ def get_selected_subtitle_id(table_title:str, results:list[Dict[str,Any]], metad
 
 ### Extract Subtitles ###
 @typing.no_type_check
-def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
+def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str) -> None:
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
+    # For portable Windows EXE
+    if sys.platform == "win32":
+        import rarfile #type: ignore
 
-    def _is_supported(sub:RarInfo | ZipInfo):
+        @typing.no_type_check
+        def resource_path(relative_path:str) -> str:
+            """ Get absolute path to resource, works for dev and for PyInstaller """
+            base_path:str = ""
+            try:
+                # PyInstaller creates a temp folder and stores path in _MEIPASS
+                if hasattr(sys, '_MEIPASS'):
+                    base_path = sys._MEIPASS
+            except Exception:
+                base_path = os.path.abspath(".")
+            
+            return os.path.join(base_path, relative_path)
+            
+        rarfile.UNRAR_TOOL = resource_path("UnRAR.exe")
+
+    def _is_supported(sub:RarInfo | ZipInfo) -> bool:
         filename = f'{os.path.basename(str(sub.filename))}'
         return any(filename.endswith(ext) for ext in sub_extensions) and '__MACOSX' not in filename
 
@@ -898,7 +926,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
         return any(filename.endswith(ext) for ext in _compressed_extensions)
     
     @typing.no_type_check
-    def _uncompress(source:Any, topath:str):
+    def _uncompress(source:Any, topath:str) -> None:
         """Decompress compressed file"""
         compressed = RarFile(source) if is_rarfile(source) else ZipFile(source) if is_zipfile(source) else None
         if compressed:
@@ -921,7 +949,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str):
         list_sub:list[str] = []
 
         for i in compressed_sub_file.infolist():
-            if i.is_dir() or os.path.basename(i.filename).startswith("._"):# type: ignore
+            if i.is_dir() or os.path.basename(i.filename).startswith("._"): # type: ignore
                 continue
             i.filename = os.path.basename(i.filename)
             list_sub.append(f'{i.filename}')
@@ -1057,7 +1085,7 @@ def get_imdb_search(title:str, number:str, inf_sub:Dict[str, Any]):
         if inf_sub['type'] == "movie":
             return search
         else:
-            return f'{search} {number}' if search is not None else None
+            return f'{search} {number}' if search else None
 
 def make_IMDB_table(title:str, results:list[Any], type:str):
     """Define a IMDB Table."""
