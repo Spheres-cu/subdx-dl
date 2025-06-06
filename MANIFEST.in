@@ -1,3 +1,4 @@
 include *.md
 include LICENSE
 include sdx_dl/py.typed
+include sdx_dl/language/*.json
