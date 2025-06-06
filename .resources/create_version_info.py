@@ -1,5 +1,4 @@
 import importlib.metadata
-from sdx_dl import __version__
 from pathlib import Path
 
 def create_version_info(package_name:str="subdx-dl", github_username:str="Spheres-cu", output_file:str="version.txt"):
@@ -13,7 +12,7 @@ def create_version_info(package_name:str="subdx-dl", github_username:str="Sphere
     """
     try:
         # Get package version
-        version = __version__
+        version = importlib.metadata.version(package_name)
         
         # Split version into components
         version_parts = version.split('.')
