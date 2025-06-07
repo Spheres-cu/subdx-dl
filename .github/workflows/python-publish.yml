@@ -175,6 +175,7 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
+  
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.0.0
       with:
@@ -192,21 +193,28 @@ jobs:
         gh release upload
         '${{ github.ref_name }}' dist/**
         --repo '${{ github.repository }}'
+    
+    - name: Checkout code
+      uses: actions/checkout@v4
+
     - name: Download Windows x64 Executable
       uses: actions/download-artifact@v4
       with:
         name: win-x64-executable
-        path: dist/
+        path: dist/subdx-dl.exe
+
     - name: Download Windows x86 Executable
       uses: actions/download-artifact@v4
       with:
         name: win-x86-executable
-        path: dist/
+        path: dist/subdx-dl_x86.exe
+
     - name: Download Linux Executable
       uses: actions/download-artifact@v4
       with:
         name: linux-executable
-        path: dist/
+        path: dist/subdx-dl
+
     - name: Generate SHA-256 SUMS
       shell: bash
       run: |
@@ -216,6 +224,7 @@ jobs:
             sha256sum "$f" >> SHA_256_SUMS.txt
           fi
         done
+
     - name: Upload artifact signatures to GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
