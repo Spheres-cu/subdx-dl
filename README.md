@@ -1,5 +1,12 @@
 # Subdx-dl
 
+![en readme](https://img.shields.io/badge/readme-en-red?logo=readme&logoColor=red&label=readme&link=https://github.com/Spheres-cu/subdx-dl#subdx-dl)
+![es readme](https://img.shields.io/badge/readme-es-brightgreen?logo=readme&logoColor=brightgreen&label=readme&link=https://github.com/Spheres-cu/subdx-dl/blob/main/README.es.md#subdx-dl)
+
+![PyPI - Downloads](https://img.shields.io/pypi/dm/subdx-dl?logo=pypi&label=downloads&link=https%3A%2F%2Fpypistats.org%2Fpackages%2Fsubdx-dl)
+![GitHub Downloads (latest release windows portable)](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl.exe?logo=artifacthub&label=downloads&link=https%3A%2F%2Fgithub.com%2FSpheres-cu%2Fsubdx-dl%2Freleases%2Flatest)
+![GitHub Downloads (latest release linux binario)](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl?logo=linux&label=downloads&link=https%3A%2F%2Fgithub.com%2FSpheres-cu%2Fsubdx-dl%2Freleases%2Flatest)
+
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/subdx-dl?link=https%3A%2F%2Fpypistats.org%2Fpackages%2Fsubdx-dl)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl)
 ![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl)
@@ -14,6 +21,10 @@ A cli tool for download subtitle from [www.subdivx.com](https://www.subdivx.com)
 ```bash
 pip install -U subdx-dl
 ```
+
+### Portable Version
+
+You can download the portable version for Windows x64 (subdx-dl.exe) and x86 (subdx-dl_x86.exe), as well as the binary for Linux (subdx-dl) from: [release](https://github.com/Spheres-cu/subdx-dl/releases/latest)
 
 ### Special case installing on Termux (Android) for first time
 
@@ -66,7 +77,8 @@ _optional arguments_:
   --force, -f           override existing file
   --no-choose, -nc      No Choose sub manually
   --no-filter, -nf      Do not filter search results
-  --nlines [], -nl []   Show nl(5,10,15,20) availables records per screen. Default 10 records.
+  --nlines [], -nl []   Show nl(5,10,15,20) availables records per screen. Default 10 records
+  --lang [], -l []      Show messages in language es or en
   --version, -V         Show program version
   --check-version, -cv  Check for new version
 
@@ -138,7 +150,7 @@ sdx-dl -i "Duna S1E3"
 
 ## Config options
 
-With config file arguments you can save some options for use any time, thats options are: quiet, verbose, force, no_choose, no_filter, nlines, path, proxy, Season, imdb.
+With config file arguments you can save some options for use any time, thats options are: quiet, verbose, force, no_choose, no_filter, nlines, path, proxy, Season, imdb, lang.
 
 The arguments for settings this options are:
 
