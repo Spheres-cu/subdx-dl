@@ -12,6 +12,7 @@ from rarfile import RarFile, is_rarfile # type: ignore
 from zipfile import ZipFile, is_zipfile
 from sdx_dl.sdxparser import args, logger
 from sdx_dl.sdxconsole import console
+from sdx_dl.sdxlocale import gl
 from typing import Dict, Any
 from sdx_dl.sdxutils import extract_subtitles # type: ignore
 from sdx_dl.sdxutils import (get_imdb_search, get_aadata, convert_date, get_filtered_results, sort_results, get_selected_subtitle_id,
@@ -39,7 +40,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any], metadata: Met
     
     if args.imdb:
         if not args.quiet:
-            console.print(":earth_americas: [bold yellow]Searching in IMDB ... " +  f"{title} {number}", new_line_start=True, emoji=True) 
+            console.print(":earth_americas: [bold yellow]" + gl("Searching_IMDB") +  f"{title} {number}", new_line_start=True, emoji=True) 
         logger.debug(f'Searching in IMDB: {str(title + " " + number)}')
         search = get_imdb_search(title, number, inf_sub)
         buscar = search
@@ -50,7 +51,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any], metadata: Met
         if not args.quiet:
             clean_screen()
             imdb_search = buscar if buscar is not None else "Ninguno"
-            console.print(":information_source: [bold yellow] Search terms from IMDB: " + imdb_search, new_line_start=True, emoji=True)
+            console.print(":information_source: [bold yellow] " + gl("Search_terms_from_IMDB") + "[/]" + imdb_search, new_line_start=True, emoji=True)
             time.sleep(0.5)
 
     if buscar is None : buscar = f"{title} {number}".strip()
@@ -58,12 +59,12 @@ def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any], metadata: Met
     if not args.quiet:console.print("\r")
     logger.debug(f'Searching subtitles for: ' + str(title) + " " + str(number).upper())
     
-    with console.status(f'Searching subtitles for: ' + str(title) + " " + str(number).upper()) as status:
+    with console.status(gl("Searching_subtitles_for") + str(title) + " " + str(number).upper()) as status:
         status.start() if not args.quiet else status.stop()
         json_aaData = get_aadata(buscar)
  
     if json_aaData["iTotalRecords"] == 0 :
-        if not args.quiet: console.print(":no_entry:[bold red] Not subtitles records found for:[yellow]" + buscar +"[/]")
+        if not args.quiet: console.print(":no_entry: [bold red]" + gl("Not_subtitles_records_found_for") + "[/]" + "[yellow]" + buscar +"[/]")
         logger.debug(f'Not subtitles records found for: "{buscar}"')
         return res
     else:
@@ -75,7 +76,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any], metadata: Met
     if aaData_Items is not None:
         list_Subs_Dicts = convert_date(aaData_Items)
     else:
-        if not args.quiet: console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
+        if not args.quiet: console.print(":no_entry: [bold red] " + gl("No_suitable_data_were_found_for") + "[yellow]" + buscar +"[/]")
         logger.debug(f'No suitable data were found for: "{buscar}"')
         return res
     
@@ -88,7 +89,7 @@ def get_subtitle_id(title:str, number:str, inf_sub:Dict[str, Any], metadata: Met
         filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)
 
     if not filtered_list_Subs_Dicts:
-        if not args.quiet: console.print(":no_entry:[bold red] No suitable data were found for:[yellow]" + buscar +"[/]")
+        if not args.quiet: console.print(":no_entry: [bold red]" + gl("No_suitable_data_were_found_for") +  "[yellow]" + buscar +"[/]")
         logger.debug(f'No suitable data were found for: "{buscar}"')
         return res
     
@@ -121,7 +122,7 @@ def get_subtitle(subid:str, topath:str):
     temp_file = NamedTemporaryFile(delete=False)
 
     # get direct download link
-    if not args.quiet: console.print("\u2193 Downloading Subtitle...",emoji=True,new_line_start=True)
+    if not args.quiet: console.print(gl("Downloading_Subtitle"), emoji=True,new_line_start=True)
     logger.debug(f"Trying Download from link: {url}")
     try:
         download_url = conn.request('GET', url, headers=headers)
@@ -146,14 +147,15 @@ def get_subtitle(subid:str, topath:str):
                 temp_dir = tempfile.gettempdir()
                 shutil.copyfile(os.path.join(temp_dir, temp_file.name), os.path.join(topath, f'{subid}.rar')) 
 
-                console.print(":warning: [bold red] Cannot find working tool:[bold yellow] please install rar decompressor tool like: unrar (preferred), unar, 7zip or bsdtar\n\r" \
-                            "Subtitle file will do not decompress[/]", emoji=True, new_line_start=True)
+                console.print(":warning: [bold red] " + gl("Cannot_find_a_working_tool") + "[bold yellow] " + gl("Install_rar")\
+                            + "[/]", emoji=True, new_line_start=True)
                 logger.debug(f"Cannot find a working tool, please install rar decompressor tool")
+                logger.debug(f"File downloaded to: {os.path.join(topath, f'{subid}.rar')}")
     else:
         temp_file.close()
         os.unlink(temp_file.name)
         logger.error(f'No suitable subtitle download for : "{url}"')
-        if not args.quiet: console.print(":cross_mark: [bold red]No suitable subtitle to download[/]",emoji=True, new_line_start=True)
+        if not args.quiet: console.print(":cross_mark: [bold red]" + gl("No_suitable_subtitle_to_download") + "[/]",emoji=True, new_line_start=True)
         sys.exit(1)
         time.sleep(2)
             
