@@ -2,6 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from sdx_dl.sdxconsole import console
+from sdx_dl.sdxlocale import gl, set_locale
 
 ### Config Settings imports ###
 import os
@@ -267,7 +268,6 @@ class GenerateUserAgent:
             browser = random.choice([GenerateUserAgent.firefox(), GenerateUserAgent.chrome(), GenerateUserAgent.opera()])
             return random.choice(browser)
 
-
 ### validate proxy settings ###
 
 def validate_proxy(proxy_str:str) -> bool:
@@ -304,7 +304,7 @@ def ExceptionErrorMessage(e: Exception):
     else:
         msg = e.__str__()
     error_class = e.__class__.__name__
-    console.print("Error occurred: " + error_class + ":" + msg)
+    console.print(gl("Error_occurred") + error_class + ":" + msg)
     sys.exit(1)
 
 def _check_version(version:str, proxy:str):
@@ -339,7 +339,7 @@ def _check_version(version:str, proxy:str):
             description = description + text + "\n"
         
         return description
-
+    
     try:
         _page_version = f"https://raw.githubusercontent.com/Spheres-cu/subdx-dl/refs/heads/main/sdx_dl/__init__.py"
         _dt_version = session.request('GET', _page_version).data.decode()
@@ -347,12 +347,12 @@ def _check_version(version:str, proxy:str):
 
         if _g_version > version:
 
-            msg = "\nNew version available! -> " + _g_version + ":\n\n"\
-                   + get_version_description(_g_version) + "\n"\
-                  "Please update your current version: " + version +"\r\n"        
+            msg = gl("New_version_available") + _g_version + ":\n\n"\
+                + get_version_description(_g_version) + "\n"\
+                + gl("Please_update_your_current_version") + version +"\r\n"        
         else:
-            msg = "\nNo new version available\n"\
-                  "Current version: " + version + "\r\n"
+            msg = gl("No_new_version_available") +\
+                  gl("Current_version") + version + "\r\n"
 
     except (HTTPError, Exception) as e:
         ExceptionErrorMessage(e)
@@ -504,7 +504,7 @@ class ConfigManager:
                 self.config = {}
         except (json.JSONDecodeError, IOError) as e:
             pass
-            console.print(":no_entry:[bold red] Failed to load configuration: [/]" + f'{e.__class__.__name__}\n',
+            console.print(":no_entry:[bold red] " + gl("Failed_to_load_configuration") + "[/]" + f'{e.__class__.__name__}\n',
                     emoji=True, new_line_start=True)
             self._save_config()
             sys.exit(1)
@@ -519,7 +519,7 @@ class ConfigManager:
                 json.dump(self.config, f, indent=4)
         except IOError as e:
             pass
-            console.print(":no_entry:[bold red] Failed to save configuration: [/]" + f'{e.__class__.__name__}\n',
+            console.print(":no_entry:[bold red] " + gl("Failed_to_save_configuration") + "[/]" + f'{e.__class__.__name__}\n',
                     emoji=True, new_line_start=True)
             sys.exit(1)
 
@@ -656,10 +656,10 @@ class ViewConfigAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None): 
         config = ConfigManager()
         if config.exists:
-            print("Config file:", f'{config.get_path()}')
-            config.print_config() if config.hasconfig else print("Config is empty!")
+            console.print("[bold yellow]" + gl("Config_file") + "[/]", f'{config.get_path()}')
+            config.print_config() if config.hasconfig else console.print(":no_entry: [bold red]" + gl("Config_is_empty") + "[/]")
         else:
-            print("Not exists config file")
+            console.print(":no_entry: [bold red]" + gl("Not_exists_a_config_file") + "[/]")
         sys.exit(0)
 
 class SaveConfigAction(argparse.Action):
@@ -670,11 +670,11 @@ class SaveConfigAction(argparse.Action):
    
     @typing.no_type_check
     def __call__(self, parser, namespace, values, option_string=None): 
-        allowed_values = ["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb"]
+        allowed_values = ["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb", "lang"]
         copied_config = namespace.__dict__.copy()
 
         if all(not copied_config[k] for k in copied_config.keys()):
-            console.print(":no_entry: Nothing to save...")
+            console.print(":no_entry:[bold yellow]" + gl("Nothing_to_save") + "[/]")
             sys.exit(0)
   
         for k in namespace.__dict__.keys():
@@ -683,7 +683,7 @@ class SaveConfigAction(argparse.Action):
         config = ConfigManager()
 
         config.update(config.merge_config(copied_config)) if config.hasconfig else config.save_all(copied_config)
-        if not copied_config['quiet']: console.print(":heavy_check_mark:  Config was saved!")
+        if not copied_config['quiet']: console.print(":heavy_check_mark: " + gl("Config_was_saved"))
         
         if not getattr(namespace, "search"):
             sys.exit(0)
@@ -698,7 +698,7 @@ class SetConfigAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string = None): 
 
         if not values:
-            console.print(":no_entry: Not a valid option: ", self.choices)
+            console.print(":no_entry:[bold red]  " + gl("Not_a_valid_option") + "[/]", self.choices)
             sys.exit(1)
         
         key, value = f'', None
@@ -711,16 +711,20 @@ class SetConfigAction(argparse.Action):
             if os.path.isdir(path) and os.access(path, os.W_OK):
                 key, value = f'{values}', path
             else:
-                console.print(":no_entry:[bold red] Directory:[yellow] " + path + "[bold red] do not exists or don't have access[/]")
+                console.print(":no_entry:[bold red]" + gl("Directory") + "[/]" + ":[yellow] " + path + "[bold red] "\
+                            + gl("Directory_not_exists") + "[/]")
         elif values == "proxy":
             proxy = _get_remain_arg("proxy")
             if validate_proxy(proxy):
                 key, value = f'{values}', proxy
             else:
-                console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + proxy + "[/]")
+                console.print(":no_entry:[bold red] " + gl("Incorrect_proxy_setting").split('.')[0] + ":[yellow] " + proxy + "[/]")
         elif values == "nlines":
             lines = _get_remain_arg("nlines") 
             key, value = f'{values}', int(lines) if lines.isnumeric() and int(lines) in range(5,25,5) else 10
+        elif values == "lang":
+            language = _get_remain_arg("lang") 
+            key, value = f'{values}', language if language in ["es", "en"] else "es"
         
         if not value:
             sys.exit(1)
@@ -730,7 +734,7 @@ class SetConfigAction(argparse.Action):
         else:
             config.update({key: value})
         
-        console.print("\u2713 Done!")
+        console.print(gl("Done"))
         sys.exit(0)
 
 class ResetConfigAction(argparse.Action):
@@ -743,24 +747,21 @@ class ResetConfigAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string = None):
 
         if not values:
-            console.print(":no_entry: Not a valid option: ", self.choices)
+            console.print(":no_entry:[bold red]  " + gl("Not_a_valid_option") + "[/]", self.choices)
             sys.exit(1)
-        
-        key, value = f'', None
+
         config = ConfigManager()
 
-        if values in ["quiet", "verbose", "force", "no_choose", "no_filter", "Season", "imdb"]:
-            key, value = f'{values}', bool(False)
-        elif values in ["path", "proxy", "nlines"]:
-            key, value = f'{values}', None
+        if values in ["quiet", "verbose", "force", "no_choose", "no_filter", "Season", "imdb", "path", "proxy", "nlines", "lang"]:
+            config.delete(values)
         
-        if config.hasconfig:
-            config.set(key, value)
-        else:
-            config.update({key: value})
-        
-        console.print("\u2713 Done!")
+        console.print(gl("Done"))
         sys.exit(0)
+
+# Setting config language
+config = ConfigManager()
+if config.hasconfig and 'lang' in config.config:
+    set_locale(config.config['lang'])
 
 ### Findfiles class ###
 extension_pattern = '(\\.[a-zA-Z0-9]+)$'
