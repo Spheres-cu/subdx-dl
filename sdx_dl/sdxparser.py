@@ -7,6 +7,7 @@ import tempfile
 import argparse
 import logging
 from sdx_dl.sdxconsole import console
+from sdx_dl.sdxlocale import set_locale, gl
 from sdx_dl.sdxclasses import ChkVersionAction, ConfigManager, ViewConfigAction, SaveConfigAction, SetConfigAction, ResetConfigAction, validate_proxy
 from importlib.metadata import version
 from rich.logging import RichHandler
@@ -33,6 +34,8 @@ def create_parser():
     parser.add_argument('--no-filter', '-nf', action='store_true',default=False, help="Do not filter search results")
     parser.add_argument('--nlines', '-nl', type=int, choices=[5, 10, 15, 20], default=False, nargs='?', const=10,
                         help="Show nl(5,10,15,20) availables records per screen. Default 10 records.", metavar="")
+    parser.add_argument('--lang', '-l', type=str, choices=["es", "en"], default=False, nargs='?', const="es",
+                         help="Show messages in language es or en", metavar="")
     parser.add_argument('--version', '-V', action='version', version=f'subdx-dl {version("subdx-dl")}', help="Show program version")
     parser.add_argument('--check-version', '-cv', action=ChkVersionAction, help="Check for new version")
                         
@@ -56,11 +59,11 @@ def create_parser():
     
     config_opts.add_argument('--config', '-c',
                             action=SetConfigAction,
-                            choices=["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb"],
+                            choices=["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb", "lang"],
                             nargs='?',metavar="o",help="Save an option[o] to config file")
     config_opts.add_argument('--reset', '-r',
                             action=ResetConfigAction,
-                            choices=["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb"],
+                            choices=["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb", "lang"],
                             metavar="o",help="Reset an option[o] in the config file")
  
     return parser
@@ -110,12 +113,19 @@ create_logger(verbose=args.verbose)
 if args.load_config:
      logger.debug("Config loaded!")
 
+if args.lang:
+    set_locale(args.lang)
+else:
+    config = ConfigManager()
+    if config.hasconfig and 'lang' in config.config:
+        set_locale(config.config['lang'])
+
 if args.path:
     if not (os.path.isdir(args.path) and os.access(args.path, os.W_OK)):
         if args.quiet:
             logger.debug(f'Directory {args.path} do not exists')
         else:
-            console.print(":no_entry:[bold red] Directory:[yellow] " + args.path + "[bold red] do not exists or don't have access[/]",
+            console.print(":no_entry:[bold red] " + gl("Directory") + "[/]" + f"{args.path}" + "[bold red] " + gl("Directory_not_exists") + "[/]",
                         new_line_start=True, emoji=True) 
         sys.exit(1)
 
@@ -123,6 +133,6 @@ if (args.proxy and not validate_proxy(args.proxy)):
     if args.quiet:
         logger.debug(f'Incorrect proxy setting. Only http, https or IP/domain:PORT is accepted')
     else:
-        console.print(":no_entry:[bold red] Incorrect proxy setting:[yellow] " + args.proxy + "[/]",
+        console.print(":no_entry:[bold red] " + gl("Incorrect_proxy_setting").split('.')[0] + ":[yellow] " + f"{args.proxy}" + "[/]",
                     new_line_start=True, emoji=True)
     sys.exit(1)
