@@ -55,9 +55,12 @@ Homepage = 'https://github.com/Spheres-cu/subdx-dl'
 Issues = 'https://github.com/Spheres-cu/subdx-dl/issues'
 Examples = 'https://github.com/Spheres-cu/subdx-dl#examples'
 
-[tool.setuptools]
-packages = ['sdx_dl']
-include-package-data = true
+[tool.setuptools.packages.find]
+where = ['.']
+include = ['sdx_dl*']
+
+[tool.setuptools.package-data]
+'sdx_dl' = ['language/*.json']
 
 [project.scripts]
 sdx-dl = 'sdx_dl:cli.main'
