@@ -62,7 +62,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install setuptools wheel
           pip install pyinstaller
+      - name: Download wheel distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Install wheel distribution
+        run: |
+          pip install dist/*.whl
       - name: Setup UPX
         uses: crazy-max/ghaction-upx@v3
         with:
@@ -92,7 +101,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install setuptools wheel
           pip install pyinstaller
+      - name: Download wheel distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Install wheel distribution
+        run: |
+          pip install dist/*.whl
       - name: Setup UPX
         uses: crazy-max/ghaction-upx@v3
         with:
@@ -123,7 +141,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install setuptools wheel
           pip install pyinstaller
+      - name: Download wheel distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Install wheel distribution
+        run: |
+          pip install dist/*.whl
       - name: Build with PyInstaller (Linux)
         run: |
           pyinstaller --noconfirm --clean subdx-dl.spec
