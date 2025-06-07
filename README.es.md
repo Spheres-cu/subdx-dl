@@ -3,13 +3,14 @@
 [![en readme](https://img.shields.io/badge/readme-en-red?logo=readme&logoColor=red&label=readme)](https://github.com/Spheres-cu/subdx-dl#subdx-dl)
 [![es readme](https://img.shields.io/badge/readme-es-brightgreen?logo=readme&logoColor=brightgreen&label=readme)](https://github.com/Spheres-cu/subdx-dl/blob/main/README.es.md#subdx-dl)
 
-[![GitHub Downloads (latest release windows portable)](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl.exe?logo=artifacthub&label=descargas)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
-[![GitHub Downloads (latest release linux binario)](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl?logo=linux&label=descargas)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
-[![PyPI - Downloads](https://img.shields.io/pypi/dm/subdx-dl?logo=pypi&label=descargas)](https://pypistats.org/packages/subdx-dl)
+![GitHub Downloads](https://img.shields.io/badge/descargas-green?logo=github&logoColor=1f1f23&labelColor=fbfbfb&color=brightblue)
+[![latest release windows portable](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl.exe?logo=artifacthub&logoColor=brightblue&label=%20&labelColor=fbfbfb)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
+[![latest release linux binario](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl?logo=linux&logoColor=1f1f23&label=%20&labelColor=fbfbfb)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/subdx-dl?logo=pypi&logoColor=1f1f23&labelColor=fbfbfb&label=%20)](https://pypistats.org/packages/subdx-dl)
 
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl)
-![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl)
-![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl?logo=python&logoSize=auto&label=%20&labelColor=1f1f23)
+![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl?logo=github&logoSize=auto&label=%20&labelColor=1f1f23)
+![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl?logo=pypi&logoSize=auto&label=%20&labelColor=1f1f23)
 ![GitHub License](https://img.shields.io/github/license/Spheres-cu/subdx-dl)
 ![GitHub Repo stars](https://img.shields.io/github/stars/Spheres-cu/subdx-dl)
 
