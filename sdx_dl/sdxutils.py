@@ -25,7 +25,9 @@ from typing import Dict, Any, NamedTuple, NewType
 from itertools import chain
 from datetime import datetime, timedelta
 from readchar import readkey, key
-from .sdxconsole import console
+from sdx_dl.sdxconsole import console
+from sdx_dl.sdxlocale import gl
+
 from rich import box
 from rich.layout import Layout
 from rich.console import Group
@@ -70,6 +72,10 @@ listDict = NewType('listDict', list[Dict[str,Any]])
 
 signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
 
+def clean_screen() -> None:
+    """Clean the screen"""
+    os.system('clear' if os.name != 'nt' else 'cls')
+
 # Configure connections
 ua = GenerateUserAgent.random_browser()
 headers={"user-agent" : ua}
@@ -88,13 +94,13 @@ def HTTPErrorsMessageException(e: HTTPError) -> None:
         * Log HTTP Network connection Error message
         * Print HTTP Network connection error message.
     """
-    msg_err = e.__str__().split(":", maxsplit=1)[1].split("(")[0]
-    error_class = e.__class__.__name__
-    msg = f'{error_class}:{msg_err}'
+    error_class = e.__cause__.__class__.__name__
+    error_msg = gl(error_class)
+    msg = "[bold yellow]" + error_class + ":[/] " + error_msg if error_class != error_msg else error_class
 
     if not args.quiet:clean_screen()
-    console.print(":no_entry: [bold red]Some Network Connection Error occurred[/]: " + msg, new_line_start=True, emoji=True)
-    logger.debug(f'Some Network Connection Error occurred: {msg}')
+    console.print(":no_entry: [bold red]" + gl("Some_Network_Connection_Error_occurred") + "[/]: " + msg, new_line_start=True, emoji=True)
+    logger.debug(f'Some Network Connection Error occurred: {e.__cause__.__str__()}')
 
 ### Setting data connection ###
 class DataConnection:
@@ -159,12 +165,13 @@ class DataConnection:
             _f_tk = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
             _r_ftoken = conn.request('GET', _f_tk, headers={"Cookie":cookie_sdx},preload_content=False).data
             _f_token = f"{json.loads(_r_ftoken)['token']}"
-        except HTTPError as e:
-            HTTPErrorsMessageException(e)
-            sys.exit(1)
-        except JSONDecodeError as e:
-            console.print(":no_entry: [bold red]Couldn't load data connection. Try again![/]: " +\
-                        e.__str__(), emoji=True, new_line_start=True)
+        except Exception as e:
+            if isinstance(e, (HTTPError)):
+                HTTPErrorsMessageException(e)
+            else:
+                msg = e.__str__()
+                console.print(":no_entry: [bold red]" + gl("Could_not_load_data_connection") + "[/]", emoji=True, new_line_start=True)
+                logger.debug(f'Error: {e.__class__.__name__}: {msg}')
             sys.exit(1)
     
         with open(self._sdx_dc_path, 'w') as file:
@@ -416,10 +423,6 @@ def get_filtered_results (title:str, number:str, inf_sub:Dict[str, Any], list_Su
 
 ### Filters searchs functions ###
 
-def clean_screen() -> None:
-    """Clean the screen"""
-    os.system('clear' if os.name != 'nt' else 'cls')
-
 @typing.no_type_check
 def highlight_text(text:str, metadata:Metadata=metadata) -> str:
     """Highlight all `text`  matches  `metadata`"""
@@ -488,7 +491,7 @@ def get_aadata(search:str) -> Any:
 
         if not page :
             if not args.quiet: console.clear()
-            console.print(":no_entry: [bold red]Couldn't load results page. Try later![/]", emoji=True, new_line_start=True)
+            console.print(":no_entry: [bold red]" + gl("Could_not_load_results_page") + "[/]", emoji=True, new_line_start=True)
             conn_data.reset_data_connection()
             logger.debug('Could not load results page')
             sys.exit(1)
@@ -507,27 +510,31 @@ def get_aadata(search:str) -> Any:
                 else:
                     sys.exit(1)
     
-    except HTTPError as e:
-        HTTPErrorsMessageException(e)
+    except Exception as e:
+        if isinstance(e, (HTTPError)):
+            HTTPErrorsMessageException(e)
+        else:
+            msg = e.__str__()
+            logger.debug(f'Error: {e.__class__.__name__}: {msg}')
+            console.print(":no_entry: [bold red]" + gl("Could_not_load_results_page") + "[/]", emoji=True, new_line_start=True)
         sys.exit(1)
-
-    except JSONDecodeError as msg:
-        logger.debug(f'Error JSONDecodeError: "{msg.__str__()}"')
-        console.print(":no_entry: [bold red]Couldn't load results page![/]", emoji=True, new_line_start=True)
     
     return json_aaData
 
 def make_layout() -> Layout:
     """Define the layout."""
+
     layout = Layout(name="results")
 
     layout.split_column(
         Layout(name="table")
     )
+    
     return layout
 
 def make_screen_layout() -> Layout:
     """Define a screen layout."""
+
     layout = Layout(name="screen")
 
     layout.split_column(
@@ -542,6 +549,7 @@ def make_screen_layout() -> Layout:
 
 def make_description_panel(description:str) -> Panel:
     """Define a description Panel."""
+
     descriptions = Table.grid(padding=1)
     descriptions.add_column()
     descriptions.add_row(description)
@@ -567,14 +575,13 @@ def get_comments_data(subid:str):
     try:
         page = conn.request('POST', SUBDIVX_SEARCH_URL, fields=fields, headers=headers).data
         json_comments = json.loads(page)
-
-    except HTTPError as e:
-        msg = e.__str__().split(":", maxsplit=1)[1].split("(")[0]
-        logger.debug(f'Could not load comments ID:{subid}: Network Connection Error:"{msg}"')
-        return None
-
-    except JSONDecodeError as msg:
-        logger.debug(f'Could not load comments ID:{subid}: Error JSONDecodeError:"{msg}"')
+    except Exception as e:
+        if isinstance(e, (HTTPError)):
+            msg = e.__str__().split(":", maxsplit=1)[1].split("(")[0]
+            logger.debug(f'Could not load comments ID:{subid}: Network Connection Error:{msg}')
+        else:
+            msg = e.__str__()
+            logger.debug(f'Could not load comments ID:{subid}: Error: {e.__class__.__name__}: {msg}')
         return None
 
     return json_comments
@@ -968,25 +975,25 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str) -> Non
         
             choices.append(str(count + 1))
             console.print(table)
-            console.print("[bold green]>> [0] Descargar todos\r", new_line_start=True)
-            console.print("[bold red]>> [" + str(count + 1) + "] Cancelar descarga\r", new_line_start=True)
+            console.print("[bold green]>> [0] " + gl("Download_all"), new_line_start=True)
+            console.print("[bold red]>> [" + str(count + 1) + "] " + gl("Cancel_download"), new_line_start=True)
 
             try:
-                res = IntPrompt.ask("[bold yellow]>> Elija un [" + "[bold green]#" + "][bold yellow]. Por defecto:", 
+                res = IntPrompt.ask("[bold yellow]>> " + gl("Choose_a") + "[" + "[bold green]#" + "][bold yellow]." + gl("By_default") , 
                             show_choices=False, show_default=True, choices=choices, default=0)
             except KeyboardInterrupt:
                 logger.debug('Interrupted by user')
                 if not args.quiet:
-                    console.print(":x: [bold red]Interrupto por el usuario...", emoji=True, new_line_start=True)
-                    time.sleep(0.2)
+                    console.print(":x: [bold red]I " + gl("Interrupted_by_user"), emoji=True, new_line_start=True)
+                    time.sleep(0.4)
                     clean_screen()
                 return
         
             if (res == count + 1):
                 logger.debug('Canceled Download Subtitle') 
                 if not args.quiet:
-                    console.print(":x: [bold red] Cancelando descarga...", emoji=True, new_line_start=True)
-                    time.sleep(0.2)
+                    console.print(":x: [bold red] " + gl("Canceled_Download_Subtitle"), emoji=True, new_line_start=True)
+                    time.sleep(0.4)
                     clean_screen()
                 return
 
@@ -1024,7 +1031,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str) -> Non
 
         if not args.quiet:
             clean_screen()
-            console.print("\u2713 Done download subtitles!", emoji=True, new_line_start=True)
+            console.print(gl("Done_download_subtitles"), emoji=True, new_line_start=True)
     else:
         for name in compressed_sub_file.infolist():
             # don't unzip stub __MACOSX folders
@@ -1038,7 +1045,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath:str) -> Non
         compressed_sub_file.close()
 
         logger.debug(f"Done extract subtitle!")
-        if not args.quiet: console.print("\u2713 Done download subtitle!", emoji=True, new_line_start=True)
+        if not args.quiet: console.print(gl("Done_download_subtitle"), emoji=True, new_line_start=True)
 
 ### Search IMDB ###
 
@@ -1055,7 +1062,7 @@ def get_imdb_search(title:str, number:str, inf_sub:Dict[str, Any]):
         year = int(number[1:5]) if (inf_sub['type']  == "movie") and (number != "") else None
 
         if inf_sub['type'] == "movie":
-            res = imdb.get_by_name(title, year, tv=False) if year is not None else imdb.search(title, tv=False) # type: ignore
+            res = imdb.get_by_name(title, year, tv=False) if year else imdb.search(title, tv=False) # type: ignore
         else:
             res = imdb.search(title, tv=True) # type: ignore
     except Exception:
@@ -1063,11 +1070,11 @@ def get_imdb_search(title:str, number:str, inf_sub:Dict[str, Any]):
         return None
     
     try:
-        results = json.loads(res) if year is not None else json.loads(res)['results']
+        results = json.loads(res) if year else json.loads(res)['results']
     except JSONDecodeError as e:
         msg = e.__str__()
         logger.debug(f'Could not decode json results: Error JSONDecodeError:"{msg}"')
-        if not args.quiet: console.print(":no_entry: [bold red]Some error retrieving from IMDB:[/]: " + msg,\
+        if not args.quiet: console.print(":no_entry: [bold red] " + gl("Some_error_retrieving_from_IMDB") + "[/]: " + msg,\
                                         new_line_start=True, emoji=True)
         return None
     
@@ -1077,7 +1084,7 @@ def get_imdb_search(title:str, number:str, inf_sub:Dict[str, Any]):
         if "result_count" in results and not results['results']:
             return None
 
-    if year is not None:
+    if year:
         search = f"{results['id']}" if inf_sub['type'] == "movie" else f"{results['name']} {number}"
         return search
     else:
