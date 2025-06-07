@@ -10,7 +10,7 @@
 
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl?logo=python&logoSize=auto&label=%20&labelColor=1f1f23)
 ![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl?logo=github&logoSize=auto&label=%20&labelColor=1f1f23)
-![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl?logo=pypi&logoSize=auto&label=%20&labelColor=1f1f23)
+[![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl?logo=pypi&logoSize=auto&label=%20&labelColor=1f1f23)](https://pypi.org/project/subdx-dl/)
 ![GitHub License](https://img.shields.io/github/license/Spheres-cu/subdx-dl)
 ![GitHub Repo stars](https://img.shields.io/github/stars/Spheres-cu/subdx-dl)
 
