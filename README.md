@@ -5,8 +5,8 @@
 
 [![GitHub Downloads (latest release windows portable)](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl.exe?logo=artifacthub&label=downloads)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
 [![GitHub Downloads (latest release linux binario)](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl?logo=linux&label=downloads)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
-
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/subdx-dl?logo=pypi&label=downloads)](https://pypistats.org/packages/subdx-dl)
+
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl)
 ![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl)
 ![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl)
