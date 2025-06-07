@@ -12,7 +12,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: "3.x"
+        python-version: "3.10"
     - name: Install pypa/build
       run: >-
         python3 -m
@@ -58,7 +58,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.10"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -77,7 +77,7 @@ jobs:
       - name: Build with PyInstaller (x64)
         run: |
           python -m pip install pyinstaller
-          pyinstaller --noconfirm --clean subdx-dl.spec
+          pyinstaller --noconfirm --clean --upx-dir .resources subdx-dl.spec
       - name: Upload Windows x64 Executable
         uses: actions/upload-artifact@v4
         with:
@@ -86,14 +86,14 @@ jobs:
 
   build-win-x86:
     name: Build Windows x86 Executable
-    runs-on: windows-2019
+    runs-on: windows-latest
     needs: build
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python (32-bit)
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.10"
           architecture: "x86"
       - name: Install dependencies
         run: |
@@ -113,7 +113,7 @@ jobs:
       - name: Build with PyInstaller (x86)
         run: |
           python -m pip install pyinstaller
-          pyinstaller --noconfirm --clean subdx-dl.spec
+          pyinstaller --noconfirm --clean --upx-dir .resources/upx_win32 subdx-dl.spec
       - name: Rename executable
         run: mv dist/subdx-dl.exe dist/subdx-dl_x86.exe
       - name: Upload Windows x86 Executable
