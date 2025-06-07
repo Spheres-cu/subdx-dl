@@ -1,7 +1,7 @@
 # Subdx-dl
 
-[![en readme](https://img.shields.io/badge/readme-en-red?logo=readme&logoColor=red&label=readme)](https://github.com/Spheres-cu/subdx-dl#subdx-dl)
-[![es readme](https://img.shields.io/badge/readme-es-brightgreen?logo=readme&logoColor=brightgreen&label=readme)](https://github.com/Spheres-cu/subdx-dl/blob/main/README.es.md#subdx-dl)
+[![en leeme](https://img.shields.io/badge/readme-en-red?logo=readme&logoColor=red&label=leeme)](https://github.com/Spheres-cu/subdx-dl#subdx-dl)
+[![es leeme](https://img.shields.io/badge/readme-es-brightgreen?logo=readme&logoColor=brightgreen&label=leeme)](https://github.com/Spheres-cu/subdx-dl/blob/main/README.es.md#subdx-dl)
 
 ![GitHub Downloads](https://img.shields.io/badge/descargas-green?logo=github&logoColor=1f1f23&labelColor=fbfbfb&color=brightblue)
 [![latest release windows portable](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl.exe?logo=artifacthub&logoColor=brightblue&label=%20&labelColor=fbfbfb)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
@@ -102,7 +102,7 @@ Config:
 
 ## Ejemplos
 
-_Buscar por una serie de TV por: Título, temporada y episodio ó solo por el nombre:_
+_Buscar una serie de TV por: Título, temporada y episodio ó solo por el nombre:_
 
 ```shell
 sdx-dl "Abbott Elementary S04E01"
@@ -166,18 +166,18 @@ Los argumentos para configurar las opciones son :
 
 ## Consejos
 
-- Siempre trate de buscar con el __Título_ y año o temporada y episodio__ para el caso de las series, obtendrá mejores resultados.
+- Siempre trate de buscar con el _Título_ y año o temporada y episodio_ para el caso de las series, obtendrá mejores resultados.
 
 - Busque usando el nombre del archivo directamente.
   > Buscar de esta forma tiene la ventaja que los resultados se organizaran y filtraran por los metadatos del archivo (ejem.: 1080p, Web, Bluray, DDP5.1., Atmos, PSA, etc.).
 
 - Intente pasar el _ID de IMDB_ de la película o serie.
 
-- Pase las palabras claves (conocidas también como _metadatos_) (```--keyword -k "<kw1 kw2 kw3 ...>"```) del subtítulo específico que está buscando. Separe las palabras claves por espacio.
+- Pase las palabras claves (conocidas también como _metadatos_) (```--kword, -k "<kw1 kw2 kw3 ...>"```) del subtítulo específico que está buscando. Separe las palabras claves por espacio.
 
-- Si no obtiene resultados de la búsqueda de un episodio (ejem.:... S01E02) intente buscar por la temporada completa  con el argumento ``` --Seasson -S ``` .
+- Si no obtiene resultados de la búsqueda de un episodio (ejem.:... S01E02) intente buscar por la temporada completa  con el argumento ``` --Seasson, -S ``` .
 
-- Si no desea filtrar y organizar los resultados de la búsqueda con la mejor coincidencia (no recomendable) y solo quiere que se muestren rápidamente use ``` --no-filter -nf ``` .
+- Si no desea filtrar y organizar los resultados de la búsqueda con la mejor coincidencia (no recomendable) y solo quiere que se muestren rápidamente use ``` --no-filter, -nf ``` .
 
 - A veces la cantidad de resultados que se muestran sobrepasan la capacidad de la pantalla, con  --nlines, -nl puede arreglar esto indicando una cantidad que se ajuste a su pantalla.
 

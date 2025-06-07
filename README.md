@@ -118,7 +118,7 @@ _or search for complete  Season:_
 sdx-dl -S "Abbott Elementary S04E01"
 ```
 
-_Search for a Movie by Title, Year or simple title, even by __IMDB ID__ :_
+_Search for a Movie by Title, Year or simple title, even by _IMDB ID_ :_
 
 ```shell
 sdx-dl "Deadpool and Wolverine 2024"
@@ -134,7 +134,7 @@ _Search by a file reference:_
 sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.mkv
 ```
 
-_Search first for the __IMDB ID__ or  correct tv show __Title__ if don't know they name or it's in another language:_
+_Search first for the _IMDB ID_ or  correct tv show _Title_ if don't know they name or it's in another language:
 
 ```shell
 sdx-dl --imdb "Los Caza fantasmas"
@@ -173,11 +173,11 @@ The arguments for settings this options are:
 
 - Try to pass the _IMDB ID_ of the movie or TV Show.
 
-- Pass keywords (```--keyword -k "<str1 str2 str3 ...>"```) of the subtitle   you are searching for better ordered results.
+- Pass keywords (```--kword, -k "<str1 str2 str3 ...>"```) of the subtitle   you are searching for better ordered results.
 
-- If the search not found any records by a single chapter number (exe. S01E02) try search by the complete Seasson with ``` --Seasson -S ``` parameter.
+- If the search not found any records by a single chapter number (exe. S01E02) try search by the complete Seasson with ``` --Seasson, -S ``` parameter.
 
-- If you don't wanna filter the search results for a better match and, instead,  improved response time use ``` --no-filter -nf ``` argument.
+- If you don't wanna filter the search results for a better match and, instead,  improved response time use ``` --no-filter, -nf ``` argument.
 
 - Sometimes our display is a little tiny and the amount of results don't fix well, a way to fix that is using the  --nlines, -nl argument with an amount of records who fix in the screen size.
 
