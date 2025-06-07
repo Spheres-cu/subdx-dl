@@ -6,6 +6,7 @@ import os
 import sys
 from typing import Dict, Any
 from sdx_dl.sdxconsole import console
+from sdx_dl.sdxlocale import gl
 from sdx_dl.sdxparser import logger, args as parser_args
 from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
 from sdx_dl.sdxutils import sub_extensions, Metadata as Metadata, extract_meta_data
@@ -120,12 +121,13 @@ def main():
                 'number' : f"{number}"
             }
 
-        except (TypeError,Exception) as e:
+        except Exception as e:
             error = e.__class__.__name__
-            logger.debug(f"Failed to parse search argument: {search} {error}: {e}")
-            console.print(f":no_entry: [red]Failed to parse search argument: [yellow]{search}[/]",emoji=True)
-            console.print(f"[red]{error}[/]: {e}",emoji=True)
-            exit(1)
+            msg = e.__str__()
+            logger.debug(f"Failed to parse search argument: {search} {error}: {msg}")
+            console.print(f":no_entry: [bold red]" + gl("Failed_to_parse_search_argument") + "[/] ", search, emoji=True)
+            console.print(f"[red]{error}[/]: {msg}",emoji=True)
+            sys.exit(1)
 
         return title, number, inf_sub
 
@@ -143,7 +145,7 @@ def main():
         if exists_sub:
             logger.debug(f'Subtitle already exits use -f for force downloading')
             if not args.quiet:
-                console.print(":no_entry:[bold red] Subtitle already exits use:[yellow] -f for force downloading[/]", emoji=True)
+                console.print(":no_entry: [bold red]" + gl("Subtitle_already_exists") + "[/]", emoji=True)
         return exists_sub
     
     if not os.path.isdir(args.search):
@@ -179,7 +181,7 @@ def main():
       if not list_files:
             logger.debug(f'Not files to search in: {args.search}')
             if not args.quiet:
-                console.print(":no_entry:[bold red] Not files to search in: [yellow]" + f"{args.search}" + "[/]", emoji=True)
+                console.print(":no_entry:[bold red] " + gl("Not_files_to_search_in") + "[/]", f'{args.search}', emoji=True)
             sys.exit(1)
     
       for filepath in list_files:
