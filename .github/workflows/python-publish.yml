@@ -113,7 +113,7 @@ jobs:
       - name: Build with PyInstaller (x86)
         run: |
           python -m pip install pyinstaller
-          pyinstaller --noconfirm --clean --upx-dir .resources\upx_win32\ subdx-dl.spec
+          pyinstaller --noconfirm --clean --upx-dir subdx-dl.spec
       - name: Rename executable
         run: mv dist/subdx-dl.exe dist/subdx-dl_x86.exe
       - name: Upload Windows x86 Executable
