@@ -132,6 +132,7 @@ jobs:
   
   # This job builds the Linux executable using PyInstaller.
   # It requires the `build` job to be completed first.
+  # It uses a Docker container with manylinux2014 to ensure compatibility.
   
   build-linux:
     name: Build Linux Executable
@@ -139,12 +140,11 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Download wheel distribution
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.10"
-      - name: Install Docker
-        run: sudo apt-get update && sudo apt-get install -y docker.io
+          name: python-package-distributions
+          path: dist/
       - name: Build with PyInstaller in manylinux2014
         run: |
           docker run --rm -v ${{ github.workspace }}:/io quay.io/pypa/manylinux2014_x86_64 bash -c "
