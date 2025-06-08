@@ -169,7 +169,7 @@ Los argumentos para configurar las opciones son :
 - Siempre trate de buscar con el _Título_ y año o temporada y episodio_ para el caso de las series, obtendrá mejores resultados.
 
 - Busque usando el nombre del archivo directamente.
-  > Buscar de esta forma tiene la ventaja que los resultados se organizaran y filtraran por los metadatos del archivo (ejem.: 1080p, Web, Bluray, DDP5.1., Atmos, PSA, etc.).
+  > Buscar de esta forma tiene la ventaja que los resultados se organizarán y filtrarán por los metadatos del archivo (ejem.: 1080p, Web, Bluray, DDP5.1., Atmos, PSA, etc.).
 
 - Intente pasar el _ID de IMDB_ de la película o serie.
 
@@ -181,7 +181,7 @@ Los argumentos para configurar las opciones son :
 
 - A veces la cantidad de resultados que se muestran sobrepasan la capacidad de la pantalla, con  --nlines, -nl puede arreglar esto indicando una cantidad que se ajuste a su pantalla.
 
-- __¡Muy importante!__: Debe tener instalado en su sistema algún programa descompresor de archivos rar ejemplo: [unrar](https://www.rarlab.com/) (preferentemente), [unar](https://theunarchiver.com/command-line), [7zip](https://www.7-zip.org/) ó [bsdtar](https://github.com/libarchive/libarchive). De lo contrario, el archivo de subtítulo no se descomprimirá.
+- __¡Muy importante!__: Debe tener instalado en su sistema algún programa descompresor de archivos rar, ejemplo: [unrar](https://www.rarlab.com/) (preferentemente), [unar](https://theunarchiver.com/command-line), [7zip](https://www.7-zip.org/) ó [bsdtar](https://github.com/libarchive/libarchive). De lo contrario, el archivo de subtítulo no se descomprimirá.
 
 ## Algunas capturas de pantalla
 

@@ -169,7 +169,7 @@ The arguments for settings this options are:
 - Always try to search with __Title, Year or season number__ for better results.
 
 - Search by filename reference.
-  > Search in this way have advantage because the results are filtered and ordered by the metadata of the filename.
+  > Search in this way have advantage because the results are filtered and ordered by the metadata of the filename (e.g.: 1080p, Web, Blu-ray, DDP5.1., Atmos, PSA, etc.).
 
 - Try to pass the _IMDB ID_ of the movie or TV Show.
 
