@@ -81,8 +81,12 @@ jobs:
       - name: Upload Windows x64 Executable
         uses: actions/upload-artifact@v4
         with:
-          name: win-x64-executable
+          name: win-x64-executable-${{ github.job }}
           path: dist/subdx-dl.exe
+          if-no-files-found: error
+      # Display the structure of the dist directory to verify contents
+      - name: Display structure of uploaded files
+        run: ls -R dist/
 
   build-win-x86:
     name: Build Windows x86 Executable
@@ -119,9 +123,16 @@ jobs:
       - name: Upload Windows x86 Executable
         uses: actions/upload-artifact@v4
         with:
-          name: win-x86-executable
+          name: win-x86-executable-${{ github.job }}
           path: dist/subdx-dl_x86.exe
-
+          if-no-files-found: error
+      # Display the structure of the dist directory to verify contents
+      - name: Display structure of uploaded files
+        run: ls -R dist/
+  
+  # This job builds the Linux executable using PyInstaller.
+  # It requires the `build` job to be completed first.
+  
   build-linux:
     name: Build Linux Executable
     runs-on: ubuntu-latest
@@ -151,12 +162,20 @@ jobs:
       - name: Upload Linux Executable
         uses: actions/upload-artifact@v4
         with:
-          name: linux-executable
+          name: linux-executable-${{ github.job }}
           path: dist/subdx-dl
+          if-no-files-found: error
+      # Display the structure of the dist directory to verify contents
+      - name: Display structure of uploaded files
+        run: ls -R dist/  
+
+  # This job signs the Python distribution and executables and uploads it to GitHub Release.
+  # It requires the `publish-to-pypi` job to be completed first.
+  # It also requires the `build-win-x64`, `build-win-x86`, and `build-linux` jobs
 
   github-release:
     name: >-
-      Sign the Python 🐍 distribution 📦 with Sigstore
+      Sign the Python 🐍 distribution 📦 and executables with Sigstore
       and upload them to GitHub Release
     needs:
       - publish-to-pypi
@@ -173,15 +192,21 @@ jobs:
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
-        name: python-package-distributions
+        name: python-package-distributions, win-x64-executable-${{ github.job }}, win-x86-executable-${{ github.job }}, linux-executable-${{ github.job }}
         path: dist/
-  
+        merge-multiple: true
+      # Display the structure of the dist directory to verify contents
+    - name: Display structure of downloaded files
+      run: ls -R dist/
+
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.0.0
       with:
         inputs: >-
           ./dist/*.tar.gz
           ./dist/*.whl
+          ./dist/*.exe
+          ./dist/subdx-dl
 
     - name: Upload artifact signatures to GitHub Release
       env:
@@ -193,40 +218,4 @@ jobs:
         gh release upload
         '${{ github.ref_name }}' dist/**
         --repo '${{ github.repository }}'
-    
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download Windows x64 Executable
-      uses: actions/download-artifact@v4
-      with:
-        name: win-x64-executable
-        path: dist/subdx-dl.exe
-
-    - name: Download Windows x86 Executable
-      uses: actions/download-artifact@v4
-      with:
-        name: win-x86-executable
-        path: dist/subdx-dl_x86.exe
-
-    - name: Download Linux Executable
-      uses: actions/download-artifact@v4
-      with:
-        name: linux-executable
-        path: dist/subdx-dl
-
-    - name: Generate SHA-256 SUMS
-      shell: bash
-      run: |
-        cd dist
-        for f in subdx-dl.exe subdx-dl_x86.exe subdx-dl; do
-          if [ -f "$f" ]; then
-            sha256sum "$f" >> SHA_256_SUMS.txt
-          fi
-        done
-
-    - name: Upload artifact signatures to GitHub Release
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: |
-        gh release upload '${{ github.ref_name }}' dist/** --repo '${{ github.repository }}'
+        --clobber
