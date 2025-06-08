@@ -149,6 +149,8 @@ jobs:
         run: |
           docker run --rm -v ${{ github.workspace }}:/io quay.io/pypa/manylinux2014_x86_64 bash -c "
             cd /io &&
+            export PATH=/opt/python/cp310-cp310/bin:\$PATH &&
+            export LD_LIBRARY_PATH=/opt/python/cp310-cp310/lib &&
             /opt/python/cp310-cp310/bin/pip install wheel pyinstaller &&
             /opt/python/cp310-cp310/bin/pip install dist/*.whl &&
             /opt/python/cp310-cp310/bin/pyinstaller --noconfirm --clean subdx-dl.spec
@@ -198,9 +200,17 @@ jobs:
         inputs: >-
           ./dist/*.tar.gz
           ./dist/*.whl
-          ./dist/*.exe
-          ./dist/subdx-dl
 
+    - name: Generate SHA-256 SUMS for executables
+      shell: bash
+      run: |
+        cd dist
+        for f in subdx-dl.exe subdx-dl_x86.exe subdx-dl; do
+          if [ -f "$f" ]; then
+            sha256sum "$f" >> SHA_256_SUMS.txt
+          fi
+        done
+  
     - name: Upload artifact signatures to GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
