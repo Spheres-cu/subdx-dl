@@ -143,31 +143,24 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      - name: Install dependencies
+      - name: Install Docker
+        run: sudo apt-get update && sudo apt-get install -y docker.io
+      - name: Build with PyInstaller in manylinux2014
         run: |
-          python -m pip install --upgrade pip
-          pip install wheel
-      - name: Download wheel distribution
-        uses: actions/download-artifact@v4
-        with:
-          name: python-package-distributions
-          path: dist/
-      - name: Install wheel distribution
-        run: |
-          pip install dist/*.whl
-      - name: Build with PyInstaller (Linux)
-        run: |
-          pip install pyinstaller
-          pyinstaller --noconfirm --clean subdx-dl.spec
+          docker run --rm -v ${{ github.workspace }}:/io quay.io/pypa/manylinux2014_x86_64 bash -c "
+            cd /io &&
+            /opt/python/cp310-cp310/bin/pip install wheel pyinstaller &&
+            /opt/python/cp310-cp310/bin/pip install dist/*.whl &&
+            /opt/python/cp310-cp310/bin/pyinstaller --noconfirm --clean subdx-dl.spec
+          "
       - name: Upload Linux Executable
         uses: actions/upload-artifact@v4
         with:
           name: linux-executable-${{ github.job }}
           path: dist/subdx-dl
           if-no-files-found: error
-      # Display the structure of the dist directory to verify contents
       - name: Display structure of uploaded files
-        run: ls -R dist/  
+        run: ls -R dist/
 
   # This job signs the Python distribution and executables and uploads it to GitHub Release.
   # It requires the `publish-to-pypi` job to be completed first.
