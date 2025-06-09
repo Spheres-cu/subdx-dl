@@ -33,14 +33,14 @@ Intente poner la versión ejecutable en las variables de entorno **PATH**, aquí
 _En Linux:_
 
 ```bash
-mkdir -p ~/.local/bin && curl -L "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" -o ~/.local/bin/subdx-dl &&\
+mkdir -p ~/.local/bin && curl -L "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" -o ~/.local/bin/subdx-dl && \
 chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 ```
 
 ó
 
 ```bash
-mkdir -p ~/.local/bin && wget -qO ~/.local/bin/subdx-dl "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" &&\
+mkdir -p ~/.local/bin && wget -qO ~/.local/bin/subdx-dl "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" && \
 chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 ```
 
