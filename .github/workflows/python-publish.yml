@@ -41,7 +41,7 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
-    - name: Download all the dists
+    - name: Download the dists packages
       uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
@@ -183,7 +183,7 @@ jobs:
       - build-win-x86
       - build-linux
     runs-on: ubuntu-latest
-    continue-on-error: true # Continue even if signing fails, to allow upload of existing artifacts  
+
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
       id-token: write  # IMPORTANT: mandatory for sigstore
