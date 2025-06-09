@@ -183,7 +183,7 @@ jobs:
       - build-win-x86
       - build-linux
     runs-on: ubuntu-latest
-
+    continue-on-error: true # Continue even if signing fails, to allow upload of existing artifacts  
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
       id-token: write  # IMPORTANT: mandatory for sigstore
