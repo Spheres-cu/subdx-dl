@@ -47,10 +47,10 @@ chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >>
 _In Windows:_
 
 ```powershell
-$dir = "$env:APPDATA\Local\subdx-dl"; mkdir -Force $dir; Invoke-WebRequest -Uri`
-"https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl.exe" -OutFile "$dir\subdx-dl.exe";`
-$path = [Environment]::GetEnvironmentVariable("PATH", "User");`
-if ($path -notlike "*$dir*") { [Environment]::SetEnvironmentVariable("PATH", "$path;$dir", "User") };`
+$dir = "$env:APPDATA\Local\subdx-dl"; mkdir -Force $dir; Invoke-WebRequest -Uri `
+"https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl.exe" -OutFile "$dir\subdx-dl.exe"; `
+$path = [Environment]::GetEnvironmentVariable("PATH", "User"); `
+if ($path -notlike "*$dir*") { [Environment]::SetEnvironmentVariable("PATH", "$path;$dir", "User") }; `
 Write-Host "Added to PATH. Restart terminal for changes to take effect."
 ```
 
@@ -146,7 +146,7 @@ _or search for complete  Season:_
 sdx-dl -S "Abbott Elementary S04E01"
 ```
 
-_Search for a Movie by Title, Year or simple title, even by _IMDB ID_ :_
+_Search for a Movie by Title, Year or simple title, even by **IMDB ID**_:
 
 ```shell
 sdx-dl "Deadpool and Wolverine 2024"
