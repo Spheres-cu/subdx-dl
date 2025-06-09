@@ -26,7 +26,7 @@ pip install -U subdx-dl
 
 Puede descargar la version portable para Windows x64 (subdx-dl.exe) y x86 (subdx-dl_x86.exe) tambien el binario para Linux (subdx-dl) desde: [release](https://github.com/Spheres-cu/subdx-dl/releases/latest)
 
-#### Tips for portable usage
+#### Consejos para el uso portátil
 
 Intente poner la versión ejecutable en las variables de entorno **PATH**, aquí algunos ejemplos:
 
