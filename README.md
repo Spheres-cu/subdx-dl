@@ -26,6 +26,34 @@ pip install -U subdx-dl
 
 You can download the portable version for Windows x64 (subdx-dl.exe) and x86 (subdx-dl_x86.exe), as well as the binary for Linux (subdx-dl) from: [release](https://github.com/Spheres-cu/subdx-dl/releases/latest)
 
+#### Tips for portable usage
+
+Try to put the executable version in the environment variables **PATH** ,  here some examples:
+
+_In Linux:_
+
+```bash
+mkdir -p ~/.local/bin && curl -L "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" -o ~/.local/bin/subdx-dl &&\
+chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+or
+
+```bash
+mkdir -p ~/.local/bin && wget -qO ~/.local/bin/subdx-dl "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" &&\
+chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+_In Windows:_
+
+```powershell
+$dir = "$env:APPDATA\Local\subdx-dl"; mkdir -Force $dir; Invoke-WebRequest -Uri`
+"https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl.exe" -OutFile "$dir\subdx-dl.exe";`
+$path = [Environment]::GetEnvironmentVariable("PATH", "User");`
+if ($path -notlike "*$dir*") { [Environment]::SetEnvironmentVariable("PATH", "$path;$dir", "User") };`
+Write-Host "Added to PATH. Restart terminal for changes to take effect."
+```
+
 ### Special case installing on Termux (Android) for first time
 
 ```bash
@@ -166,7 +194,7 @@ The arguments for settings this options are:
 
 ## Tips
 
-- Always try to search with __Title, Year or season number__ for better results.
+- Always try to search with _Title, Year or season number_ for better results.
 
 - Search by filename reference.
   > Search in this way have advantage because the results are filtered and ordered by the metadata of the filename (e.g.: 1080p, Web, Blu-ray, DDP5.1., Atmos, PSA, etc.).
@@ -181,7 +209,7 @@ The arguments for settings this options are:
 
 - Sometimes our display is a little tiny and the amount of results don't fix well, a way to fix that is using the  --nlines, -nl argument with an amount of records who fix in the screen size.
 
-- __Very important!__: You need to be installed some rar decompression tool for example: [unrar](https://www.rarlab.com/) (preferred), [unar](https://theunarchiver.com/command-line), [7zip](https://www.7-zip.org/) or [bsdtar](https://github.com/libarchive/libarchive). Otherwise, subtitle file will do not decompress.
+- _Very important!_: You need to be installed some rar decompression tool for example: [unrar](https://www.rarlab.com/) (preferred), [unar](https://theunarchiver.com/command-line), [7zip](https://www.7-zip.org/) or [bsdtar](https://github.com/libarchive/libarchive). Otherwise, subtitle file will do not decompress.
 
 ## Some Captures
 

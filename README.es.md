@@ -26,6 +26,34 @@ pip install -U subdx-dl
 
 Puede descargar la version portable para Windows x64 (subdx-dl.exe) y x86 (subdx-dl_x86.exe) tambien el binario para Linux (subdx-dl) desde: [release](https://github.com/Spheres-cu/subdx-dl/releases/latest)
 
+#### Tips for portable usage
+
+Intente poner la versión ejecutable en las variables de entorno **PATH**, aquí algunos ejemplos:
+
+_En Linux:_
+
+```bash
+mkdir -p ~/.local/bin && curl -L "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" -o ~/.local/bin/subdx-dl &&\
+chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+ó
+
+```bash
+mkdir -p ~/.local/bin && wget -qO ~/.local/bin/subdx-dl "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" &&\
+chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+_En Windows:_
+
+```powershell
+$dir = "$env:APPDATA\Local\subdx-dl"; mkdir -Force $dir; Invoke-WebRequest -Uri`
+"https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl.exe" -OutFile "$dir\subdx-dl.exe";`
+$path = [Environment]::GetEnvironmentVariable("PATH", "User");`
+if ($path -notlike "*$dir*") { [Environment]::SetEnvironmentVariable("PATH", "$path;$dir", "User") };`
+Write-Host "Se agregó a PATH. Reinicie la terminal para que los cambios surtan efecto."
+```
+
 ### Caso especial de instalación en Termux (Android) por primera vez
 
 ```bash
@@ -118,7 +146,7 @@ _o por la temporada completa:_
 sdx-dl -S "Abbott Elementary S04E01"
 ```
 
-_Buscar por una película por el Título y Año ó solo por el Título, incluso solo por el __ID de IMDB__ :_
+_Buscar por una película por el Título y Año ó solo por el Título, incluso solo por el _ID de IMDB:_
 
 ```shell
 sdx-dl "Deadpool and Wolverine 2024"
@@ -134,7 +162,7 @@ _Buscar por el nombre del archivo:_
 sdx-dl Harold.and.the.Purple.Crayon.2024.720p.AMZN.WEBRip.800MB.x264-GalaxyRG.mkv
 ```
 
-_Buscar primero por el __ID de IMDB__ o por el _Título_ correcto de la serie si no lo conoce exactamente o está en otro idioma:_
+_Buscar primero por el _ID de IMDB_ o por el _Título_ correcto de la serie si no lo conoce exactamente o está en otro idioma:_
 
 ```shell
 sdx-dl --imdb "Los Caza fantasmas"
@@ -181,7 +209,7 @@ Los argumentos para configurar las opciones son :
 
 - A veces la cantidad de resultados que se muestran sobrepasan la capacidad de la pantalla, con  --nlines, -nl puede arreglar esto indicando una cantidad que se ajuste a su pantalla.
 
-- __¡Muy importante!__: Debe tener instalado en su sistema algún programa descompresor de archivos rar, ejemplo: [unrar](https://www.rarlab.com/) (preferentemente), [unar](https://theunarchiver.com/command-line), [7zip](https://www.7-zip.org/) ó [bsdtar](https://github.com/libarchive/libarchive). De lo contrario, el archivo de subtítulo no se descomprimirá.
+- _¡Muy importante!_: Debe tener instalado en su sistema algún programa descompresor de archivos rar, ejemplo: [unrar](https://www.rarlab.com/) (preferentemente), [unar](https://theunarchiver.com/command-line), [7zip](https://www.7-zip.org/) ó [bsdtar](https://github.com/libarchive/libarchive). De lo contrario, el archivo de subtítulo no se descomprimirá.
 
 ## Algunas capturas de pantalla
 
