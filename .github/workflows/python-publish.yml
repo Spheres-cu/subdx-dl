@@ -132,35 +132,40 @@ jobs:
   
   # This job builds the Linux executable using PyInstaller.
   # It requires the `build` job to be completed first.
-  # It uses a Docker container with manylinux2014 to ensure compatibility.
   
   build-linux:
     name: Build Linux Executable
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: build
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel
       - name: Download wheel distribution
         uses: actions/download-artifact@v4
         with:
           name: python-package-distributions
           path: dist/
-      - name: Build with PyInstaller in manylinux2014
+      - name: Install wheel distribution
         run: |
-          docker run --rm -v ${{ github.workspace }}:/io quay.io/pypa/manylinux2014_x86_64 bash -c "
-            cd /io &&
-            export PATH=/opt/python/cp310-cp310/bin:\$PATH &&
-            export LD_LIBRARY_PATH=/opt/python/cp310-cp310/lib &&
-            /opt/python/cp310-cp310/bin/pip install wheel pyinstaller &&
-            /opt/python/cp310-cp310/bin/pip install dist/*.whl &&
-            /opt/python/cp310-cp310/bin/pyinstaller --noconfirm --clean subdx-dl.spec
-          "
+          pip install dist/*.whl
+      - name: Build with PyInstaller (Linux)
+        run: |
+          pip install pyinstaller
+          pyinstaller --noconfirm --clean subdx-dl.spec
       - name: Upload Linux Executable
         uses: actions/upload-artifact@v4
         with:
           name: linux-executable-${{ github.job }}
           path: dist/subdx-dl
           if-no-files-found: error
+      # Display the structure of the dist directory to verify contents
       - name: Display structure of uploaded files
         run: ls -R dist/
 
@@ -193,24 +198,16 @@ jobs:
       # Display the structure of the dist directory to verify contents
     - name: Display structure of downloaded files
       run: ls -R dist/
-
+      
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.0.0
       with:
         inputs: >-
           ./dist/*.tar.gz
           ./dist/*.whl
+          ./dist/*.exe
+          ./dist/subdx-dl
 
-    - name: Generate SHA-256 SUMS for executables
-      shell: bash
-      run: |
-        cd dist
-        for f in subdx-dl.exe subdx-dl_x86.exe subdx-dl; do
-          if [ -f "$f" ]; then
-            sha256sum "$f" >> SHA_256_SUMS.txt
-          fi
-        done
-  
     - name: Upload artifact signatures to GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
