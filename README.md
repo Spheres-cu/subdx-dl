@@ -3,9 +3,9 @@
 [![en readme](https://img.shields.io/badge/readme-en-red?logo=readme&logoColor=red&label=readme)](https://github.com/Spheres-cu/subdx-dl#subdx-dl)
 [![es readme](https://img.shields.io/badge/readme-es-brightgreen?logo=readme&logoColor=brightgreen&label=readme)](https://github.com/Spheres-cu/subdx-dl/blob/main/README.es.md#subdx-dl)
 
-![GitHub Downloads](https://img.shields.io/badge/downloads-green?logo=github&logoColor=1f1f23&labelColor=fbfbfb&color=brightblue)
-[![latest release windows portable](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl.exe?logo=artifacthub&logoColor=brightblue&label=%20&labelColor=fbfbfb)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
-[![latest release linux binario](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/latest/subdx-dl?logo=linux&logoColor=1f1f23&label=%20&labelColor=fbfbfb)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
+[![GitHub Downloads](https://img.shields.io/badge/downloads-green?logo=github&logoColor=1f1f23&labelColor=fbfbfb&color=brightblue)](https://github.com/Spheres-cu/subdx-dl/releases/latest)
+[![latest release windows portable](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/subdx-dl.exe?logo=artifacthub&logoColor=brightblue&label=%20&labelColor=fbfbfb)](https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl.exe)
+[![latest release linux binario](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/subdx-dl?logo=linux&logoColor=1f1f23&label=%20&labelColor=fbfbfb)](https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/subdx-dl?logo=pypi&logoColor=1f1f23&labelColor=fbfbfb&label=%20)](https://pypistats.org/packages/subdx-dl)
 
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl?logo=python&logoSize=auto&label=%20&labelColor=1f1f23)
@@ -33,22 +33,26 @@ Try to put the executable version in the environment variables **PATH** ,  here 
 _In Linux:_
 
 ```bash
-mkdir -p ~/.local/bin && curl -L "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" -o ~/.local/bin/subdx-dl && \
-chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+mkdir -p ~/.local/bin && \
+curl --progress-bar -L "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" -o ~/.local/bin/subdx-dl && \
+chmod +x ~/.local/bin/subdx-dl && \
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 ```
 
 or
 
 ```bash
-mkdir -p ~/.local/bin && wget -qO ~/.local/bin/subdx-dl "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" && \
-chmod +x ~/.local/bin/subdx-dl && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+mkdir -p ~/.local/bin && \
+wget --show-progress --progress=bar:force -qO ~/.local/bin/subdx-dl "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl" && \
+chmod +x ~/.local/bin/subdx-dl && \
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 ```
 
 _In Windows:_
 
 ```powershell
-$dir = "$env:APPDATA\Local\subdx-dl"; mkdir -Force $dir; Invoke-WebRequest -Uri `
-"https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl.exe" -OutFile "$dir\subdx-dl.exe"; `
+$dir = "$env:APPDATA\subdx-dl"; mkdir -Force $dir; `
+Invoke-WebRequest -Uri "https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl.exe" -OutFile "$dir\subdx-dl.exe"; `
 $path = [Environment]::GetEnvironmentVariable("PATH", "User"); `
 if ($path -notlike "*$dir*") { [Environment]::SetEnvironmentVariable("PATH", "$path;$dir", "User") }; `
 Write-Host "Added to PATH. Restart terminal for changes to take effect."
