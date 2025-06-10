@@ -7,7 +7,7 @@ import time
 import shutil
 import tempfile
 from tempfile import NamedTemporaryFile
-from rarfile import RarCannotExec, RarExecError # type: ignore
+from rarfile import Error # type: ignore
 from rarfile import RarFile, is_rarfile # type: ignore
 from zipfile import ZipFile, is_zipfile
 from sdx_dl.sdxparser import args, logger
@@ -142,7 +142,7 @@ def get_subtitle(subid:str, topath:str):
             elif is_rarfile(temp_file):
                 compressed_sub_file = RarFile(temp_file)
                 extract_subtitles(compressed_sub_file, topath)
-        except (RarCannotExec, RarExecError):
+        except (Error):
                 console.clear()
                 temp_dir = tempfile.gettempdir()
                 shutil.copyfile(os.path.join(temp_dir, temp_file.name), os.path.join(topath, f'{subid}.rar')) 
