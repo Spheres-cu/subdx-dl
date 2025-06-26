@@ -158,7 +158,7 @@ jobs:
       - name: Build with PyInstaller (Linux)
         run: |
           pip install pyinstaller
-          pyinstaller --noconfirm --clean subdx-dl.spec
+          pyinstaller --noconfirm --clean subdx-dl_linux.spec
       - name: Upload Linux Executable
         uses: actions/upload-artifact@v4
         with:
