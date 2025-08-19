@@ -79,14 +79,15 @@ def clean_screen() -> None:
 # Configure connections
 ua = GenerateUserAgent.random_browser()
 headers={"user-agent" : ua}
+retries = urllib3.util.Retry(total=3, read=10, backoff_factor=1)
 
 if args.proxy:
     proxie = f"{args.proxy}"
     if not (any(p in proxie for p in ["http", "https"])):
         proxie = "http://" + proxie
-    conn = urllib3.ProxyManager(proxie, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),  retries=3, timeout=40)
+    conn = urllib3.ProxyManager(proxie, headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),  retries=retries, timeout=40)
 else:
-    conn = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=3, timeout=40)
+    conn = urllib3.PoolManager(headers=headers, cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(), retries=retries, timeout=40)
 
 # Network connections Errors
 def HTTPErrorsMessageException(e: HTTPError) -> None:
@@ -476,7 +477,6 @@ def get_aadata(search:str) -> Any:
     """Get a json data with the ``search`` results."""
     json_aaData:Any = ''
     try:
-        retries = urllib3.util.Retry(total=3, read=10, backoff_factor=1)
         fields:Dict[str, Any] = {'buscar' + conn_data.search: search,
         'filtros': '', 'tabla': 'resultados', 'token': conn_data.token
         }
@@ -485,8 +485,7 @@ def get_aadata(search:str) -> Any:
             'POST',
             SUBDIVX_SEARCH_URL,
             headers=headers,
-            fields=fields,
-            retries=retries
+            fields=fields
         ).data
 
         if not page :
