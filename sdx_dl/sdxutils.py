@@ -589,7 +589,7 @@ def parse_list_comments(list_dict_comments:listDict) -> listDict:
     """ Parse comments :
        * Remove not used Items
        * Convert to datetime Items ``fecha_creacion``.
-       * Convert ``nick`` to text
+       * Convert ``nombre`` to text
     """
     parser = html2text.HTML2Text()
     parser.ignore_images = True
@@ -597,7 +597,7 @@ def parse_list_comments(list_dict_comments:listDict) -> listDict:
 
     for dictionary in list_dict_comments:
         dictionary['fecha_creacion'] = convert_datetime(str(dictionary['fecha_creacion']))
-        dictionary['nick'] = parser.handle(dictionary['nick']).strip()
+        dictionary['nombre'] = parser.handle(dictionary['nombre']).strip()
 
     return list_dict_comments
 
@@ -626,7 +626,7 @@ def make_comments_table(title:str, results:Dict[str,Any], page:int, metadata:Met
         try:
             comentario = html2text.html2text(item['comentario']).strip()
             if metadata.hasdata: comentario = highlight_text(comentario, metadata)
-            usuario = str(item['nick'])
+            usuario = str(item['nombre'])
             fecha = str(item['fecha_creacion'])
 
             items = [str(count + 1), comentario, usuario, fecha]
