@@ -3,24 +3,20 @@
 # Copyright 2025 BSD 3-Clause License (see https://opensource.org/license/bsd-3-clause)
 
 # type: ignore
-####  IMDB imports ###
+import sys
 import json
+import lxml
 import random
+import asyncio
 import urllib3
 import requests
+
 from urllib3.exceptions import InsecureRequestWarning
 from .sdxclasses import GenerateUserAgent
-
-urllib3.disable_warnings(InsecureRequestWarning)
-
-### html_requests imports ###
-import sys
-import asyncio
 from urllib.parse import urlparse, urlunparse, urljoin
 from typing import Set, Union, List, MutableMapping
 from pyquery import PyQuery
 from lxml.html.clean import Cleaner
-import lxml
 from lxml import etree
 from lxml.html import HtmlElement
 from lxml.html import tostring as lxml_html_tostring
@@ -28,10 +24,13 @@ from lxml.html.soupparser import fromstring as soup_parse
 from parse import search as parse_search
 from parse import findall, Result
 from w3lib.encoding import html_to_unicode
+from sdx_dl.sdxparser import logger
+
+urllib3.disable_warnings(InsecureRequestWarning)
 
 __all__ = ["IMDB"]
 
-### IMDB search classes ###
+
 class ImdbParser:
     """
       - A class to manipulate incoming json string data of a movie/TV from IMDB.
@@ -86,6 +85,7 @@ class ImdbParser:
             self.json_string = self.json_string
         return self.json_string
 
+
 class IMDB:
     """
         A class to represent IMDB API.
@@ -104,11 +104,11 @@ class IMDB:
         self.session = HTMLSession()
         ua = GenerateUserAgent.random_browser()
         self.headers = {
-           "Accept": "application/json, text/plain, */*",
-           "Accept-Language": "es-ES,es,q=0.6",
-           "User-Agent": ua,
-           "Referer": "https://www.imdb.com/"
-           }
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "es-ES,es,q=0.6",
+            "User-Agent": ua,
+            "Referer": "https://www.imdb.com/"
+        }
         self.baseURL = "https://www.imdb.com"
         self.search_results = {'result_count': 0, 'results': []}
         self.NA = json.dumps({"status": 404, "message": "No Result Found!", 'result_count': 0, 'results': []})
@@ -137,6 +137,9 @@ class IMDB:
         try:
             response = self.session.get(url)
         except requests.exceptions.ConnectionError as e:
+            msg = e.__str__().split(":", maxsplit=1)[1].split("(")[0]
+            error_class = e.__class__.__name__
+            logger.debug(f"Error occurred: {error_class} : {msg}")
             response = self.session.get(url, verify=False)
 
         results = response.html.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
@@ -144,7 +147,7 @@ class IMDB:
             results = [result for result in results if "TV" in result.text]
         else:
             results = [result for result in results if "TV" not in result.text]
-        
+
         output = []
         for result in results:
             name = result.text.replace('\n', ' ')
@@ -161,9 +164,9 @@ class IMDB:
                             text = span.text.strip().split('-')[0][:4]
                             if text.isnumeric():
                                 year_date = text
-                          
+
                     show = "Movie" if show == "" else show
-            
+
                     file_id = url.split('/')[2]
                     name = result.find('a')[0].text
                     output.append({
@@ -172,7 +175,7 @@ class IMDB:
                         "year": year_date,
                         "name": name,
                         "url": f"https://www.imdb.com{url}"
-                       })
+                    })
                 except IndexError:
                     pass
                 self.search_results = {'result_count': len(output), 'results': output}
@@ -198,6 +201,7 @@ class IMDB:
             result = json.loads(result)
         except json.decoder.JSONDecodeError as e:
             # sometimes json is invalid as 'description' contains inverted commas or other html escape chars
+            logger.debug(f"WARNING: {e}")
             try:
                 to_parse = ImdbParser(result)
                 # removing trailer & description schema from json string
@@ -206,17 +210,19 @@ class IMDB:
 
                 result = json.loads(parsed)
             except json.decoder.JSONDecodeError as e:
+                logger.debug(f"WARNING: {e}")
                 try:
                     # removing reviewBody from json string
-                    parsed = to_parse.remove_review_body 
+                    parsed = to_parse.remove_review_body
                     result = json.loads(parsed)
                 except json.decoder.JSONDecodeError as e:
                     # invalid char(s) is/are not in description/trailer/reviewBody schema
+                    logger.debug(f"WARNING: {e}")
                     return self.NA
-        
+
         output = {
             "type": result.get('@type'),
-            "id":result.get('url').split(self.baseURL + "/title")[-1].strip("/"),
+            "id": result.get('url').split(self.baseURL + "/title")[-1].strip("/"),
             "name": result.get('name'),
             "year": str(result.get("datePublished"))[:-6],
             "url": result.get('url'),
@@ -270,8 +276,9 @@ class IMDB:
         assert isinstance(file_id, str)
         url = f"{self.baseURL}/title/{file_id}"
         return self.get(url)
-    
-### html_requests classes ###
+
+
+# html_requests classes
 DEFAULT_ENCODING = 'utf-8'
 DEFAULT_URL = 'https://example.org/'
 DEFAULT_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/603.3.8 (KHTML, like Gecko) Version/10.1.2 Safari/603.3.8'
@@ -343,7 +350,7 @@ class BaseParser:
         if self._html:
             return self._html
         else:
-            return etree.tostring(self.element, encoding='unicode').strip().encode(self.encoding) 
+            return etree.tostring(self.element, encoding='unicode').strip().encode(self.encoding)
 
     @property
     def html(self) -> _BaseHTML:
@@ -353,7 +360,7 @@ class BaseParser:
         if self._html:
             return self.raw_html.decode(self.encoding, errors='replace')
         else:
-            return etree.tostring(self.element, encoding='unicode').strip() 
+            return etree.tostring(self.element, encoding='unicode').strip()
 
     @html.setter
     def html(self, html: str) -> None:
@@ -381,7 +388,6 @@ class BaseParser:
             except UnicodeDecodeError:
                 self._encoding = self.default_encoding
 
-
         return self._encoding if self._encoding else self.default_encoding
 
     @encoding.setter
@@ -408,7 +414,7 @@ class BaseParser:
             try:
                 self._lxml = soup_parse(self.html, features='html.parser')
             except ValueError:
-                self._lxml = lxml.html.fromstring(self.raw_html) 
+                self._lxml = lxml.html.fromstring(self.raw_html)
 
         return self._lxml
 
@@ -477,10 +483,10 @@ class BaseParser:
             elements = []
 
             for element in elements_copy:
-                element.raw_html = lxml_html_tostring(cleaner.clean_html(element.lxml)) 
+                element.raw_html = lxml_html_tostring(cleaner.clean_html(element.lxml))
                 elements.append(element)
 
-        return _get_first_or_list(elements, first) 
+        return _get_first_or_list(elements, first)
 
     def xpath(self, selector: str, *, clean: bool = False, first: bool = False, _encoding: str = "") -> _XPath:
         """Given an XPath selector, returns a list of
@@ -515,10 +521,10 @@ class BaseParser:
             elements = []
 
             for element in elements_copy:
-                element.raw_html = lxml_html_tostring(cleaner.clean_html(element.lxml)) 
+                element.raw_html = lxml_html_tostring(cleaner.clean_html(element.lxml))
                 elements.append(element)
 
-        return _get_first_or_list(elements, first) 
+        return _get_first_or_list(elements, first)
 
     def search(self, template: str) -> Result:
         """Search the :class:`Element <Element>` for the given Parse template.
@@ -526,7 +532,7 @@ class BaseParser:
         :param template: The Parse template to use.
         """
 
-        return parse_search(template, self.html) 
+        return parse_search(template, self.html)
 
     def search_all(self, template: str) -> _Result:
         """Search the :class:`Element <Element>` (multiple times) for the given parse
@@ -534,14 +540,14 @@ class BaseParser:
 
         :param template: The Parse template to use.
         """
-        return [r for r in findall(template, self.html)] 
+        return [r for r in findall(template, self.html)]
 
     @property
     def links(self) -> _Links:
         """All found links on page, in as–is form."""
 
         def gen():
-            for link in self.find('a'): 
+            for link in self.find('a'):
 
                 try:
                     href = link.attrs['href'].strip()
@@ -583,7 +589,7 @@ class BaseParser:
             for link in self.links:
                 yield self._make_absolute(link)
 
-        return set(gen()) 
+        return set(gen())
 
     @property
     def base_url(self) -> _URL:
@@ -593,7 +599,7 @@ class BaseParser:
         # Support for <base> tag.
         base = self.find('base', first=True)
         if base:
-            result = base.attrs.get('href', '').strip() 
+            result = base.attrs.get('href', '').strip()
             if result:
                 return result
 
@@ -608,6 +614,7 @@ class BaseParser:
         url = urlunparse(parsed)
 
         return str(url)
+
 
 class Element(BaseParser):
     """An element of HTML.
@@ -648,6 +655,7 @@ class Element(BaseParser):
 
         return self._attrs
 
+
 class HTML(BaseParser):
     """An HTML document, ready for parsing.
 
@@ -686,7 +694,7 @@ class HTML(BaseParser):
         def get_next():
             candidates = self.find('a', containing=next_symbol)
 
-            for candidate in candidates: 
+            for candidate in candidates:
                 if candidate.attrs.get('href'):
                     # Support 'next' rel (e.g. reddit).
                     if 'next' in candidate.attrs.get('rel', []):
@@ -702,7 +710,7 @@ class HTML(BaseParser):
 
             try:
                 # Resort to the last candidate.
-                return candidates[-1].attrs['href'] 
+                return candidates[-1].attrs['href']
             except IndexError:
                 return None
 
@@ -710,12 +718,12 @@ class HTML(BaseParser):
         if __next:
             url = self._make_absolute(__next)
         else:
-            return None 
+            return None
 
         if fetch:
-            return self.session.get(url) 
+            return self.session.get(url)
         else:
-            return url 
+            return url
 
     def __iter__(self):
 
@@ -724,12 +732,12 @@ class HTML(BaseParser):
         while True:
             yield next
             try:
-                next = next.next(fetch=True, next_symbol=self.next_symbol).html 
+                next = next.next(fetch=True, next_symbol=self.next_symbol).html
             except AttributeError:
                 break
 
     def __next__(self):
-        return self.next(fetch=True, next_symbol=self.next_symbol).html 
+        return self.next(fetch=True, next_symbol=self.next_symbol).html
 
     def __aiter__(self):
         return self
@@ -737,12 +745,13 @@ class HTML(BaseParser):
     def add_next_symbol(self, next_symbol):
         self.next_symbol.append(next_symbol)
 
+
 class HTMLResponse(requests.Response):
     """An HTML-enabled :class:`requests.Response <requests.Response>` object.
     Effectively the same, but with an intelligent ``.html`` property added.
     """
 
-    def __init__(self, session: Union['HTMLSession','HTMLSession']) -> None:
+    def __init__(self, session: Union['HTMLSession', 'HTMLSession']) -> None:
         super(HTMLResponse, self).__init__()
         self._html = None   # type: HTML
         self.session = session
@@ -750,7 +759,7 @@ class HTMLResponse(requests.Response):
     @property
     def html(self) -> HTML:
         if not self._html:
-            self._html = HTML(session=self.session, url=self.url, html=self.content, default_encoding=self.encoding) 
+            self._html = HTML(session=self.session, url=self.url, html=self.content, default_encoding=self.encoding)
 
         return self._html
 
@@ -760,6 +769,7 @@ class HTMLResponse(requests.Response):
         html_r.__dict__.update(response.__dict__)
         return html_r
 
+
 def user_agent(style=None) -> _UserAgent:
     """Returns an apparently legit user-agent, if not requested one of a specific
     style. Defaults to a Chrome-style User-Agent.
@@ -767,9 +777,9 @@ def user_agent(style=None) -> _UserAgent:
     global useragent
     ua = GenerateUserAgent
     browsers = {
-        'chrome'  : random.choice(ua.chrome()),
-        'firefox' : random.choice(ua.firefox()),
-        'opera'   : random.choice(ua.opera())
+        'chrome': random.choice(ua.chrome()),
+        'firefox': random.choice(ua.firefox()),
+        'opera': random.choice(ua.opera())
     }
 
     if (not useragent) and style:
@@ -779,28 +789,30 @@ def user_agent(style=None) -> _UserAgent:
 
     return useragent if useragent else DEFAULT_USER_AGENT
 
-def _get_first_or_list(l, first=False):
+
+def _get_first_or_list(lst, first=False):
     if first:
         try:
-            return l[0]
+            return lst[0]
         except IndexError:
             return None
     else:
-        return l
+        return lst
+
 
 class BaseSession(requests.Session):
     """ A consumable session, for cookie persistence and connection pooling,
     amongst other things.
     """
 
-    def __init__(self, mock_browser : bool = True, verify : bool = True,
-                 browser_args : list = ['--no-sandbox']):
+    def __init__(self, mock_browser: bool = True, verify: bool = True,
+                 browser_args: list = ['--no-sandbox']):
         super().__init__()
 
         # Mock a web browser's user agent.
         if mock_browser:
             self.headers['User-Agent'] = user_agent()
-        
+
         self.hooks['response'].append(self.response_hook)
         self.verify = verify
 
@@ -810,7 +822,8 @@ class BaseSession(requests.Session):
         """ Change response enconding and replace it by a HTMLResponse. """
         if not response.encoding:
             response.encoding = DEFAULT_ENCODING
-        return HTMLResponse._from_response(response, self) 
+        return HTMLResponse._from_response(response, self)
+
 
 class HTMLSession(BaseSession):
 
@@ -823,7 +836,7 @@ class HTMLSession(BaseSession):
             self.loop = asyncio.get_event_loop()
             if self.loop.is_running():
                 raise RuntimeError("Cannot use HTMLSession within an existing event loop. Use AsyncHTMLSession instead.")
-            self._browser = self.loop.run_until_complete(super().browser) 
+            self._browser = self.loop.run_until_complete(super().browser)
         return self._browser
 
     def close(self):
