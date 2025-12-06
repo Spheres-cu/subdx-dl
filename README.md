@@ -123,6 +123,7 @@ Search by:
   --kword kw, -k kw     Add keywords to search among subtitles descriptions
   --title t, -t t       Set the title to search
   --imdb, -i            Search first for the IMDB id or title
+  --SubX, -sx           Search using SubX API
 
 Config:
   --view-config, -vc    View config file
@@ -130,6 +131,10 @@ Config:
   --load-config, -lc    Load config file options
   --config [o], -c [o]  Save an option[o] to config file
   --reset [o], -r [o]   Reset an option[o] in the config file
+
+Bypasser:
+  --bypass [o], -b [o]  Run bypass with options [force, manual]
+  --conf-bypass, -cb    Config bypass options
 ```
 
 ## Examples
@@ -182,7 +187,7 @@ sdx-dl -i "Duna S1E3"
 
 ## Config options
 
-With config file arguments you can save some options for use any time, thats options are: quiet, verbose, force, no_choose, no_filter, nlines, path, proxy, Season, imdb, lang.
+With config file arguments you can save some options for use any time, thats options are: quiet, verbose, force, no_choose, no_filter, nlines, path, proxy, Season, imdb, lang, [SubX](https://github.com/Spheres-cu/subdx-dl/wiki/subdx%E2%80%90dl-wiki#3-using-the-subx-api).
 
 The arguments for settings this options are:
 
@@ -195,6 +200,10 @@ The arguments for settings this options are:
 --reset, -r opposite to --config, -c this argument simply reset an option.
 
 --load-config, -lc this is for load all saved options and run the search with they. If you pass some others options those will merged, maintaining preference over the loaded options.
+
+## Configure bypass
+
+- For the bypass methods see wiki: [Configure the bypass](https://github.com/Spheres-cu/subdx-dl/wiki/subdx%E2%80%90dl-wiki#configure-the-bypass)
 
 ## Tips
 

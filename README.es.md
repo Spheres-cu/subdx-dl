@@ -121,6 +121,7 @@ Search by:
   --kword kw, -k kw     Buscar por las palabras claves que especifique (kw) para ordenar los resultados
   --title t, -t t       Usar el título t en la búsquedad
   --imdb, -i            Buscar primero el título o el Id de IMDB antes de realizar la búsqueda
+  --SubX, -sx           Buscar usuando la API SubX
 
 Config:
   --view-config, -vc    Ver el archivo de configuración
@@ -128,6 +129,10 @@ Config:
   --load-config, -lc    Cargar la configuración antes de realizar la búsqueda
   --config [o], -c [o]  Guardar una opción [o] en el archivo de configuración
   --reset [o], -r [o]   Eliminar una opción guardada [o] en el archivo de configuración
+
+Bypasser:
+  --bypass [o], -b [o]  Ejecutar el  bypass con opciones [force, manual]
+  --conf-bypass, -cb    Configurar las opciones del bypass
 ```
 
 ## Ejemplos
@@ -180,7 +185,7 @@ sdx-dl -i "Duna S1E3"
 
 ## Opciones de configuración
 
-Las opciones guardadas en el archivo de configuración las puede usar en cualquier momento que realice una búsqueda, estas son las opciones disponibles: quiet, verbose, force, no_choose, no_filter, nlines, path, proxy, Season, imdb, lang.
+Las opciones guardadas en el archivo de configuración las puede usar en cualquier momento que realice una búsqueda, estas son las opciones disponibles: quiet, verbose, force, no_choose, no_filter, nlines, path, proxy, Season, imdb, lang, [SubX](https://github.com/Spheres-cu/subdx-dl/wiki/subdx%E2%80%90dl-wiki-(ES)#3-uso-de-la-api-de-subx).
 
 Los argumentos para configurar las opciones son :
 
@@ -193,6 +198,10 @@ Los argumentos para configurar las opciones son :
 --reset, -r contrario a --config, -c este argumento simplemente elimina una opción del archivo de configuración.
 
 --load-config, -lc carga las opciones guardadas y realiza la búsqueda con ellas. Si pasa otras opciones también se cargarán teniendo preferencia sobre las del archivo de configuración.
+
+## Configure bypass
+
+- Para conocer los métodos de bypass, consulte la wiki.: [Configurar el bypass](https://github.com/Spheres-cu/subdx-dl/wiki/subdx%E2%80%90dl-wiki-(ES)#configurar-el-bypass)
 
 ## Consejos
 
