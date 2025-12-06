@@ -8,8 +8,10 @@ hiddenimports = []
 datas += collect_data_files('guessit')
 datas += collect_data_files('babelfish')
 datas += copy_metadata('readchar')
+datas += collect_data_files('DrissionPage')
 hiddenimports += collect_submodules('guessit')
 hiddenimports += collect_submodules('babelfish')
+hiddenimports += collect_submodules('DrissionPage')
 
 a = Analysis(
     ['sdx_dl/cli.py'],
