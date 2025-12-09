@@ -18,7 +18,7 @@ if args.proxy:
     proxie = f"{args.proxy}"
     if not (any(p in proxie for p in ["http", "https"])):
         proxie = f"http://{proxie}"
-        proxies = {'http': proxie, 'https': proxie}
+    proxies = {'http': proxie, 'https': proxie}
 else:
     proxies = None
 
