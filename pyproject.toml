@@ -24,7 +24,7 @@ dependencies = [
   'html5lib  >= 1.1',
   'guessit >= 3.8.0',
   'rarfile >= 4.2',
-  'urllib3[brotli] == 2.6.0',
+  'urllib3[brotli] >= 2.6.1',
   'certifi >= 2025.11.12',
   'rich >= 14.2.0',
   'readchar >= 4.2.1',
