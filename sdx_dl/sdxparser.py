@@ -36,6 +36,7 @@ def create_parser():
         'with the better possible matching results.',
         epilog='Project issues:https://github.com/Spheres-cu/subdx-dl/issues\n'
         '\nUsage examples:https://github.com/Spheres-cu/subdx-dl#examples\n\n'
+        'Wiki:https://github.com/Spheres-cu/subdx-dl/wiki\n\n'
     )
     parser.add_argument('search', type=str, help="file, directory or movie/series"
                         " title or IMDB Id to retrieve subtitles")
