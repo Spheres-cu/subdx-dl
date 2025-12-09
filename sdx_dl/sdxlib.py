@@ -98,8 +98,9 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
                 json_aaData = sbx.from_subx_aadata()
             else:
                 console.print(
-                    f':no_entry: {gl("Not_SubX_key")}',
-                    emoji=True, new_line_start=True
+                    f':no_entry: {gl("Not_SubX_key")}\r\n'
+                    f'[italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
+                    emoji=True, new_line_start=False
                 )
                 sys.exit(1)
         else:

@@ -751,7 +751,8 @@ class SetConfigAction(argparse.Action):
                     cf.update({"SubX_key": subx_key})
                 elif not cf.get("SubX_key"):
                     console.print(
-                        f':warning: {gl("Not_SubX_key")}',
+                        f':warning:  {gl("Not_SubX_key")}\n'
+                        f'[italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
                         emoji=True, new_line_start=True
                     )
         elif values == "path":
