@@ -88,5 +88,6 @@
 	"Still_cached_cookies": "Still using cached cookies.",
 	"Expires_at": "Expires at: ",
 	"Unexpected_error": "Unexpected error",
-	"Not_SubX_key": "Not provided SubX key"
+	"Not_SubX_key": "Not provided SubX key",
+	"Not_SubX_key_wiki": "See in the wiki page SubX API"
 }
