@@ -31,7 +31,7 @@ dependencies = [
   'html2text >= 2025.4.15',
   'lxml >= 5.4.0',
   'lxml_html_clean >= 0.4.2',
-  'DrissionPage == 4.0.5.6',
+  'DrissionPage == 4.1.1.2',
   'pyquery == 2.0.1',
   'parse == 1.20.2',
   'w3lib >= 2.3.1',
