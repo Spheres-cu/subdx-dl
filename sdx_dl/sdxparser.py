@@ -3,11 +3,10 @@
 
 import os
 import sys
-import tempfile
 import argparse
-import logging
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import set_locale, gl
+from sdx_dl.sdxlogger import create_logger
 from sdx_dl.sdxclasses import (
     ChkVersionAction,
     ConfigManager,
@@ -19,10 +18,8 @@ from sdx_dl.sdxclasses import (
     SetBypasserConfigAction,
     validate_proxy
 )
+
 from importlib.metadata import version
-from rich.logging import RichHandler
-from rich.traceback import install
-install(show_locals=True)
 
 __all__ = ["args", "logger"]
 
@@ -101,34 +98,6 @@ def create_parser():
     return parser
 
 
-def create_logger(level: str = "DEBUG", verbose: bool = False):
-
-    # Setting logger
-    levels = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
-    LOGGER_LEVEL = levels[4]
-    LOGGER_FORMATTER_LONG = logging.Formatter('%(asctime)-12s %(levelname)-6s %(message)s', '%Y-%m-%d %H:%M:%S')
-    LOGGER_FORMATTER_SHORT = logging.Formatter(fmt='%(message)s', datefmt="[%X]")
-
-    level = level if level in levels else LOGGER_LEVEL
-    temp_log_dir = tempfile.gettempdir()
-    file_log = os.path.join(temp_log_dir, 'subdx-dl.log')
-
-    global logger
-    logger = logging.getLogger(__name__)
-    logger.setLevel(level)
-
-    if not verbose:
-        logfile = logging.FileHandler(file_log, mode='w', encoding='utf-8')
-        logfile.setFormatter(LOGGER_FORMATTER_LONG)
-        logfile.setLevel(level)
-        logger.addHandler(logfile)
-    else:
-        console = RichHandler(rich_tracebacks=True, tracebacks_show_locals=True)
-        console.setFormatter(LOGGER_FORMATTER_SHORT)
-        console.setLevel(level)
-        logger.addHandler(console)
-
-
 parser = create_parser()
 args = parser.parse_args()
 cf = ConfigManager()
@@ -143,7 +112,8 @@ if args.load_config:
 
 if args.verbose:
     args.__setattr__("quiet", True)
-create_logger(verbose=args.verbose)
+
+logger = create_logger(verbose=args.verbose)
 
 if cf.hasconfig and 'SubX' in cf.config:
     args.__setattr__("SubX", cf.get("SubX"))
