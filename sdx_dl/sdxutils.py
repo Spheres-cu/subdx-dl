@@ -10,11 +10,8 @@ import shutil
 import signal
 import certifi
 import urllib3
-import tempfile
 import html2text
 import urllib3.util
-import typing
-import requests
 
 from pathlib import Path
 from zipfile import ZipFile, is_zipfile
@@ -23,18 +20,21 @@ from sdx_dl.sdxparser import logger, args as parser_args
 from sdx_dl.sdxclasses import (
     HTML2BBCode,
     NoResultsError,
-    VideoMetadataExtractor
+    VideoMetadataExtractor,
+    ConfigManager
 )
 from json import JSONDecodeError
 from urllib3.exceptions import HTTPError
 from bs4 import BeautifulSoup
-from typing import Any, NamedTuple, NewType
+from typing import Any, NamedTuple, NewType, no_type_check
 from itertools import chain
 from datetime import datetime
 from readchar import readkey, key
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
 from urllib.parse import urlparse
+from sdx_dl.cf_bypasser.utils.misc import get_public_ip, md5_hash
+from sdx_dl.cf_bypasser.get_cf_bypass import get_cf_bypass
 
 from rich import box
 from rich.layout import Layout
@@ -50,7 +50,7 @@ __all__ = [
     "get_imdb_search", "get_aadata", "convert_date", "get_filtered_results", "sort_results",
     "get_selected_subtitle_id", "HTTPErrorsMessageException", "clean_screen", "paginate",
     "extract_subtitles", "sub_extensions", "Metadata", "metadata", "SUBDIVX_DOWNLOAD_PAGE",
-    "HTTPError", "headers", "conn"
+    "HTTPError", "headers", "conn", "DataConnection"
 ]
 
 args = parser_args
@@ -104,6 +104,13 @@ if args.proxy:
     proxie = f"{args.proxy}"
     if not (any(p in proxie for p in ["http", "https"])):
         proxie = "http://" + proxie
+else:
+    proxie = None
+
+if proxie:
+    proxie = f"{args.proxy}"
+    if not (any(p in proxie for p in ["http", "https"])):
+        proxie = "http://" + proxie
     conn = urllib3.ProxyManager(
         proxie,
         cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),
@@ -114,29 +121,6 @@ else:
         cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),
         retries=retries, timeout=40
     )
-
-
-def get_public_ip(proxy: str | None = None):
-    """Get hostname public ip"""
-    services = [
-        'https://api.ipify.org',
-        'https://checkip.amazonaws.com'
-    ]
-    proxies = {'http': proxy, 'https': proxy} if proxy else None
-
-    for service in services:
-        try:
-            response = requests.get(service, timeout=10, proxies=proxies)
-            response.raise_for_status()  # Raise an exception for bad status codes
-            ip = response.text.strip()
-            # Basic validation that it looks like an IP address
-            if ip.count('.') == 3 and all(part.isdigit() for part in ip.split('.')):
-                return ip
-        except requests.RequestException as e:
-            logger.debug(f"Failed to get IP from {service}: {e}")
-            continue
-
-    return None
 
 
 # Network connections Errors
@@ -165,7 +149,6 @@ class DataConnection:
 
     Attributes:
         _sdx_dc_path (str): Path to data connection file.
-        __sdx_cache_path (str): Path to data cache connection file.
         __sdx_cache (Any): The cached data connection.
         __sdx_cache_key: Cache key.
         __user_agent (str): The user agent connection.
@@ -176,7 +159,7 @@ class DataConnection:
         :type DataConn: NamedTuple
     """
     def __init__(self) -> None:
-        self._sdx_dc_path = os.path.join(tempfile.gettempdir(), 'sdx_data_connection.json')
+        self._sdx_dc_path = self.get_cache_path(file_name='sdx_data_connection.json')
         self.__sdx_cache_path = self.get_cache_path()
         self.__sdx_cache = self.__get_data_cache()
         self.__user_agent, self.__cookie, self.__token, self.__search = self._get_connection_data()
@@ -224,51 +207,73 @@ class DataConnection:
 
     def __get_data_cache(self):
         """Get the data connection cache"""
-        from hashlib import md5
+        def _load_cache():
+            try:
+                cache: dict[str, Any] = {}
+                with open(self.__sdx_cache_path, 'r') as file:
+                    data = file.read()
+                if data:
+                    cache = json.loads(data)
+                return cache
+            except Exception as e:
+                console.print(
+                    f':no_entry: [bold red]{gl("Failed_to_load_cache")}: [/]{e}',
+                    emoji=True, new_line_start=True)
+                logger.error(f"Failed to load data cache file: {e}")
+                sys.exit(1)
 
-        if args.proxy:
-            proxie = f"{args.proxy}"
-            if not (any(p in proxie for p in ["http", "https"])):
-                proxie = "http://" + proxie
-        else:
-            proxie = None
-
-        def md5_hash(text: str | bytes) -> str:
-            if isinstance(text, str):
-                text = text.encode('utf-8')
-            return md5(text).hexdigest()
+        def _get_bypass(browser: str):
+            get_cf_bypass(browser=browser, mute=True)
+            sdx_data_cache = _load_cache()
+            if cache_key and cache_key in sdx_data_cache.keys():
+                self.__sdx_cache_key = cache_key
+                self.__sdx_cache = sdx_data_cache
 
         local_address = get_public_ip(proxie)
         hostname = urlparse(SUBDIVX_DOWNLOAD_PAGE).netloc
-        cache_key = md5_hash(hostname + local_address if local_address else "")
+        cache_key = md5_hash(hostname + local_address if local_address else hostname)
         self.__sdx_cache_key = ""
+        sdx_data_cache = _load_cache()
 
         try:
-            with open(self.__sdx_cache_path, 'r') as file:
-                data_cache = file.read()
-            if data_cache:
-                sdx_data_cache = json.loads(data_cache)
-            else:
-                console.print(
-                    f':no_entry: [bold red]{gl("Failed_to_load_cache")}[/]\n'
-                    f':warning: [bold yellow] {gl("Please_run_bypasser")}[/]',
-                    emoji=True, new_line_start=True
-                )
-                sys.exit(1)
-
-            for hostname, _ in sdx_data_cache.items():
-                if hostname == cache_key:
+            if bool(sdx_data_cache):
+                if cache_key and cache_key in sdx_data_cache.keys():
                     self.__sdx_cache_key = cache_key
-                    break
+                    self.__sdx_cache = sdx_data_cache
 
-            if not self.__sdx_cache_key:
-                console.print(
-                    f':no_entry: [bold red]{gl("Failed_to_load_cache")}[/]\n'
-                    f':warning: [bold yellow] {gl("Please_run_bypasser")}[/]',
-                    emoji=True, new_line_start=True
-                )
-                sys.exit(1)
+            if not self.__sdx_cache_key or self._exp_data_connection():
+                cf = ConfigManager()
+                if cf.hasconfig and 'browser_path' in cf.config:
+                    browser = f'{cf.get("browser_path")}'
+                else:
+                    browser = None
 
+                if browser:
+                    _get_bypass(browser)
+                else:
+                    console.print(
+                        f':no_entry: [bold red]{gl("Not_browser_path")}[/]',
+                        emoji=True, new_line_start=True
+                    )
+                    sys.exit(1)
+
+                if (
+                    not self.__sdx_cache_key
+                    or self.__sdx_cache_key not in sdx_data_cache.keys()
+                ): 
+                    _get_bypass(browser)
+
+                if not self.__sdx_cache_key:
+                    console.print(
+                        f':no_entry: [bold red]{gl("Failed_to_load_cache")}[/]\n'
+                        f':warning: [bold yellow] {gl("Please_run_bypasser")}[/]',
+                        emoji=True, new_line_start=True
+                    )
+                    logger.debug(f"Cache key: {cache_key}")
+                    logger.debug(f"Local Address: {local_address}")
+                    sys.exit(1)
+
+                sdx_data_cache = self.__sdx_cache
         except Exception as e:
             console.print(
                 f':no_entry: [bold red]{gl("Failed_to_load_cache")}: [/]{e}',
@@ -284,27 +289,73 @@ class DataConnection:
         headers['Cookie'] = cookie
         headers['User-Agent'] = user_agent
         logger.debug("Loaded data cache connection")
+        logger.debug(f"Cache key: {self.__sdx_cache_key}")
+        logger.debug(f"Local Address: {local_address}")
 
         return sdx_data_cache
 
     def _get_connection_data(self):
         """Return data connection"""
         user_agent, cookie, token, f_search = "", "", "", ""
-        sdx_data_connection = self._load_data_connection()
-        if sdx_data_connection:
-            dt_conn: Any = json.loads(sdx_data_connection)
-        else:
-            dt_conn = {}
+        sdx_data_connection: dict[str, Any] = {}
+        sdx_data_connection = self.__sdx_cache[self.__sdx_cache_key]
 
-        if not bool(dt_conn):
-            logger.debug("Getting data connection")
-            user_agent, cookie, token, f_search = self._retrieve_data_connection()
-        else:
-            user_agent = f"{dt_conn['user_agent']}"
-            cookie = f"{dt_conn['cookie']}"
-            f_search = f"{dt_conn['search']}"
-            token = self.get_token()
-            logger.debug("Loaded data connection")
+        def _get_search() -> str:
+            try:
+                dt_conn: dict[str, Any] = {}
+                with open(self._sdx_dc_path) as file:
+                    data = file.read()
+                if data:
+                    dt_conn = json.loads(data)
+                    _f_search = f"{dt_conn['search']}"
+                    return _f_search
+
+                resolve = False
+                attempts = 0
+                _f_search = ""
+                while not resolve and attempts <= 5:
+                    sdx_request = conn.request('GET', SUBDIVX_DOWNLOAD_PAGE, headers=headers)
+                    if sdx_request.status == 200:
+                        _vdata = BeautifulSoup(sdx_request.data.decode(), 'lxml')
+                        _f_search = str(_vdata('div', id="vs")[0].text.replace("v", "").replace(".", ""))
+                        resolve = True
+                    else:
+                        attempts = attempts + 1
+                        logger.debug(f'Getting search field: attempts: {attempts}')
+                        backoff_delay(backoff_factor=2, attempts=3)
+
+                    if attempts == 5:
+                        logger.debug(f'{gl("ConnectionError")}: HTTP error: {sdx_request.status}')
+                        console.print(
+                            f':no_entry: [bold red]{gl("ConnectionError")}:[/] HTTP error: {sdx_request.status}\n'
+                            f'[bold red]{gl("Could_not_load_data_connection")}[/]\n'
+                            f'[bold yellow]{gl("Request_new_data_connection")}[/]',
+                            emoji=True, new_line_start=True
+                        )
+                        sys.exit(1)
+
+                with open(self._sdx_dc_path, mode='w') as file:
+                    json.dump({"search": _f_search}, file, indent=2)
+            except Exception as e:
+                if isinstance(e, (HTTPError)):
+                    HTTPErrorsMessageException(e)
+                else:
+                    msg = e.__str__()
+                    console.print(
+                        f':no_entry:  [bold red]{gl("Could_not_load_data_connection")}[/]',
+                        emoji=True, new_line_start=True
+                    )
+                    logger.debug(f'Error: {e.__class__.__name__}: {msg}')
+                sys.exit(1)
+
+            return _f_search
+
+        user_agent = f"{sdx_data_connection['user_agent']}"
+        cookies: dict[str, Any] = sdx_data_connection['cookies']
+        cookie = "; ".join(f"{key}={value}" for key, value in cookies.items())
+        f_search = _get_search()
+        token = self.get_token()
+        logger.debug("Loaded data connection")
 
         return user_agent, cookie, token, f_search
 
@@ -339,7 +390,6 @@ class DataConnection:
                             f':warning: [bold yellow] {gl("Please_run_bypasser")}[/]',
                             emoji=True, new_line_start=True
                         )
-                        self.reset_data_connection()
                         sys.exit(1)
             except Exception as e:
                 if isinstance(e, (HTTPError)):
@@ -351,7 +401,6 @@ class DataConnection:
                         emoji=True, new_line_start=True
                     )
                     logger.debug(f'Error: {e.__class__.__name__}: {msg}')
-                    self.reset_data_connection()
                 sys.exit(1)
 
         return _n_tkn
@@ -364,90 +413,12 @@ class DataConnection:
 
         return datetime.now() >= expires_at
 
-    def _retrieve_data_connection(self):
-        """ Retrieve, save and return data connection."""
-        user_agent, token, cookie, _f_search = "", "", "", ""
-        sdx_data_connection = self.__sdx_cache[self.__sdx_cache_key]
 
-        if self._exp_data_connection():
-            expires_at = datetime.fromisoformat(sdx_data_connection['expires_at'])
-            expires = expires_at.strftime('%H:%M:%S %d/%m/%Y')
-            console.print(
-                f':no_entry: [bold red]{gl("Connection_Expires")}[/]{expires}\n'
-                f':warning: [bold red] {gl("Please_run_bypasser")}[/]',
-                emoji=True, new_line_start=True
-            )
-            logger.debug(f'Connection data expired at: {expires}')
-            sys.exit(1)
-
-        user_agent = f"{sdx_data_connection['user_agent']}"
-        cookies = sdx_data_connection['cookies']
-        cookie = "; ".join(f"{key}={value}" for key, value in cookies.items())
-        headers['Cookie'] = cookie
-        headers['User-Agent'] = user_agent
-
-        try:
-            sdx_request = conn.request('GET', SUBDIVX_DOWNLOAD_PAGE, headers=headers)
-            if sdx_request.status == 200:
-                _vdata = BeautifulSoup(sdx_request.data.decode(), 'lxml')
-                _f_search = str(_vdata('div', id="vs")[0].text.replace("v", "").replace(".", ""))
-            else:
-                logger.debug(f'{gl("ConnectionError")}: HTTP error: {sdx_request.status}')
-                console.print(
-                    f':no_entry: [bold red]{gl("ConnectionError")}:[/] HTTP error: {sdx_request.status}\n'
-                    f'[bold red]{gl("Could_not_load_data_connection")}[/]\n'
-                    f'[bold yellow]{gl("Request_new_data_connection")}[/]',
-                    emoji=True, new_line_start=True
-                )
-                self.reset_data_connection()
-                sys.exit(1)
-        except Exception as e:
-            if isinstance(e, (HTTPError)):
-                HTTPErrorsMessageException(e)
-            else:
-                msg = e.__str__()
-                console.print(
-                    f':no_entry:  [bold red]{gl("Could_not_load_data_connection")}[/]',
-                    emoji=True, new_line_start=True
-                )
-                logger.debug(f'Error: {e.__class__.__name__}: {msg}')
-                self.reset_data_connection()
-            sys.exit(1)
-
-        token = self.get_token()
-
-        data = {
-            "user_agent": user_agent,
-            "cookie": cookie,
-            "search": _f_search
-        }
-
-        with open(self._sdx_dc_path, 'w') as file:
-            json.dump(data, file, indent=2)
-            file.close()
-
-        logger.debug("Saved data connection")
-
-        return user_agent, cookie, token, _f_search
-
-    def _load_data_connection(self) -> str:
-        """ Load stored sdx data connection return empty string if not exists or expired"""
-        if not os.path.exists(self._sdx_dc_path):
-            return ""
-
-        if not self._exp_data_connection():
-            with open(self._sdx_dc_path, 'r') as filecookie:
-                sdx_data_connection = filecookie.read()
-        else:
-            return ""
-
-        return sdx_data_connection
-
-    def reset_data_connection(self) -> None:
-        """ Reset connection data """
-        with open(self._sdx_dc_path, 'w') as file:
-            file.write('')
-            file.close()
+if not args.SubX:
+    logger.debug("Resolving data connection")
+    with console.status(f'{gl("Starting_new_connection")}', spinner='dots3') as status:
+        status.start() if not args.quiet else status.stop()
+        conn_data = DataConnection()
 
 
 def extract_meta_data(search: str, kword: str, is_file: bool = False) -> Metadata:
@@ -680,7 +651,6 @@ def get_filtered_results(title: str, number: str, inf_sub: dict[str, Any], list_
     return filtered_results
 
 
-@typing.no_type_check
 def highlight_text(text: str, metadata: Metadata = metadata) -> str:
     """Highlight all `text`  matches  `metadata`"""
 
@@ -690,8 +660,7 @@ def highlight_text(text: str, metadata: Metadata = metadata) -> str:
     # compile a pattern
     matches_compile = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(keywords, key=len, reverse=True))) + r')\b', flags=re.I)
 
-    @typing.no_type_check
-    def _highlight(matches):
+    def _highlight(matches: re.Match[str]) -> str:
         return f"[white on green4]{matches.group(0)}[default on default]"
 
     highlighted = matches_compile.sub(_highlight, text)
@@ -730,84 +699,84 @@ def convert_date(list_dict_subs: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def get_aadata(search: str) -> Any:
     """Get a json data with the ``search`` results."""
     json_aaData: Any = ''
-    conn_data = DataConnection()
-    try:
-        fields: dict[str, Any] = {
-            'buscar' + conn_data.search: search,
-            'filtros': '', 'tabla': 'resultados',
-            'token': conn_data.token
-        }
 
-        response = conn.request(
-            'POST',
-            SUBDIVX_SEARCH_URL,
-            headers=headers,
-            fields=fields
-        )
-        page = response.data
+    with console.status(f'{gl("Searching_subtitles_for")}{search}') as status:
+        status.start() if not args.quiet else status.stop()
+        try:
+            fields: dict[str, Any] = {
+                'buscar' + conn_data.search: search,
+                'filtros': '', 'tabla': 'resultados',
+                'token': conn_data.token
+            }
 
-        if not page and response.status != 200:
-            if not args.quiet:
-                console.clear()
-            console.print(
-                f':no_entry: [bold red]{gl("Could_not_load_results_page")}[/]',
-                emoji=True, new_line_start=True)
-            conn_data.reset_data_connection()
-            logger.debug('Could not load results page')
-            sys.exit(1)
-        elif response.status == 200:
-            json_aaData = json.loads(page)
-            if json_aaData['sEcho'] == "0":
-                site_msg = str(json.loads(page)['mensaje'])
-                logger.debug(f'Site message: {site_msg}')
-                backoff_delay(backoff_factor=1.5)
-                page = conn.request(
+            response = conn.request(
+                'POST',
+                SUBDIVX_SEARCH_URL,
+                headers=headers,
+                fields=fields
+            )
+            page = response.data
+
+            if not page and response.status != 200:
+                if not args.quiet:
+                    console.clear()
+                console.print(
+                    f':no_entry: [bold red]{gl("Could_not_load_results_page")}[/]',
+                    emoji=True, new_line_start=True)
+                logger.debug('Could not load results page')
+                sys.exit(1)
+            elif response.status == 200:
+                json_aaData = json.loads(page)
+                if json_aaData['sEcho'] == "0":
+                    site_msg = str(json.loads(page)['mensaje'])
+                    logger.debug(f'Site message: {site_msg}')
+                    backoff_delay(backoff_factor=1.5)
+                    page = conn.request(
+                        'POST',
+                        SUBDIVX_SEARCH_URL, headers=headers,
+                        fields=fields, retries=retries
+                    ).data
+
+                    if page:
+                        json_aaData = json.loads(page)
+                        if json_aaData['sEcho'] == "0":
+                            raise NoResultsError(f'Site message: {site_msg}')
+                    else:
+                        sys.exit(1)
+            elif response.status in (401, 403):
+                logger.debug("Getting new token")
+                fields.update({"token": conn_data.get_token()})
+                res = conn.request(
                     'POST',
                     SUBDIVX_SEARCH_URL, headers=headers,
                     fields=fields, retries=retries
-                ).data
-
-                if page:
+                )
+                page = res.data
+                if res.status not in (401, 403) and page:
                     json_aaData = json.loads(page)
                     if json_aaData['sEcho'] == "0":
-                        raise NoResultsError(f'Site message: {site_msg}')
-                else:
-                    sys.exit(1)
-        elif response.status in (401, 403):
-            logger.debug("Getting new token")
-            fields.update({"token": conn_data.get_token()})
-            res = conn.request(
-                'POST',
-                SUBDIVX_SEARCH_URL, headers=headers,
-                fields=fields, retries=retries
-            )
-            page = res.data
-            if res.status not in (401, 403) and page:
-                json_aaData = json.loads(page)
-                if json_aaData['sEcho'] == "0":
-                    raise NoResultsError(f'{gl("Could_not_load_results_page")}')
-        else:
-            logger.debug(f'{gl("ConnectionError")}: HTTP error: {response.status}')
-            console.print(
-                f':no_entry: [bold red]{gl("ConnectionError")}:[/] HTTP error: {response.status}\n'
-                f'[bold red]{gl("Could_not_load_data_connection")}[/]\n'
-                f'[bold yellow]{gl("Request_new_data_connection")}[/]',
-                emoji=True, new_line_start=True
-            )
-            conn_data.reset_data_connection()
-            sys.exit(1)
+                        raise NoResultsError(f'{gl("Could_not_load_results_page")}')
+            else:
+                logger.debug(f'{gl("ConnectionError")}: HTTP error: {response.status}')
+                console.print(
+                    f':no_entry: [bold red]{gl("ConnectionError")}:[/] HTTP error: {response.status}\n'
+                    f'[bold red]{gl("Could_not_load_data_connection")}[/]\n'
+                    f'[bold yellow]{gl("Request_new_data_connection")}[/]',
+                    emoji=True, new_line_start=True
+                )
+                sys.exit(1)
 
-    except Exception as e:
-        if isinstance(e, (HTTPError)):
-            HTTPErrorsMessageException(e)
-        else:
-            msg = e.__str__()
-            logger.debug(f'Error: {e.__class__.__name__}: {msg}')
-            console.print(
-                f':no_entry: 2-[bold red]{gl("Could_not_load_results_page")}[/]',
-                emoji=True, new_line_start=True
-            )
-        sys.exit(1)
+        except Exception as e:
+            if isinstance(e, (HTTPError)):
+                HTTPErrorsMessageException(e)
+            else:
+                msg = e.__str__()
+                logger.debug(f'Error: {e.__class__.__name__}: {msg}')
+                console.print(
+                    f':no_entry: 2-[bold red]{gl("Could_not_load_results_page")}[/]',
+                    emoji=True, new_line_start=True
+                )
+            sys.exit(1)
 
     return json_aaData
 
@@ -1224,19 +1193,18 @@ def get_selected_subtitle_id(table_title: str, results: list[dict[str, Any]], me
         logger.debug('Download Canceled')
         return ""
 
-    # clean_screen()
     return res
 
 
 # Extract Subtitles
-@typing.no_type_check
+@no_type_check
 def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath: str) -> None:
     """Extract ``compressed_sub_file`` from ``temp_file`` ``topath``."""
     # For portable Windows EXE
     if sys.platform == "win32":
         import rarfile  # type: ignore
 
-        @typing.no_type_check
+        @no_type_check
         def resource_path(relative_path: str) -> str:
             """ Get absolute path to resource, works for dev and for PyInstaller """
             base_path: str = ""
@@ -1259,7 +1227,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath: str) -> No
         """Check if a `filename` is a compressed archive based on its extension."""
         return any(filename.endswith(ext) for ext in _compressed_extensions)
 
-    @typing.no_type_check
+    @no_type_check
     def _uncompress(source: Any, topath: str) -> None:
         """Decompress compressed file"""
         compressed = RarFile(source) if is_rarfile(source) else ZipFile(source) if is_zipfile(source) else None
@@ -1386,7 +1354,7 @@ def get_imdb_search(title: str, number: str, inf_sub: dict[str, Any]):
     from sdx_dl.sdximdb import IMDB
     try:
         imdb = IMDB()
-        if args.proxy:
+        if proxie:
             proxies = {'http': proxie, 'https': proxie}
             imdb.session.proxies.update(proxies)
             imdb.session.verify = False
