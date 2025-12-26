@@ -3,6 +3,7 @@
 
 import sys
 import requests
+import certifi
 from typing import Any
 from requests.exceptions import HTTPError
 from requests.exceptions import RequestException
@@ -12,7 +13,7 @@ from sdx_dl.sdxparser import logger, args
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
 
-ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"
+ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
 
 if args.proxy:
     proxie = f"{args.proxy}"
@@ -92,7 +93,8 @@ class SubxAPI:
                 method,
                 url,
                 params=params or urlencode({"query": query}),
-                timeout=timeout
+                timeout=timeout,
+                verify=certifi.where()
             )
             response.raise_for_status()
 
@@ -153,7 +155,8 @@ class SubxAPI:
             response = self.session.request(
                 method,
                 url,
-                timeout=timeout
+                timeout=timeout,
+                verify=certifi.where()
             )
             response.raise_for_status()
 

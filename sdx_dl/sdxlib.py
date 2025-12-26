@@ -88,23 +88,23 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
         console.print("\r")
     logger.debug(f'Searching subtitles for: {title} {number.upper()}')
 
-    with console.status(f'{gl("Searching_subtitles_for")}{title} {number.upper()}') as status:
-        status.start() if not args.quiet else status.stop()
-        if args.SubX:
-            cf = ConfigManager()
-            if cf.hasconfig and "SubX_key" in cf.config:
-                sbx = SubxAPI(cf.get("SubX_key", default=""))
+    if args.SubX:
+        cf = ConfigManager()
+        if cf.hasconfig and "SubX_key" in cf.config:
+            sbx = SubxAPI(cf.get("SubX_key", default=""))
+            with console.status(f'{gl("Searching_subtitles_for")}{title} {number.upper()}') as status:
+                status.start() if not args.quiet else status.stop()
                 sbx.query(buscar)
-                json_aaData = sbx.from_subx_aadata()
-            else:
-                console.print(
-                    f':no_entry: {gl("Not_SubX_key")}\r\n'
-                    f'[italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
-                    emoji=True, new_line_start=False
-                )
-                sys.exit(1)
+            json_aaData = sbx.from_subx_aadata()
         else:
-            json_aaData = get_aadata(buscar)
+            console.print(
+                f':no_entry: {gl("Not_SubX_key")}\r\n'
+                f'[italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
+                emoji=True, new_line_start=False
+            )
+            sys.exit(1)
+    else:
+        json_aaData = get_aadata(buscar)
 
     if json_aaData["iTotalRecords"] == 0:
         if not args.quiet:

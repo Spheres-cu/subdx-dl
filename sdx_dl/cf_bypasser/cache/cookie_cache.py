@@ -2,10 +2,12 @@ import json
 import os
 import threading
 
-from sdx_dl.cf_bypasser.utils.misc import logger
+from sdx_dl.sdxlogger import logger
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from typing import Any
+
+__all__ = ["CachedCookies", "CookieCache"]
 
 
 @dataclass
@@ -46,7 +48,7 @@ class CachedCookies:
 class CookieCache:
     """Thread-safe cache for Cloudflare clearance cookies."""
 
-    def __init__(self, cache_file: str = "cf_cookie_cache.json"):
+    def __init__(self, cache_file: str = ""):
         self.cache_file = cache_file
         self.cache: dict[str, CachedCookies] = {}
         self.lock = threading.RLock()

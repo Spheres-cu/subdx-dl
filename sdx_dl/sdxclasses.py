@@ -9,10 +9,9 @@ import random
 import argparse
 import urllib3
 import certifi
-import typing
 
 from pathlib import Path
-from typing import Any
+from typing import Any, no_type_check
 from guessit import guessit, jsonutils  # type: ignore
 from bs4 import BeautifulSoup, Tag
 from importlib.metadata import version
@@ -351,7 +350,7 @@ def _check_version(version: str, proxy: str):
         except (HTTPError, Exception) as e:
             ExceptionErrorMessage(e)
         if bool(data):
-            description = f'{data.get("body", "")}'
+            description = f'{data.get("body", "")}'.replace("- ", "\u25cf ")
         else:
             description = ""
 
@@ -396,11 +395,11 @@ def _get_remain_arg(args: list[str] | str) -> str:
 # Check version action class
 class ChkVersionAction(argparse.Action):
     """Class Check version. This class call for `check_version` function"""
-    @typing.no_type_check
+    @no_type_check
     def __init__(self, nargs=0, **kw,):
         super().__init__(nargs=nargs, **kw)
 
-    @typing.no_type_check
+    @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
         p = getattr(namespace, "proxy") or _get_remain_arg(["-x", "--proxy"])
         if not p:
@@ -418,7 +417,7 @@ class VideoMetadataExtractor:
     """
     A class to extract metadata from video filenames using guessit.
     """
-    @typing.no_type_check
+    @no_type_check
     @staticmethod
     def extract_all(filename: str, options: str | dict[str, Any] = {}) -> dict[str, Any]:
         """
@@ -683,11 +682,11 @@ class ConfigManager:
 # Config action classes
 class ViewConfigAction(argparse.Action):
     """Check config file class Action"""
-    @typing.no_type_check
+    @no_type_check
     def __init__(self, nargs=0, **kw,):
         super().__init__(nargs=nargs, **kw)
 
-    @typing.no_type_check
+    @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
         config = ConfigManager()
         if config.exists:
@@ -700,11 +699,11 @@ class ViewConfigAction(argparse.Action):
 
 class SaveConfigAction(argparse.Action):
     """Save allowed arguments to a config file. Existing values are update."""
-    @typing.no_type_check
+    @no_type_check
     def __init__(self, nargs=0, **kw,):
         super().__init__(nargs=nargs, **kw)
 
-    @typing.no_type_check
+    @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
         allowed_values = ["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb", "lang"]
         copied_config = namespace.__dict__.copy()
@@ -729,11 +728,11 @@ class SaveConfigAction(argparse.Action):
 
 class SetConfigAction(argparse.Action):
     """Save an option to config file"""
-    @typing.no_type_check
+    @no_type_check
     def __init__(self, nargs='?', **kw):
         super().__init__(nargs=nargs, **kw)
 
-    @typing.no_type_check
+    @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
 
         if not values:
@@ -794,11 +793,11 @@ class SetConfigAction(argparse.Action):
 
 class ResetConfigAction(argparse.Action):
     """Reset an option in the config file"""
-    @typing.no_type_check
+    @no_type_check
     def __init__(self, nargs='?', **kw):
         super().__init__(nargs=nargs, **kw)
 
-    @typing.no_type_check
+    @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
 
         if not values:
@@ -817,11 +816,11 @@ class ResetConfigAction(argparse.Action):
 # Bypasser actions
 class SetBypasserConfigAction(argparse.Action):
     """Set Bypasser config"""
-    @typing.no_type_check
+    @no_type_check
     def __init__(self, nargs=0, **kw):
         super().__init__(nargs=nargs, **kw)
 
-    @typing.no_type_check
+    @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
         from rich.prompt import Prompt
         cf = ConfigManager()
@@ -857,11 +856,11 @@ class SetBypasserConfigAction(argparse.Action):
 
 class BypasserAction(argparse.Action):
     """Bypasser class Action"""
-    @typing.no_type_check
+    @no_type_check
     def __init__(self, nargs='?', **kw,):
         super().__init__(nargs=nargs, **kw)
 
-    @typing.no_type_check
+    @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
         from sdx_dl.cf_bypasser.get_cf_bypass import get_cf_bypass, manual_bypasser
 
@@ -878,7 +877,8 @@ class BypasserAction(argparse.Action):
 
         if browser:
             force = True if values == "force" else False
-            get_cf_bypass(browser, force)
+            proxy = cf.get("proxy", None)
+            get_cf_bypass(browser, force, proxy)
         else:
             console.print(
                 f':no_entry: [bold red]{gl("Not_browser_path")}[/]',
