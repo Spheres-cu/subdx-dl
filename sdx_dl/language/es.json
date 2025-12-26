@@ -72,7 +72,7 @@
 	"Failed_to_load_cache": "No se pudo cargar el archivo de cache de datos",
 	"Please_run_bypasser": "Ejecute --bypass o -b para obtener nuevas credenciales",
 	"Could_not_get_new_token": "No se pudo establecer una nueva conexión.",
-	"Getting_connection": "Abriendo el navegador para obtener una nueva conexión...\r\n   Por favor espere.",
+	"Getting_connection": "Abriendo el navegador para obtener una nueva credencial...\r\n   Por favor espere.",
 	"site_message": "Espera de unos segundos antes de realizar otra busqueda",
 	"Not_browser_path": "No se ha configurado la ruta del navegador",
 	"Browser_path": "Por favor entre la ruta del navegador",
@@ -89,5 +89,6 @@
 	"Expires_at": "Caducan a las: ",
 	"Unexpected_error": "Error inesperado",
 	"Not_SubX_key": "Clave SubX no proporcionada",
-	"Not_SubX_key_wiki": "Vea en la página wiki SubX API"
+	"Not_SubX_key_wiki": "Vea en la página wiki SubX API",
+	"Starting_new_connection": "Estableciendo una nueva conexión..."
 }

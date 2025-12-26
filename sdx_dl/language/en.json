@@ -72,7 +72,7 @@
 	"Failed_to_load_cache": "Failed to load data cache file",
 	"Please_run_bypasser": "Please run --bypass or -b for obtain new credentials",
 	"Could_not_get_new_token": "Could not get a new Connection.",
-	"Getting_connection": "Opening browser for getting new Connection...\r\n   Please wait.",
+	"Getting_connection": "Opening browser for obtain new credential...\r\n   Please wait.",
 	"site_message": "Wait a few seconds before performing another search",
 	"Not_browser_path": "Not configured the browser path",
 	"Browser_path": "Please enter the browser path",
@@ -89,5 +89,6 @@
 	"Expires_at": "Expires at: ",
 	"Unexpected_error": "Unexpected error",
 	"Not_SubX_key": "Not provided SubX key",
-	"Not_SubX_key_wiki": "See in the wiki page SubX API"
+	"Not_SubX_key_wiki": "See in the wiki page SubX API",
+	"Starting_new_connection": "Establishing a new connection..."
 }
