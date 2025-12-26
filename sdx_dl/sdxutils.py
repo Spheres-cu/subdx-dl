@@ -269,8 +269,6 @@ class DataConnection:
                         f':warning: [bold yellow] {gl("Please_run_bypasser")}[/]',
                         emoji=True, new_line_start=True
                     )
-                    logger.debug(f"Cache key: {cache_key}")
-                    logger.debug(f"Local Address: {local_address}")
                     sys.exit(1)
 
                 sdx_data_cache = self.__sdx_cache
