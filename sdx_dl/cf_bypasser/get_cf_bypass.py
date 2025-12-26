@@ -1,22 +1,27 @@
-# type:ignore
-
 import os
 import re
 import sys
 import time
-import tempfile
+import json
 
 from pathlib import Path
 from sdx_dl.cf_bypasser.CloudflareBypasser import CloudflareBypasser
 from DrissionPage import ChromiumPage, ChromiumOptions
+from DrissionPage._functions.settings import Settings
 from sdx_dl.cf_bypasser.cache.cookie_cache import CookieCache
-from sdx_dl.cf_bypasser.utils.misc import md5_hash, logger, get_public_ip
+from sdx_dl.cf_bypasser.utils.misc import md5_hash, get_public_ip, clean_screen
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
+from sdx_dl.sdxlogger import logger
 from urllib.parse import urlparse
 from typing import Any
+from bs4 import BeautifulSoup
+
 
 SUBDIVX_PAGE = 'https://www.subdivx.com/'
+
+
+__all__ = ["get_cf_bypass", "manual_bypasser"]
 
 
 def get_cache_path(app_name: str = "subdx-dl", file_name: str | None = "sdx_cache_connection.json") -> Path:
@@ -34,7 +39,12 @@ def get_cache_path(app_name: str = "subdx-dl", file_name: str | None = "sdx_cach
         cache_dir.mkdir(parents=True, exist_ok=True)
 
     if file_name:
-        return cache_dir / file_name
+        cache_dir = cache_dir / file_name
+        if not os.path.isfile(cache_dir):
+            with open(cache_dir, 'w') as file:
+                file.write('')
+                file.close()
+
     return cache_dir
 
 
@@ -50,10 +60,14 @@ def get_chromium_options(browser_path: str, arguments: list[str]) -> ChromiumOpt
     options.set_paths(browser_path=browser_path)
     for argument in arguments:
         options.set_argument(argument)
+
+    # options.no_imgs(True)
+    # options.mute(True)
+    # options.headless(True)
     return options
 
 
-def get_cf_bypass(browser: str = "", force: bool = False):
+def get_cf_bypass(browser: str = "", force: bool = False, proxy: str | None = None, mute: bool = False):
     """Try get cf credentials"""
 
     browser_path = browser
@@ -81,9 +95,9 @@ def get_cf_bypass(browser: str = "", force: bool = False):
     # Try to get cached cookies first
     cookie_cache = CookieCache(cache_file=f'{sdx_cache_path}')
     cookie_cache.clear_expired()
-    local_address = get_public_ip()
+    local_address = get_public_ip(proxy)
     hostname = urlparse(SUBDIVX_PAGE).netloc
-    cache_key = md5_hash(hostname + local_address if local_address else "")
+    cache_key = md5_hash(hostname + local_address if local_address else hostname)
     cached = cookie_cache.get(cache_key)
 
     if not cached or cached.is_expired() or force:
@@ -94,31 +108,43 @@ def get_cf_bypass(browser: str = "", force: bool = False):
             f':robot: [italic yellow]{gl("Getting_connection")}[/]',
             emoji=True, new_line_start=True
         )
-        time.sleep(5)
+        time.sleep(3)
         driver = ChromiumPage(addr_or_opts=options)
+        Settings.set_language('en')
         try:
             logger.debug(f'Navigating to the {SUBDIVX_PAGE} page.')
             driver.get(SUBDIVX_PAGE)
 
             # Where the bypass starts
             logger.debug('Starting Cloudflare bypass.')
-            cf_bypasser = CloudflareBypasser(driver)
+            cf_bypasser = CloudflareBypasser(driver, max_retries=8)
 
             # If you are solving an in-page captcha (like the one here: https://seleniumbase.io/apps/turnstile), use cf_bypasser.click_verification_button() directly instead of cf_bypasser.bypass().
             # It will automatically locate the button and click it. Do your own check if needed.
 
             cf_bypasser.bypass()
             if not cf_bypasser.is_bypassed():
-                logger.error("Bypass failed.")
                 driver.quit()
+                console.print(":no_entry: Bypass failed!", emoji=True, new_line_start=True)
                 sys.exit(1)
             else:
-                console.print(":heavy_check_mark:  Bypass successful!", emoji=True)
+                console.print(":heavy_check_mark:  Bypass successful!", emoji=True, new_line_start=True)
+                time.sleep(2)
+                clean_screen()
 
-            cookies = driver.cookies(as_dict=True, all_info=True)
-            sdx_dc_path = os.path.join(tempfile.gettempdir(), 'sdx_data_connection.json')
-
-            data_cache = {
+            cookies = driver.cookies(all_domains=True, all_info=True).as_dict()
+            page = driver.html
+            _vdata = BeautifulSoup(page, 'lxml')
+            _f_search = str(_vdata('div', id="vs")[0].text).replace("v", "").replace(".", "")
+            cookie = "; ".join(f"{key}={value}" for key, value in cookies.items() if key in ["sdx", "cf_clearance"])
+            user_agent = driver.user_agent
+            data_conn = {
+                "user_agent": user_agent,
+                "cookie": cookie,
+                "search": _f_search
+            }
+            sdx_dc_path = get_cache_path(file_name='sdx_data_connection.json')
+            data_cache: dict[str, Any] = {
                 "user_agent": driver.user_agent,
                 "cookies": cookies
             }
@@ -127,7 +153,7 @@ def get_cf_bypass(browser: str = "", force: bool = False):
             try:
                 cookie_cache.set(cache_key, data_cache["cookies"], data_cache["user_agent"], ttl_hours=24)
                 with open(sdx_dc_path, 'w') as file:
-                    file.write('')
+                    json.dump(data_conn, file, indent=2)
                     file.close()
             except Exception as e:
                 logger.error(f"Failed to save credential file: {e}")
@@ -135,19 +161,19 @@ def get_cf_bypass(browser: str = "", force: bool = False):
             logger.debug("Saved cookies successfully")
 
             # Sleep for a while to let the user see the result if needed
-            time.sleep(5)
+            time.sleep(3)
         except Exception as e:
             logger.error("An error occurred: %s", str(e))
         finally:
             logger.debug('Closing the browser.')
             driver.quit()
     else:
-        logger.debug(f"Using Cached cookies for {cache_key}")
-        console.print(
-            f':white_check_mark: {gl("Still_cached_cookies")}\n'
-            f'[bold yellow]{gl("Expires_at")}[/]{cached.expires_at.strftime("%H:%M:%S %d/%m/%Y")}',
-            emoji=True
-        )
+        if not mute:
+            console.print(
+                f':white_check_mark: {gl("Still_cached_cookies")}\n'
+                f'[bold yellow]{gl("Expires_at")}[/]{cached.expires_at.strftime("%H:%M:%S %d/%m/%Y")}',
+                emoji=True
+            )
 
 
 def manual_bypasser():
@@ -199,7 +225,7 @@ def manual_bypasser():
             cookie_cache.clear_expired()
             local_address = get_public_ip()
             hostname = urlparse(SUBDIVX_PAGE).netloc
-            cache_key = md5_hash(hostname + local_address if local_address else "")
+            cache_key = md5_hash(hostname + local_address if local_address else hostname)
             cookies = {"cf_clearance": cf_clearance, "sdx": sdx_cookie}
             data_cache: dict[str, Any] = {
                 "user_agent": user_agent,
