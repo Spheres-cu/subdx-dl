@@ -287,8 +287,6 @@ class DataConnection:
         headers['Cookie'] = cookie
         headers['User-Agent'] = user_agent
         logger.debug("Loaded data cache connection")
-        logger.debug(f"Cache key: {self.__sdx_cache_key}")
-        logger.debug(f"Local Address: {local_address}")
 
         return sdx_data_cache
 
