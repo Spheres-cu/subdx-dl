@@ -260,7 +260,7 @@ class DataConnection:
                 if (
                     not self.__sdx_cache_key
                     or self.__sdx_cache_key not in sdx_data_cache.keys()
-                ): 
+                ):
                     _get_bypass(browser)
 
                 if not self.__sdx_cache_key:
