@@ -1,0 +1,51 @@
+# sdx-dl bash completion
+_sdx_dl_completion() {
+    local cur prev words cword
+    _init_completion || return
+
+	local options="--help --quiet --verbose --force --no-choose --no-filter --nlines --lang --version --check-version --path --proxy --Season --kword --title --imdb --SubX --view-config --save-config --load-config --config --reset --bypass --conf-bypass -h -q -v -f -nc -nf -nl -l -V -cv -p -x -S -k -t -i -sx -vc -sc -lc -c -r -b -cb"
+	local conf_options="quiet verbose no_choose no_filter nlines lang path proxy Season imdb SubX"
+
+    # Handle options that require arguments
+    case "$prev" in
+        --nlines|-nl)
+            COMPREPLY=($(compgen -W "5 10 15 20" -- "$cur"))
+            return 0
+            ;;
+        --lang|-l)
+            COMPREPLY=($(compgen -W "es en" -- "$cur"))
+            return 0
+            ;;
+        --path|-p)
+            COMPREPLY=($(compgen -d -- "$cur"))
+            return 0
+            ;;
+        --proxy|-x)
+            COMPREPLY=($(compgen -W "http:// https://" -- "$cur"))
+            return 0
+            ;;
+        --kword|-k|--title|-t)
+            # These take free-form strings, so no specific completion
+            return 0
+            ;;
+        --config|-c|--reset|-r)
+            # These can take any option name as argument
+            COMPREPLY=($(compgen -W "$conf_options" -- "$cur"))
+            return 0
+            ;;
+        --bypass|-b)
+            COMPREPLY=($(compgen -W "force manual" -- "$cur"))
+            return 0
+            ;;
+    esac
+
+    # If current word starts with dash, complete options
+    if [[ $cur == -* ]]; then
+        COMPREPLY=($(compgen -W "$options" -- "$cur"))
+    else
+        # Complete files/directories for search argument
+        COMPREPLY=($(compgen -f -- "$cur"))
+    fi
+}
+
+complete -F _sdx_dl_completion sdx-dl
