@@ -108,9 +108,6 @@ else:
     proxie = None
 
 if proxie:
-    proxie = f"{args.proxy}"
-    if not (any(p in proxie for p in ["http", "https"])):
-        proxie = "http://" + proxie
     conn = urllib3.ProxyManager(
         proxie,
         cert_reqs="CERT_REQUIRED", ca_certs=certifi.where(),
