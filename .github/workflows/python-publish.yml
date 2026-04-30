@@ -8,9 +8,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: "3.10"
     - name: Install pypa/build
@@ -22,7 +22,7 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: python3 -m build
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: python-package-distributions
         path: dist/
@@ -42,7 +42,7 @@ jobs:
 
     steps:
     - name: Download the dists packages
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         name: python-package-distributions
         path: dist/
@@ -54,9 +54,9 @@ jobs:
     runs-on: windows-latest
     needs: build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
       - name: Install dependencies
@@ -64,7 +64,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install wheel
       - name: Download wheel distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
@@ -79,7 +79,7 @@ jobs:
           python -m pip install pyinstaller
           pyinstaller --noconfirm --clean --upx-dir .resources subdx-dl.spec
       - name: Upload Windows x64 Executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: win-x64-executable-${{ github.job }}
           path: dist/subdx-dl.exe
@@ -93,9 +93,9 @@ jobs:
     runs-on: windows-latest
     needs: build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python (32-bit)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
           architecture: "x86"
@@ -104,7 +104,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install wheel
       - name: Download wheel distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
@@ -121,7 +121,7 @@ jobs:
       - name: Rename executable
         run: mv dist/subdx-dl.exe dist/subdx-dl_x86.exe
       - name: Upload Windows x86 Executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: win-x86-executable-${{ github.job }}
           path: dist/subdx-dl_x86.exe
@@ -138,9 +138,9 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
       - name: Install dependencies
@@ -148,7 +148,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install wheel
       - name: Download wheel distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
@@ -160,7 +160,7 @@ jobs:
           pip install pyinstaller
           pyinstaller --noconfirm --clean subdx-dl_linux.spec
       - name: Upload Linux Executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: linux-executable-${{ github.job }}
           path: dist/subdx-dl
@@ -190,7 +190,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         path: dist/
         merge-multiple: true
