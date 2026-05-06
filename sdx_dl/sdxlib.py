@@ -2,43 +2,47 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
-import sys
-import time
 import shutil
+import sys
 import tempfile
-
+import time
 from tempfile import NamedTemporaryFile
-from urllib3.response import HTTPResponse
-from requests import Response
-from rarfile import Error  # type: ignore
-from rarfile import RarFile, is_rarfile  # type: ignore
+from typing import Any
 from zipfile import ZipFile, is_zipfile
-from sdx_dl.sdxparser import args, logger
+
+from rarfile import (  # type: ignore
+    Error,  # type: ignore
+    RarFile,
+    is_rarfile,  # type: ignore
+)
+from requests import Response
+from urllib3.response import HTTPResponse
+
+from sdx_dl.sdxclasses import ConfigManager
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
-from sdx_dl.sdxclasses import ConfigManager
+from sdx_dl.sdxparser import args, logger
 from sdx_dl.sdxsubxapi import SubxAPI
-from typing import Any
-from sdx_dl.sdxutils import extract_subtitles  # type: ignore
 from sdx_dl.sdxutils import (
-    get_imdb_search,
-    get_aadata,
-    convert_date,
-    get_filtered_results,
-    sort_results,
-    get_selected_subtitle_id,
-    HTTPErrorsMessageException,
-    clean_screen,
-    paginate,
-    Metadata,
-    metadata,
     SUBDIVX_DOWNLOAD_PAGE,
     HTTPError,
+    HTTPErrorsMessageException,
+    Metadata,
+    clean_screen,
+    conn,
+    convert_date,
+    extract_subtitles,  # type: ignore
+    get_aadata,
+    get_filtered_results,
+    get_imdb_search,
+    get_selected_subtitle_id,
     headers,
-    conn
+    metadata,
+    paginate,
+    sort_results,
 )
 
-__all__ = ["get_subtitle_id", "get_subtitle"]
+__all__ = ['get_subtitle', 'get_subtitle_id']
 
 
 def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: Metadata = metadata):
@@ -55,75 +59,78 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
 
     Return the subtitle `id`
     """
-
-    buscar = None
-    res = ""
+    search = None
+    tmdb_search = None
+    json_aaData: dict[str, Any] = {}
     list_Subs_Dicts: list[dict[str, Any]] = []
+    tv = not bool(inf_sub['type'] == 'movie')
 
     if args.imdb:
         if not args.quiet:
             console.print(
-                f':earth_americas: [bold yellow]{gl("Searching_IMDB")} {title} {number}',
-                new_line_start=True, emoji=True
-            )
-        logger.debug(f'Searching in IMDB: {title} {number}')
-        search = get_imdb_search(title, number, inf_sub)
-        buscar = search
-        if buscar is not None and inf_sub['type'] == 'episode':
-            title = buscar.replace(number, "").strip()
-        logger.debug(f'IMDB Search result: {buscar}')
-
-        if not args.quiet:
-            clean_screen()
-            imdb_search = buscar if buscar is not None else "Ninguno"
+                f':earth_americas: [bold yellow]{gl("Searching_TMDB")} {title} {number}',
+                new_line_start=True, emoji=True)
+        logger.debug(f'Searching in TMDB: {title} {number}')
+        tmdb_search = get_imdb_search(title, number, inf_sub)
+        if tmdb_search:
+            search = tmdb_search.orig_name if tv else tmdb_search.imdb
+        logger.debug(f'TMDB Search result: {search}')
+        if not args.quiet and search:
             console.print(
-                f':information_source:  [bold yellow]{gl("Search_terms_from_IMDB")}[/]{imdb_search}',
+                f':information_source:  [bold yellow]{gl("Search_terms_from_TMDB")}[/]{search}',
                 new_line_start=True, emoji=True)
             time.sleep(0.5)
 
-    if buscar is None:
-        buscar = f"{title} {number}".strip()
+    if not search:
+        search = f'{title} {number}'.strip()
 
     if not args.quiet:
-        console.print("\r")
+        console.print('\r')
     logger.debug(f'Searching subtitles for: {title} {number.upper()}')
 
     if args.SubX:
         cf = ConfigManager()
-        if cf.hasconfig and "SubX_key" in cf.config:
-            sbx = SubxAPI(cf.get("SubX_key", default=""))
+        if cf.hasconfig and 'SubX_key' in cf.config:
+            sbx = SubxAPI(cf.get('SubX_key', default=''))
             with console.status(f'{gl("Searching_subtitles_for")}{title} {number.upper()}') as status:
                 status.start() if not args.quiet else status.stop()
-                sbx.query(buscar)
+                sbx.query(search)
             json_aaData = sbx.from_subx_aadata()
+            if json_aaData.get('iTotalRecords') == 0 and tmdb_search:
+                time.sleep(2)
+                sbx.query(tmdb_search.imdb) if tv else sbx.query(f'{tmdb_search.orig_name} {number}')
+                json_aaData = sbx.from_subx_aadata()
+                search = tmdb_search.imdb if tv else f'{tmdb_search.orig_name} {number}'
         else:
             console.print(
-                f':no_entry: {gl("Not_SubX_key")}\r\n'
-                f'[italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
-                emoji=True, new_line_start=False
-            )
+                f':no_entry: {gl("Not_SubX_key")}: [italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
+                emoji=True, new_line_start=False)
             sys.exit(1)
     else:
-        json_aaData = get_aadata(buscar)
+        json_aaData = get_aadata(search)
+        if json_aaData.get('iTotalRecords') == 0 and tmdb_search:
+            time.sleep(4)
+            json_aaData = get_aadata(tmdb_search.imdb if tv else f'{tmdb_search.orig_name} {number}')
+            search = tmdb_search.imdb if tv else f'{tmdb_search.orig_name} {number}'
 
-    if json_aaData["iTotalRecords"] == 0:
+    if json_aaData.get('iTotalRecords') == 0:
         if not args.quiet:
-            console.print(f':no_entry: [bold red]{gl("Not_subtitles_records_found_for")}[/] [yellow]{buscar}[/]')
-        logger.debug(f'Not subtitles records found for: {buscar}')
-        return res
+            console.print(f':no_entry: [bold red]{gl("Not_subtitles_records_found_for")}[/][yellow]{search}[/]')
+        logger.debug(f'Not subtitles records found for: {search}')
+        return None
     else:
-        logger.debug(f'Found subtitles records for: {buscar}')
+        logger.debug(f'Found subtitles records for: {search}')
 
     # Get Json Data Items
-    aaData_Items = json_aaData['aaData']
+    aaData_Items = json_aaData.get('aaData')
 
-    if aaData_Items is not None:
+    if aaData_Items:
         list_Subs_Dicts = convert_date(aaData_Items)
     else:
         if not args.quiet:
-            console.print(f':no_entry: [bold red]{gl("No_suitable_data_were_found_for")} [yellow]{buscar}[/]')
-        logger.debug(f'No suitable data were found for: "{buscar}"')
-        return res
+            console.print(f':no_entry: [bold red]{gl("No_suitable_data_were_found_for")} [yellow]{search}[/]')
+        logger.debug(f'No suitable data were found for: "{search}"')
+        return None
 
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
@@ -135,9 +142,9 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
 
     if not filtered_list_Subs_Dicts:
         if not args.quiet:
-            console.print(f':no_entry: [bold red]{gl("No_suitable_data_were_found_for")} [yellow]{buscar}[/]')
-        logger.debug(f'No suitable data were found for: "{buscar}"')
-        return res
+            console.print(f':no_entry: [bold red]{gl("No_suitable_data_were_found_for")} [yellow]{search}[/]')
+        logger.debug(f'No suitable data were found for: "{search}"')
+        return None
 
     if metadata.hasdata:
         results = sort_results(filtered_list_Subs_Dicts, metadata)
@@ -151,20 +158,17 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
     results_pages = paginate(results, 10)
 
     if (not args.no_choose):
-        res = get_selected_subtitle_id(table_title, results, metadata)
-        return res
+        return get_selected_subtitle_id(table_title, results, metadata)
     else:
         # get first subtitle
-        res = f"{results_pages['pages'][0][0]['id']}"
-
-    return res
+        return f"{results_pages['pages'][0][0]['id']}"
 
 
 def get_subtitle(subid: str, topath: str):
     """Download a subtitle with id ``subid`` to a destination ``path``."""
 
     url = f"{SUBDIVX_DOWNLOAD_PAGE + 'descargar.php?id=' + subid}"
-    subx_url = f"https://subx-api.duckdns.org/api/subtitles/{subid}/download"
+    subx_url = f'https://subx-api.duckdns.org/api/subtitles/{subid}/download'
 
     if not args.quiet:
         clean_screen()
@@ -175,13 +179,13 @@ def get_subtitle(subid: str, topath: str):
 
     # get direct download link
     if not args.quiet:
-        console.print(gl("Downloading_Subtitle"), emoji=True, new_line_start=True)
-    logger.debug(f"Trying Download from link: {url if not args.SubX else subx_url}")
+        console.print(gl('Downloading_Subtitle'), emoji=True, new_line_start=True)
+    logger.debug(f'Trying Download from link: {url if not args.SubX else subx_url}')
 
     if args.SubX:
         cf = ConfigManager()
-        if cf.hasconfig and "SubX_key" in cf.config:
-            sbx = SubxAPI(cf.get("SubX_key", default=""))
+        if cf.hasconfig and 'SubX_key' in cf.config:
+            sbx = SubxAPI(cf.get('SubX_key', default=''))
             download_url = sbx.get(subid)
     else:
         try:
@@ -192,10 +196,10 @@ def get_subtitle(subid: str, topath: str):
 
     if download_url:
         if not args.SubX and isinstance(download_url, HTTPResponse):
-            logger.debug(f"Downloaded from: {SUBDIVX_DOWNLOAD_PAGE}{download_url.geturl()}")
+            logger.debug(f'Downloaded from: {SUBDIVX_DOWNLOAD_PAGE}{download_url.geturl()}')
             data = download_url.data
         elif isinstance(download_url, Response):
-            logger.debug(f"Downloaded from: SubX: {subx_url}")
+            logger.debug(f'Downloaded from: SubX: {subx_url}')
             data = download_url.content
 
         temp_file.write(data)
@@ -215,9 +219,9 @@ def get_subtitle(subid: str, topath: str):
 
             console.print(
                 f':warning:  [bold red]{gl("Cannot_find_a_working_tool")}[bold yellow]{gl("Install_rar")}[/]',
-                emoji=True, new_line_start=True
+                emoji=True, new_line_start=True,
             )
-            logger.debug("Cannot find a working tool, please install rar decompressor tool")
+            logger.debug('Cannot find a working tool, please install rar decompressor tool')
             logger.debug(f"File downloaded to: {os.path.join(topath, f'{subid}.rar')}")
     else:
         temp_file.close()
@@ -226,7 +230,7 @@ def get_subtitle(subid: str, topath: str):
         if not args.quiet:
             console.print(
                 f':cross_mark:  [bold red]{gl("No_suitable_subtitle_to_download")}[/]',
-                emoji=True, new_line_start=True
+                emoji=True, new_line_start=True,
             )
         sys.exit(1)
         time.sleep(2)
