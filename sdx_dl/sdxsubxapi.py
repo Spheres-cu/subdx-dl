@@ -1,24 +1,25 @@
 # Copyright (C) 2025 Spheres-cu (https://github.com/Spheres-cu) subdx-dl
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import datetime
 import sys
-import requests
-import certifi
+import urllib.parse
 from typing import Any
-from requests.exceptions import HTTPError
-from requests.exceptions import RequestException
-from urllib.parse import urlencode
-from datetime import datetime
-from sdx_dl.sdxparser import logger, args
+
+import certifi
+import requests
+from requests.exceptions import HTTPError, RequestException
+
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
+from sdx_dl.sdxparser import args, logger
 
-ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'
 
 if args.proxy:
-    proxie = f"{args.proxy}"
-    if not (any(p in proxie for p in ["http", "https"])):
-        proxie = f"http://{proxie}"
+    proxie = f'{args.proxy}'
+    if not (any(p in proxie for p in ['http', 'https'])):
+        proxie = f'http://{proxie}'
     proxies = {'http': proxie, 'https': proxie}
 else:
     proxies = None
@@ -29,11 +30,13 @@ __all__ = ['SubxAPI']
 def ExceptionErrorMessage(e: Exception):
     """Parse ``Exception`` error message."""
     if isinstance(e, (HTTPError, RequestException)):
-        msg = e.__str__().split(":", maxsplit=1)[1].split("(")[0].strip()
-    else:
-        msg = e
-    error_class = e.__class__.__name__
-    console.print(f':no_entry: {gl("Error_occurred")} {gl(error_class)} : {msg}')
+        if e.response is not None:
+            msg = e.response.json().get('detail')
+            error = e.response.status_code
+        else:
+            msg = e.__str__().split(':', maxsplit=1)[1].split('(')[0].strip()
+            error = gl(e.__class__.__name__)
+        console.print(f":no_entry: {gl('Error_occurred')}HTTP error ({error}): {msg}")
 
 
 class SubxAPI:
@@ -47,7 +50,7 @@ class SubxAPI:
             default_timeout: Default timeout in seconds for requests
             base_url: The base URL of the API
         """
-        self.base_url = "https://subx-api.duckdns.org/api"
+        self.base_url = 'https://subx-api.duckdns.org/api'
         self.token = token
         self.default_timeout = default_timeout
         self.session = requests.Session()
@@ -55,7 +58,7 @@ class SubxAPI:
             'Authorization': f'Bearer {self.token}',
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'User-Agent': ua
+            'User-Agent': ua,
         })
         # Setting proxy
         if proxies:
@@ -65,11 +68,12 @@ class SubxAPI:
 
     def query(
         self,
-        query: str = "",
-        method: str = "GET",
-        endpoint: str = "subtitles/search/",
+        query: str,
+        param: str = 'query',
+        method: str = 'GET',
+        endpoint: str = 'subtitles/search/',
         params: dict[str, Any] | None = None,
-        timeout: int | None = None
+        timeout: int | None = None,
     ) -> dict[str, Any] | str | None:
         """
         Make a query request to the API
@@ -92,9 +96,9 @@ class SubxAPI:
             response = self.session.request(
                 method,
                 url,
-                params=params or urlencode({"query": query}),
+                params=params or urllib.parse.urlencode({param: query}),
                 timeout=timeout,
-                verify=certifi.where()
+                verify=certifi.where(),
             )
             response.raise_for_status()
 
@@ -107,16 +111,16 @@ class SubxAPI:
 
         except HTTPError as e:
             ExceptionErrorMessage(e)
-            logger.debug(f"HTTP error occurred: {e} HTTP Error ({e.response.status_code})")
+            logger.debug(f'HTTP error occurred: {e} HTTP Error ({e.response.status_code})')
             sys.exit(1)
         except RequestException as err:
             ExceptionErrorMessage(err)
-            logger.debug(f"Request error occurred: {err}")
+            logger.debug(f'Request error occurred: {err}')
             sys.exit(1)
         except Exception as err:
             console.print(
                 f':no_entry: {gl("Unexpected_error")}: {err.__str__()}',
-                emoji=True, new_line_start=True
+                emoji=True, new_line_start=True,
             )
             sys.exit(1)
 
@@ -124,10 +128,10 @@ class SubxAPI:
 
     def get(
         self,
-        id: str = "",
-        method: str = "GET",
-        endpoint: str = "subtitles/",
-        timeout: int | None = None
+        subid: str = '',
+        method: str = 'GET',
+        endpoint: str = 'subtitles/',
+        timeout: int | None = None,
     ) -> requests.Response | Any | None:
         """
         Make an request to the API
@@ -135,19 +139,19 @@ class SubxAPI:
         Args:
             method: HTTP method (GET)
             endpoint: API endpoint (appended to base_url)
-            id: subtitle id parameter
+            subid: subtitle id parameter
             timeout: Request timeout in seconds
 
         Returns:
             Parsed JSON response if content is JSON, otherwise raw text,
             or None if request fails
         """
-        url = f"{self.base_url}/{endpoint}/{id}/download"
+        url = f'{self.base_url}/{endpoint}/{subid}/download'
         timeout = timeout or self.default_timeout
         self.session.headers.update({
             'Accept': '*/*',
             'Content-Type': 'application/x-www-form-urlencoded',
-            'content-disposition': 'attachment'
+            'content-disposition': 'attachment',
         })
 
         response: requests.Response
@@ -156,7 +160,7 @@ class SubxAPI:
                 method,
                 url,
                 timeout=timeout,
-                verify=certifi.where()
+                verify=certifi.where(),
             )
             response.raise_for_status()
 
@@ -168,16 +172,16 @@ class SubxAPI:
 
         except HTTPError as e:
             ExceptionErrorMessage(e)
-            logger.debug(f"HTTP error occurred: {e} HTTP Error ({e.response.status_code})")
+            logger.debug(f'HTTP error occurred: {e} HTTP Error ({e.response.status_code})')
             sys.exit(1)
         except RequestException as err:
             ExceptionErrorMessage(err)
-            logger.debug(f"Request error occurred: {err}")
+            logger.debug(f'Request error occurred: {err}')
             sys.exit(1)
         except Exception as err:
             console.print(
                 f':no_entry: {gl("Unexpected_error")}: {err.__str__()}',
-                emoji=True, new_line_start=True
+                emoji=True, new_line_start=True,
             )
             logger.debug(f'{gl("Unexpected_error")}: {err}')
             sys.exit(1)
@@ -190,24 +194,25 @@ class SubxAPI:
         list_data: list[dict[str, Any]] = []
 
         if self._data and bool(self._data):
-            total = int(self._data['total'])
-            for item in self._data['items']:
-                dt_object = datetime.strptime(item['posted_at'], "%Y-%m-%dT%H:%M:%SZ")
-                posted_at = dt_object.strftime("%Y-%m-%d %H:%M:%S")
+            total = int(self._data.get('total', 0))
+            items: list[dict[str, Any]] = self._data.get('items') or []
+            for item in items:
+                dt_object = datetime.datetime.strptime(f"{item.get('posted_at')}", '%Y-%m-%dT%H:%M:%SZ')
+                posted_at = dt_object.strftime('%Y-%m-%d %H:%M:%S')
                 data = {
-                    "id": item['id'],
-                    "titulo": item['title'],
-                    "descripcion": item['description'],
-                    "descargas": item['downloads'],
-                    "nick": item['uploader_name'],
-                    "fecha_subida": posted_at,
-                    "comentarios": 0
+                    'id': item.get('id'),
+                    'titulo': item.get('title'),
+                    'descripcion': item.get('description'),
+                    'descargas': item.get('downloads'),
+                    'nick': item.get('uploader_name'),
+                    'fecha_subida': posted_at,
+                    'comentarios': 0,
                 }
                 list_data.append(data)
 
             return {
-                "iTotalRecords": total,
-                "aaData": list_data
+                'iTotalRecords': total,
+                'aaData': list_data,
             }
         else:
             return {}
