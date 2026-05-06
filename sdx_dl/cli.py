@@ -4,21 +4,24 @@
 
 import os
 import sys
-from typing import Any
-from sdx_dl.sdxconsole import console
-from sdx_dl.sdxlocale import gl
-from sdx_dl.sdxparser import logger, args as parser_args
-from sdx_dl.sdxlib import get_subtitle_id, get_subtitle
-from sdx_dl.sdxutils import sub_extensions, Metadata as Metadata, extract_meta_data, backoff_delay
-from sdx_dl.sdxclasses import FindFiles, NoResultsError, VideoMetadataExtractor
-from guessit import guessit  # type: ignore
 from contextlib import contextmanager
+from typing import Any
+
+from guessit import guessit  # type: ignore
+
+from sdx_dl.sdxclasses import FindFiles, NoResultsError, VideoMetadataExtractor
+from sdx_dl.sdxconsole import console
+from sdx_dl.sdxlib import get_subtitle, get_subtitle_id
+from sdx_dl.sdxlocale import gl
+from sdx_dl.sdxparser import args as parser_args
+from sdx_dl.sdxparser import logger
+from sdx_dl.sdxutils import Metadata, backoff_delay, extract_meta_data, sub_extensions
 
 _extensions = [
     'avi', 'mkv', 'mp4',
     'mpg', 'm4v', 'ogv',
     'vob', '3gp',
-    'part', 'temp', 'tmp'
+    'part', 'temp', 'tmp',
 ]
 
 
@@ -54,9 +57,9 @@ def subtitle_renamer(filepath: str, inf_sub: dict[str, Any]):
             if os.path.exists(filename + new_ext):
                 continue
             else:
-                if inf_sub['type'] == "episode" and inf_sub['season']:
+                if inf_sub['type'] == 'episode' and inf_sub['season']:
                     info = guessit(new_file)  # type: ignore
-                    number = f"s{info['season']:02}e{info['episode']:02}" if "season" in info and "episode" in info else None
+                    number = f"s{info['season']:02}e{info['episode']:02}" if 'season' in info and 'episode' in info else None
                     if number == inf_sub['number']:
                         os.rename(new_file_dirpath, filename + new_ext)
                     else:
@@ -65,7 +68,7 @@ def subtitle_renamer(filepath: str, inf_sub: dict[str, Any]):
                     os.rename(new_file_dirpath, filename + new_ext)
 
         except OSError as e:
-            print(e)
+            console.print(e)
             logger.error(e)
             sys.exit(1)
 
@@ -77,50 +80,52 @@ def main():
     def guess_search(search: str):
         """ Parse search parameter. """
 
+        def _clean_search(search_param: str):
+            """Remove special chars for `search_param`"""
+            for i in ['.', '-', '*', ':', ';', ',']:
+                search_param = search_param.replace(i, ' ')
+            return search_param
+
         # Custom configuration
         options: dict[str, Any] = {
             'single_value': True,
             'excludes': ['country', 'language', 'audio_codec', 'other', 'film', 'bonus'],
             'output_input_string': True,
-            'name_only': True
+            'name_only': True,
         }
         properties = ('type', 'title', 'season', 'episode', 'year')
-        season = True if args.Season else False
+        season = bool(args.Season)
+        search = _clean_search(search)
         info = VideoMetadataExtractor.extract_specific(search, *properties, options=options)
-
-        def _clean_search(search_param: str):
-            """Remove special chars for `search_param`"""
-            for i in [".", "-", "*", ":", ";", ","]:
-                search_param = search_param.replace(i, " ")
-            return search_param
 
         try:
 
-            if info["type"] == "episode":
+            year = info.get('year', 0)
+            if info['type'] == 'episode':
                 if (all(i is not None for i in [info['season'], info['episode'], info['title']])):
                     if info['year'] != info['season']:
                         number = f"s{info['season']:02}e{info['episode']:02}"
                     else:
                         number = f"e{info['episode']:02}"
                 else:
-                    number = ""
+                    number = ''
 
                 if (
-                    args.Season and all(i is not None for i in [info['title'], info['season']])
-                    or all(i is not None for i in [info['season'], info['title']]) and info['episode'] is None
+                    (args.Season and all(i is not None for i in [info['title'], info['season']]))
+                    or (all(i is not None for i in [info['season'], info['title']]) and info['episode'] is None)
                 ):
                     number = f"s{info['season']:02}"
                     season = True if number else season
             else:
-                number = f"({info['year']})" if all(i is not None for i in [info['year'], info['title']]) else ""
+                number = f"({info['year']})" if all(i is not None for i in [info['year'], info['title']]) else ''
 
             if (args.title):
-                title = f"{args.title}"
+                title = f'{args.title}'
             else:
-                if info["type"] == "movie":
+                if info['type'] == 'movie':
                     title = f"{info['title'] if info['title'] is not None else _clean_search(search)}"
                 else:
-                    if (all(i is not None for i in [info["year"], info['title']])):
+                    if (all(i is not None for i in [info['year'], info['title']])):
                         title = f"{info['title']} ({info['year']})"
                     elif (all(i is not None for i in [info['title'], info['season']])):
                         title = f"{info['title']}"
@@ -128,17 +133,18 @@ def main():
                         title = _clean_search(search)
 
             inf_sub: dict[str, Any] = {
-                'type': info["type"],
+                'type': info['type'],
                 'season': season,
-                'number': f"{number}"
+                'number': f'{number}',
+                'year': year,
             }
 
         except Exception as e:
             error = e.__class__.__name__
             msg = e.__str__()
-            logger.debug(f"Failed to parse search argument: {search} {error}: {msg}")
+            logger.debug(f'Failed to parse search argument: {search} {error}: {msg}')
             console.print(f':no_entry: [bold red] {gl("Failed_to_parse_search_argument")} [/] ', search, emoji=True)
-            console.print(f"[red]{error}[/]: {msg}", emoji=True)
+            console.print(f'[red]{error}[/]: {msg}', emoji=True)
             sys.exit(1)
 
         return title, number, inf_sub
@@ -155,7 +161,7 @@ def main():
                     exists_sub = True
                     break
         if exists_sub:
-            logger.debug("Subtitle already exits use -f for force downloading")
+            logger.debug('Subtitle already exits use -f for force downloading')
             if not args.quiet:
                 console.print(f':no_entry: [bold red]{gl("Subtitle_already_exists")}[/]', emoji=True)
         return exists_sub
@@ -165,7 +171,7 @@ def main():
             if _exists_sub(str(args.search)):
                 sys.exit(1)
         try:
-            search = f"{os.path.basename(args.search)}"
+            search = f'{os.path.basename(args.search)}'
             title, number, inf_sub = guess_search(search)
 
             subid = get_subtitle_id(
@@ -193,7 +199,7 @@ def main():
         if not list_files:
             logger.debug(f'Not files to search in: {args.search}')
             if not args.quiet:
-                console.print(":no_entry:[bold red] " + gl("Not_files_to_search_in") + "[/]", f'{args.search}', emoji=True)
+                console.print(':no_entry:[bold red] ' + gl('Not_files_to_search_in') + '[/]', f'{args.search}', emoji=True)
             sys.exit(1)
         search_files = len(list_files)
         for filepath in list_files:
@@ -227,7 +233,7 @@ def main():
             if search_files != 0:
                 console.print(
                     f':watch:  [yellow]{gl("site_message")}[/]',
-                    emoji=True, new_line_start=True
+                    emoji=True, new_line_start=True,
                 )
                 backoff_delay(backoff_factor=1.5)
 
