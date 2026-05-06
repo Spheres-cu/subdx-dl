@@ -100,7 +100,7 @@ class CloudflareBypasser:
                 self.click_verification_button()
 
                 try_count += 1
-                time.sleep(4)
+                time.sleep(6)
 
             if try_count >= self.max_retries and not self.is_bypassed():
                 self.log_message("Exceeded maximum retries. Bypass failed.")
