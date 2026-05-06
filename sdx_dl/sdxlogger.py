@@ -1,25 +1,27 @@
 # Copyright (C) 2025 Spheres-cu (https://github.com/Spheres-cu) subdx-dl
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import os
 import logging
+import os
 import tempfile
 
-from sdx_dl.sdxconsole import console
 from rich.logging import RichHandler
 from rich.traceback import install
+
+from sdx_dl.sdxconsole import console
+
 install(show_locals=True)
 
-__all__ = ["create_logger", "logger"]
+__all__ = ['create_logger', 'logger']
 
 
-def create_logger(level: str = "DEBUG", verbose: bool = False, mode: str = 'w') -> logging.Logger:
+def create_logger(level: str = 'DEBUG', verbose: bool = False, mode: str = 'w') -> logging.Logger:
 
     # Setting logger
-    levels = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
+    levels = ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']
     LOGGER_LEVEL = levels[4]
     LOGGER_FORMATTER_LONG = logging.Formatter('%(asctime)-12s %(levelname)-6s %(message)s', '%Y-%m-%d %H:%M:%S')
-    LOGGER_FORMATTER_SHORT = logging.Formatter(fmt='%(message)s', datefmt="[%X]")
+    LOGGER_FORMATTER_SHORT = logging.Formatter(fmt='%(message)s', datefmt='[%X]')
 
     level = level if level in levels else LOGGER_LEVEL
     temp_log_dir = tempfile.gettempdir()
