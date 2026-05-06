@@ -22,6 +22,12 @@ Aplicación de línea de comandos para descargar subtítulos de [www.subdivx.com
 pip install -U subdx-dl
 ```
 
+O usando pipx
+
+```bash
+pipx install subdx-dl
+```
+
 ### Versión portable
 
 Puede descargar la version portable para Windows x64 (subdx-dl.exe) y x86 (subdx-dl_x86.exe) tambien el binario para Linux (subdx-dl) desde: [release](https://github.com/Spheres-cu/subdx-dl/releases/latest)
@@ -182,6 +188,10 @@ sdx-dl -i "Duna S1E3"
 ![![IMDB search film]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search01.png?raw=true)
 
 ![![IMDB search film reults]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search02.png?raw=true)
+
+### _Necesitas una clave API de TMDB para realizar búsquedas en IMDb._
+>
+> _Consulta la página wiki: [Clave API de TMDB](https://github.com/Spheres-cu/subdx-dl/wiki/subdx%E2%80%90dl-wiki-(ES)#clave-api-de-tmdb)._
 
 ## Opciones de configuración
 

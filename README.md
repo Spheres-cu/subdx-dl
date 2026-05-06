@@ -22,6 +22,12 @@ A cli tool for download subtitle from [www.subdivx.com](https://www.subdivx.com)
 pip install -U subdx-dl
 ```
 
+Or using pipx
+
+```bash
+pipx install subdx-dl
+```
+
 ### Portable Version
 
 You can download the portable version for Windows x64 (subdx-dl.exe) and x86 (subdx-dl_x86.exe), as well as the binary for Linux (subdx-dl) from: [release](https://github.com/Spheres-cu/subdx-dl/releases/latest)
@@ -184,6 +190,10 @@ sdx-dl -i "Duna S1E3"
 ![![IMDB search film]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search01.png?raw=true)
 
 ![![IMDB search film reults]](https://github.com/Spheres-cu/subdx-dl/blob/main/screenshots/imdb_search02.png?raw=true)
+
+### _You need a TMDB API key for IMDb searches_
+>
+> _See in the wiki page: [TMDB API key](https://github.com/Spheres-cu/subdx-dl/wiki/subdx%E2%80%90dl-wiki#tmdb-api-key)_
 
 ## Config options
 
