@@ -1,41 +1,41 @@
 # Copyright (C) 2024 Spheres-cu (https://github.com/Spheres-cu) subdx-dl
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import argparse
+import json
 import os
+import pathlib
+import random
 import re
 import sys
-import json
-import random
-import argparse
-import urllib3
-import certifi
-
-from pathlib import Path
-from typing import Any, no_type_check
-from guessit import guessit, jsonutils  # type: ignore
-from bs4 import BeautifulSoup, Tag
 from importlib.metadata import version
+from typing import Any, no_type_check
+
+import certifi
+import urllib3
+from bs4 import BeautifulSoup, Tag
+from guessit import guessit, jsonutils  # type: ignore
+from pygments.lexers import guess_lexer  # type: ignore
 from urllib3.exceptions import HTTPError
-from pygments.lexers import guess_lexer
+
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl, set_locale
-
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 __all__ = [
-    "HTML2BBCode",
-    "NoResultsError",
-    "GenerateUserAgent",
-    "VideoMetadataExtractor",
-    "validate_proxy",
-    "ChkVersionAction",
-    "ConfigManager",
-    "ViewConfigAction",
-    "SaveConfigAction",
-    "SetConfigAction",
-    "ResetConfigAction",
-    "FindFiles"
+    'ChkVersionAction',
+    'ConfigManager',
+    'FindFiles',
+    'GenerateUserAgent',
+    'HTML2BBCode',
+    'NoResultsError',
+    'ResetConfigAction',
+    'SaveConfigAction',
+    'SetConfigAction',
+    'VideoMetadataExtractor',
+    'ViewConfigAction',
+    'validate_proxy',
 ]
 
 
@@ -51,13 +51,13 @@ class HTML2BBCode:
         guess code here because many other language detectors cannot detect the language properly.
         """
         guessed = guess_lexer(code).name
-        if guessed == "Text only":
-            return ""
+        if guessed == 'Text only':
+            return ''
         return guessed.lower()
 
     @classmethod
     def _html_to_bbcode(cls, tag: Tag) -> str:
-        result = ""
+        result = ''
         if hasattr(tag, 'children'):
             for child in tag.children:
                 if isinstance(child, str):
@@ -65,74 +65,74 @@ class HTML2BBCode:
                 elif isinstance(child, Tag):
                     result += cls._html_to_bbcode(child)
 
-        if tag.name == "span":
-            if "class" in list(tag.attrs.keys()):
-                tag_type = tag["class"][0]
-                if tag_type == "bb-bold":  # bold
-                    result = f"[bold green]{result}[/bold green]"
-                elif tag_type == "bb-italic":  # italic
-                    result = f"[italic bright_yellow]{result}[/italic bright_yellow]"
-                elif tag_type == "bb-underline":  # underline
-                    result = f"[u]{result}[/u]"
-                elif tag_type == "bb-strikethrough":  # strikethrough
-                    result = f"[s]{result}[/s]"
-                elif tag_type == "bb-big":  # big
-                    result = f"[big]{result}[/big]"
-                elif tag_type == "bb-small":  # small
-                    result = f"[small]{result}[/small]"
-            elif "style" in list(tag.attrs.keys()):
-                if "color" in tag["style"]:  # color
+        if tag.name == 'span':
+            if 'class' in list(tag.attrs.keys()):
+                tag_type = tag['class'][0]
+                if tag_type == 'bb-bold':  # bold
+                    result = f'[bold green]{result}[/bold green]'
+                elif tag_type == 'bb-italic':  # italic
+                    result = f'[italic bright_yellow]{result}[/italic bright_yellow]'
+                elif tag_type == 'bb-underline':  # underline
+                    result = f'[u]{result}[/u]'
+                elif tag_type == 'bb-strikethrough':  # strikethrough
+                    result = f'[s]{result}[/s]'
+                elif tag_type == 'bb-big':  # big
+                    result = f'[big]{result}[/big]'
+                elif tag_type == 'bb-small':  # small
+                    result = f'[small]{result}[/small]'
+            elif 'style' in list(tag.attrs.keys()):
+                if 'color' in tag['style']:  # color
                     tag_color = f'{tag.get("style")}'
                     result = f'[color={tag_color.replace("color:", "")}]{result}[/color]'
-        elif tag.name == "br":  # line break
-            result = "\n"
-        elif tag.name == "a":  # url
+        elif tag.name == 'br':  # line break
+            result = '\n'
+        elif tag.name == 'a':  # url
             result = f"[link={tag['href']}]{result}[/link]"
-        elif tag.name == "b":  # bold
-            result = f"[bold green]{result}[/bold green]"
-        elif tag.name == "i":  # bold
-            result = f"[italic bright_yellow]{result}[/italic bright_yellow]"  # italic
-        elif tag.name == "ul":  # unordered list
-            result = f"[list]\n{result}[/list]"
-        elif tag.name == "li":  # list item
-            result = f"[*] {result}"
-        elif tag.name == "ol":  # ordered list
-            result = f"[list=1]\n{result}[/list]"
-        elif tag.name == "blockquote":  # quote
-            quote_author = tag.find("p", {"class": "bb-quote-author"})
+        elif tag.name == 'b':  # bold
+            result = f'[bold green]{result}[/bold green]'
+        elif tag.name == 'i':  # bold
+            result = f'[italic bright_yellow]{result}[/italic bright_yellow]'  # italic
+        elif tag.name == 'ul':  # unordered list
+            result = f'[list]\n{result}[/list]'
+        elif tag.name == 'li':  # list item
+            result = f'[*] {result}'
+        elif tag.name == 'ol':  # ordered list
+            result = f'[list=1]\n{result}[/list]'
+        elif tag.name == 'blockquote':  # quote
+            quote_author = tag.find('p', {'class': 'bb-quote-author'})
             if quote_author is not None:
-                quote_author_name = str(quote_author.get_text()).replace(" wrote:", "")
-                quote_author = "=" + quote_author_name
+                quote_author_name = str(quote_author.get_text()).replace(' wrote:', '')
+                quote_author = '=' + quote_author_name
             else:
-                quote_author = ""
-            result = f"[quote{quote_author}]{result}[/quote]"
-        elif tag.name == "p":
-            if "class" in list(tag.attrs.keys()):
-                if "bb-quote-author" in tag["class"]:
-                    result = ""
+                quote_author = ''
+            result = f'[quote{quote_author}]{result}[/quote]'
+        elif tag.name == 'p':
+            if 'class' in list(tag.attrs.keys()):
+                if 'bb-quote-author' in tag['class']:
+                    result = ''
             else:
-                result = f"[p]{result}[/p]"  # p
-        elif tag.name == "div":
-            if "class" in list(tag.attrs.keys()):
-                if "code" in tag["class"]:  # code
+                result = f'[p]{result}[/p]'  # p
+        elif tag.name == 'div':
+            if 'class' in list(tag.attrs.keys()):
+                if 'code' in tag['class']:  # code
                     language = cls.guess_language(tag.get_text())
                     if not language:
-                        language = ""
+                        language = ''
                     else:
-                        language = "=" + language
-                    result = f"[code{language}]{result}[/code]"
+                        language = '=' + language
+                    result = f'[code{language}]{result}[/code]'
                 # This converter cannot convert scratchblocks html to scratchblocks bbcode
-                elif "scratchblocks" in tag["class"]:  # scratchblocks
-                    result = f"[scratchblocks]{tag.get_text()}[/scratchblocks]"
-            elif "style" in list(tag.attrs.keys()):
-                if "text-align:center;" in tag["style"]:  # center
-                    result = f"[center]{result}[/center]"
+                elif 'scratchblocks' in tag['class']:  # scratchblocks
+                    result = f'[scratchblocks]{tag.get_text()}[/scratchblocks]'
+            elif 'style' in list(tag.attrs.keys()):
+                if 'text-align:center;' in tag['style']:  # center
+                    result = f'[center]{result}[/center]'
         return result
 
     @classmethod
     def html_to_bbcode(cls, html: str) -> str:
         try:
-            soup = BeautifulSoup(html, "lxml")  # lxml is the fastest
+            soup = BeautifulSoup(html, 'lxml')  # lxml is the fastest
             return cls._html_to_bbcode(soup)
         except Exception:
             pass
@@ -152,18 +152,18 @@ class GenerateUserAgent:
 
     @staticmethod
     def _token() -> str:
-        return "Mozilla/5.0"
+        return 'Mozilla/5.0'
 
     @staticmethod
     def _platform() -> str:
-        _WINDOWS_PREFIX: str = "Windows NT 10.0; Win64; x64"
-        _MAC_PREFIX: str = "Macintosh; Intel Mac OS X"
-        _LINUX_PREFIX: str = "X11; Ubuntu; Linux x86_64"
+        _WINDOWS_PREFIX: str = 'Windows NT 10.0; Win64; x64'
+        _MAC_PREFIX: str = 'Macintosh; Intel Mac OS X'
+        _LINUX_PREFIX: str = 'X11; Ubuntu; Linux x86_64'
 
-        if sys.platform == "win32":
+        if sys.platform == 'win32':
             # Windows
             platform = _WINDOWS_PREFIX
-        elif sys.platform == "darwin":
+        elif sys.platform == 'darwin':
             # macOS
             platform = _MAC_PREFIX
         else:
@@ -179,7 +179,7 @@ class GenerateUserAgent:
             list[str]: The list of common firefox user agents
         """
         return [
-            f"{cls._token()} ({cls._platform()}; rv:{version}.0) Gecko/20100101 Firefox/{version}.0"
+            f'{cls._token()} ({cls._platform()}; rv:{version}.0) Gecko/20100101 Firefox/{version}.0'
             for version in range(120, 138)
         ]
 
@@ -191,8 +191,8 @@ class GenerateUserAgent:
             list[str]: The list of common chrome user agents
         """
         return [
-            f"{cls._token()} ({cls._platform()}) AppleWebKit/537.36 (KHTML, like Gecko) \
-            Chrome/{version}.0.0.0 Safari/537.36"
+            f'{cls._token()} ({cls._platform()}) AppleWebKit/537.36 (KHTML, like Gecko) \
+            Chrome/{version}.0.0.0 Safari/537.36'
             for version in range(120, 135)
         ]
 
@@ -204,8 +204,8 @@ class GenerateUserAgent:
             list[str]: The list of common opera user agents
         """
         return [
-            f"{cls._token()} ({cls._platform()}) AppleWebKit/537.36 (KHTML, like Gecko) \
-            Chrome/{version}.0.0.0 Safari/537.36 OPR/{opr}.0.0.0"
+            f'{cls._token()} ({cls._platform()}) AppleWebKit/537.36 (KHTML, like Gecko) \
+            Chrome/{version}.0.0.0 Safari/537.36 OPR/{opr}.0.0.0'
             for version in range(120, 135, 5) for opr in range(103, 118, 5)
         ]
 
@@ -216,11 +216,11 @@ class GenerateUserAgent:
         Returns:
             list[str]: The list of common safari user agents
         """
-        if sys.platform == "darwin":
+        if sys.platform == 'darwin':
             return [
-                f"{cls._token()} ({cls._platform()} 14_7_5) AppleWebKit/605.1.15 (KHTML, like Gecko) \
-                Version/{major}.{minor} Safari/605.1.15"
-                for major, minors in [(16, range(5, 7)), (17, range(0, 7))] for minor in minors
+                f'{cls._token()} ({cls._platform()} 14_7_5) AppleWebKit/605.1.15 (KHTML, like Gecko) \
+                Version/{major}.{minor} Safari/605.1.15'
+                for major, minors in [(16, range(5, 7)), (17, range(7))] for minor in minors
             ]
         else:
             return []
@@ -232,11 +232,11 @@ class GenerateUserAgent:
         Returns:
             list[str]: The list of common safari mobile user agents
         """
-        if sys.platform == "darwin":
+        if sys.platform == 'darwin':
             return [
-                f"{cls._token()} (iPhone; CPU iPhone OS {major}_{minor} like Mac OS X) \
-                AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{major}.{minor} Mobile/15E148 Safari/604.1"
-                for major, minors in [(16, range(5, 8)), (17, range(0, 7))] for minor in minors
+                f'{cls._token()} (iPhone; CPU iPhone OS {major}_{minor} like Mac OS X) \
+                AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{major}.{minor} Mobile/15E148 Safari/604.1'
+                for major, minors in [(16, range(5, 8)), (17, range(7))] for minor in minors
             ]
         else:
             return []
@@ -248,7 +248,7 @@ class GenerateUserAgent:
         Returns:
             list[str]: The list of common user agents for all supported browsers in GenerateUserAgent.
         """
-        if sys.platform == "darwin":
+        if sys.platform == 'darwin':
             return GenerateUserAgent.safari() + GenerateUserAgent.safari_mobile() + GenerateUserAgent.opera()
         else:
             return GenerateUserAgent.firefox() + GenerateUserAgent.chrome() + GenerateUserAgent.opera()
@@ -260,7 +260,7 @@ class GenerateUserAgent:
         Returns:
             list[str]: The list of random user agents for all supported browsers in GenerateUserAgent.
         """
-        if sys.platform == "darwin":
+        if sys.platform == 'darwin':
             return random.choice([GenerateUserAgent.safari() + GenerateUserAgent.safari_mobile() + GenerateUserAgent.opera()])
         else:
             return random.choice([GenerateUserAgent.firefox(), GenerateUserAgent.chrome(), GenerateUserAgent.opera()])
@@ -272,7 +272,7 @@ class GenerateUserAgent:
         Returns:
             str: With the random user agents for one supported browser in GenerateUserAgent.
         """
-        if sys.platform == "darwin":
+        if sys.platform == 'darwin':
             browser = random.choice([GenerateUserAgent.safari() + GenerateUserAgent.safari_mobile() + GenerateUserAgent.opera()])
             return random.choice(browser)
         else:
@@ -298,11 +298,9 @@ def validate_proxy(proxy_str: str) -> bool:
 
     if not (re.match(ip_pattern, host) or re.match(host_pattern, host)):
         return False
-
-    if (port is None) or (not (0 < int(port) <= 65535)):
+    elif (port is None) or (not (0 < int(port) <= 65535)):
         return False
-
-    if protocol not in ["http", "https", None]:
+    elif protocol not in ['http', 'https', None]:
         return False
 
     return True
@@ -312,33 +310,33 @@ def validate_proxy(proxy_str: str) -> bool:
 def ExceptionErrorMessage(e: Exception):
     """Parse ``Exception`` error message."""
     if isinstance(e, (HTTPError)):
-        msg = e.__str__().split(":", maxsplit=1)[1].split("(")[0]
+        msg = e.__str__().split(':', maxsplit=1)[1].split('(')[0]
     else:
         msg = e.__str__()
     error_class = e.__class__.__name__
-    console.print(gl("Error_occurred") + error_class + ":" + msg)
+    console.print(gl('Error_occurred') + error_class + ':' + msg)
     sys.exit(1)
 
 
 def _check_version(version: str, proxy: str):
     """Check for new version."""
     ua = GenerateUserAgent.random_browser()
-    headers = {"user-agent": ua}
+    headers = {'user-agent': ua}
     PYPI_API_URL = 'https://pypi.org/pypi/subdx-dl/json'
     GITHUB_API_URL = 'https://api.github.com/repos/spheres-cu/subdx-dl/releases/latest'
-    msg = ""
+    msg = ''
 
     if (proxy):
-        if not (any(p in proxy for p in ["http", "https"])):
-            proxy = "http://" + proxy
+        if not (any(p in proxy for p in ['http', 'https'])):
+            proxy = 'http://' + proxy
         session = urllib3.ProxyManager(
-            proxy, headers=headers, cert_reqs="CERT_REQUIRED",
-            ca_certs=certifi.where(), retries=2, timeout=10
+            proxy, headers=headers, cert_reqs='CERT_REQUIRED',
+            ca_certs=certifi.where(), retries=2, timeout=10,
         )
     else:
         session = urllib3.PoolManager(
-            headers=headers, cert_reqs="CERT_REQUIRED",
-            ca_certs=certifi.where(), retries=2, timeout=10
+            headers=headers, cert_reqs='CERT_REQUIRED',
+            ca_certs=certifi.where(), retries=2, timeout=10,
         )
 
     def get_version_description():
@@ -350,9 +348,9 @@ def _check_version(version: str, proxy: str):
         except (HTTPError, Exception) as e:
             ExceptionErrorMessage(e)
         if bool(data):
-            description = f'{data.get("body", "")}'.replace("- ", "\u25cf ")
+            description = f'{data.get("body", "")}'.replace('- ', '\u25cf ')
         else:
-            description = ""
+            description = ''
 
         return description
 
@@ -383,7 +381,7 @@ def _check_version(version: str, proxy: str):
 def _get_remain_arg(args: list[str] | str) -> str:
     """ Get remainig arguments values"""
     n = 0
-    arg = ""
+    arg = ''
     for i in sys.argv:
         if i in args:
             arg = sys.argv[n + 1] if n + 1 < len(sys.argv) else arg
@@ -396,19 +394,19 @@ def _get_remain_arg(args: list[str] | str) -> str:
 class ChkVersionAction(argparse.Action):
     """Class Check version. This class call for `check_version` function"""
     @no_type_check
-    def __init__(self, nargs=0, **kw,):
+    def __init__(self, nargs=0, **kw):
         super().__init__(nargs=nargs, **kw)
 
     @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
-        p = getattr(namespace, "proxy") or _get_remain_arg(["-x", "--proxy"])
+        p = namespace.proxy or _get_remain_arg(['-x', '--proxy'])
         if not p:
             config = ConfigManager()
-            proxy = config.get("proxy")
+            proxy = config.get('proxy')
         else:
             proxy = p if validate_proxy(p) else None
 
-        print(_check_version(version("subdx-dl"), proxy))
+        console.print(_check_version(version('subdx-dl'), proxy))
         sys.exit(0)
 
 
@@ -438,7 +436,7 @@ class VideoMetadataExtractor:
             if isinstance(value, jsonutils.Match):
                 result_dict[key] = {
                     'value': value.value,
-                    'raw': value.raw
+                    'raw': value.raw,
                 }
             else:
                 result_dict[key] = value
@@ -466,7 +464,7 @@ class VideoMetadataExtractor:
             if isinstance(value, jsonutils.Match):
                 result_dict[key] = {
                     'value': value.value,  # type: ignore
-                    'raw': value.raw  # type: ignore
+                    'raw': value.raw,  # type: ignore
                 }
             else:
                 result_dict[key] = value
@@ -495,7 +493,7 @@ class ConfigManager:
         config (dict): Dictionary containing the configuration settings
     """
 
-    def __init__(self, config_path: str = ""):
+    def __init__(self, config_path: str = ''):
         """
         Initialize the ConfigManager with a path to the configuration file.
 
@@ -522,15 +520,15 @@ class ConfigManager:
         """Load the configuration from file or create a new one if it doesn't exist."""
         try:
             if self.exists:
-                with open(self.config_path, 'r') as f:
+                with open(self.config_path) as f:
                     self.config = json.load(f)
             else:
                 self.config = {}
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             pass
             console.print(
                 f':no_entry: [bold red]{gl("Failed_to_load_configuration")}[/]{e.__class__.__name__}\n',
-                emoji=True, new_line_start=True
+                emoji=True, new_line_start=True,
             )
             self._save_config()
             sys.exit(1)
@@ -538,16 +536,16 @@ class ConfigManager:
     def _save_config(self) -> None:
         """Save the current configuration to file."""
         if not self.exists:
-            config_dir = Path(os.path.dirname(self.config_path))
+            config_dir = pathlib.Path(os.path.dirname(self.config_path))
             config_dir.mkdir(parents=True, exist_ok=True)
         try:
             with open(self.config_path, 'w') as f:
                 json.dump(self.config, f, indent=4)
-        except IOError as e:
+        except OSError as e:
             pass
             console.print(
                 f':no_entry: [bold red]{gl("Failed_to_save_configuration")}[/]{e.__class__.__name__}\n',
-                emoji=True, new_line_start=True
+                emoji=True, new_line_start=True,
             )
             sys.exit(1)
 
@@ -636,17 +634,18 @@ class ConfigManager:
             dict: With arguments to merge
         """
         merged: dict[str, Any] = {}
-        excluded = ["browser_path", "SubX_key"]
-        copy_conf = self.config.copy()
-        for key in excluded:
-            if key in copy_conf:
-                del copy_conf[key]
-        merged = {**args, **{k: v for k, v in copy_conf.items() if not args[k]}}
+        copy_conf: dict[str, Any] = {}
+        excluded = ['browser_path', 'SubX_key', 'tmdb_apikey']
+        copy_conf = {k: v for k, v in self.config.items() if k not in excluded}
+        merged = {**args, **{k: v for k, v in copy_conf.items() if k not in args}}
 
-        return merged
+        if merged:
+            return merged
+        else:
+            return {}
 
     @staticmethod
-    def get_path(app_name: str = "subdx-dl", file_name: str | None = "sdx-config.json") -> Path:
+    def get_path(app_name: str = 'subdx-dl', file_name: str | None = 'sdx-config.json'):
         """
         Get the appropriate local configuration path for the current platform.
 
@@ -662,15 +661,15 @@ class ConfigManager:
         - macOS: ~/Library/Application Support/<app_name>/
         - Linux: ~/.config/<app_name>/
         """
-        if sys.platform == "win32":
+        if sys.platform == 'win32':
             # Windows
-            base_dir = Path(f'{os.getenv("LOCALAPPDATA")}')
-        elif sys.platform == "darwin":
+            base_dir = pathlib.Path(f'{os.getenv("LOCALAPPDATA")}')
+        elif sys.platform == 'darwin':
             # macOS
-            base_dir = Path.home() / "Library" / "Application Support"
+            base_dir = pathlib.Path.home() / 'Library' / 'Application Support'
         else:
             # Linux and other UNIX-like systems
-            base_dir = Path.home() / ".config"
+            base_dir = pathlib.Path.home() / '.config'
 
         config_dir = base_dir / app_name
 
@@ -683,46 +682,42 @@ class ConfigManager:
 class ViewConfigAction(argparse.Action):
     """Check config file class Action"""
     @no_type_check
-    def __init__(self, nargs=0, **kw,):
+    def __init__(self, nargs=0, **kw):
         super().__init__(nargs=nargs, **kw)
 
     @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
         config = ConfigManager()
         if config.exists:
-            console.print("[bold yellow]" + gl("Config_file") + "[/]", f'{config.get_path()}')
-            config.print_config() if config.hasconfig else console.print(":no_entry: [bold red]" + gl("Config_is_empty") + "[/]")
+            console.print('[bold yellow]' + gl('Config_file') + '[/]', f'{config.get_path()}')
+            config.print_config() if config.hasconfig else console.print(':no_entry: [bold red]' + gl('Config_is_empty') + '[/]')
         else:
-            console.print(":no_entry: [bold red]" + gl("Not_exists_a_config_file") + "[/]")
+            console.print(':no_entry: [bold red]' + gl('Not_exists_a_config_file') + '[/]')
         sys.exit(0)
 
 
 class SaveConfigAction(argparse.Action):
     """Save allowed arguments to a config file. Existing values are update."""
     @no_type_check
-    def __init__(self, nargs=0, **kw,):
+    def __init__(self, nargs=0, **kw):
         super().__init__(nargs=nargs, **kw)
 
     @no_type_check
     def __call__(self, parser, namespace, values, option_string=None):
-        allowed_values = ["quiet", "verbose", "force", "no_choose", "no_filter", "nlines", "path", "proxy", "Season", "imdb", "lang"]
+        allowed_values = ['quiet', 'verbose', 'force', 'no_choose', 'no_filter', 'nlines', 'path', 'proxy', 'Season', 'imdb', 'lang']
         copied_config = namespace.__dict__.copy()
-
-        if all(not copied_config[k] for k in copied_config.keys()):
-            console.print(":no_entry:[bold yellow]" + gl("Nothing_to_save") + "[/]")
-            sys.exit(0)
-
-        for k in namespace.__dict__.keys():
-            if k not in allowed_values:
-                del copied_config[k]
-
+        updated_config = {k: v for k, v in copied_config.items() if k in allowed_values and bool(copied_config[k])}
         config = ConfigManager()
 
-        config.update(config.merge_config(copied_config)) if config.hasconfig else config.save_all(copied_config)
-        if not copied_config['quiet']:
-            console.print(f':heavy_check_mark: {gl("Config_was_saved")}')
-
-        if not getattr(namespace, "search"):
+        if updated_config:
+            merged = config.merge_config(updated_config)
+            if merged:
+                config.update(merged)
+                if not copied_config['quiet']:
+                    console.print(f':heavy_check_mark:  {gl("Config_was_saved")}')
+        else:
+            console.print(':no_entry:[bold yellow]' + gl('Nothing_to_save') + '[/]')
+        if not namespace.search:
             sys.exit(0)
 
 
@@ -739,45 +734,51 @@ class SetConfigAction(argparse.Action):
             console.print(f':no_entry: [bold red]{gl("Not_a_valid_option")}[/]', self.choices)
             sys.exit(1)
 
-        key, value = "", None
+        key, value = '', None
         cf = ConfigManager()
 
-        if values in ["quiet", "verbose", "force", "no_choose", "no_filter", "Season", "imdb", "SubX"]:
-            key, value = f'{values}', bool(True)
-            if values == "SubX":
-                subx_key = _get_remain_arg("SubX")
+        if values in ['quiet', 'verbose', 'force', 'no_choose', 'no_filter', 'Season', 'imdb', 'SubX']:
+            key, value = f'{values}', True
+            if values == 'SubX':
+                subx_key = _get_remain_arg('SubX')
                 if subx_key:
-                    cf.update({"SubX_key": subx_key})
-                elif not cf.get("SubX_key"):
+                    cf.update({'SubX_key': subx_key})
+                elif not cf.get('SubX_key'):
                     console.print(
-                        f':warning:  {gl("Not_SubX_key")}\n'
-                        f'[italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
-                        emoji=True, new_line_start=True
-                    )
-        elif values == "path":
-            path = _get_remain_arg("path")
+                        f':warning:  {gl("Not_SubX_key")}: [italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
+                        emoji=True, new_line_start=True)
+            if values == 'imdb':
+                apikey = _get_remain_arg('imdb')
+                if apikey:
+                    cf.update({'tmdb_apikey': apikey})
+                elif not cf.get('tmdb_apikey'):
+                    console.print(
+                        f':warning:  {gl("Not_tmdb_key")}: [italic pale_turquoise4]{gl("Not_tmdb_key_wiki")}[/]',
+                        emoji=True, new_line_start=True)
+        elif values == 'path':
+            path = _get_remain_arg('path')
             if os.path.isdir(path) and os.access(path, os.W_OK):
                 key, value = f'{values}', path
             else:
                 console.print(
                     f':no_entry: [bold red]{gl("Directory")}[/][yellow]{path}[bold red] '
-                    f'{gl("Directory_not_exists")}[/]'
+                    f'{gl("Directory_not_exists")}[/]',
                 )
-        elif values == "proxy":
-            proxy = _get_remain_arg("proxy")
+        elif values == 'proxy':
+            proxy = _get_remain_arg('proxy')
             if validate_proxy(proxy):
                 key, value = f'{values}', proxy
             else:
                 console.print(
                     f':no_entry: [bold red]{gl("Incorrect_proxy_setting").split(".")[0]}: '
-                    f'[yellow]{proxy}[/]'
+                    f'[yellow]{proxy}[/]',
                 )
-        elif values == "nlines":
-            lines = _get_remain_arg("nlines")
+        elif values == 'nlines':
+            lines = _get_remain_arg('nlines')
             key, value = f'{values}', int(lines) if lines.isnumeric() and int(lines) in range(5, 25, 5) else 10
-        elif values == "lang":
-            language = _get_remain_arg("lang")
-            key, value = f'{values}', language if language in ["es", "en"] else "es"
+        elif values == 'lang':
+            language = _get_remain_arg('lang')
+            key, value = f'{values}', language if language in ['es', 'en'] else 'es'
 
         if not value:
             sys.exit(1)
@@ -787,7 +788,7 @@ class SetConfigAction(argparse.Action):
         else:
             cf.update({key: value})
 
-        console.print(gl("Done"))
+        console.print(gl('Done'))
         sys.exit(0)
 
 
@@ -801,15 +802,15 @@ class ResetConfigAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
 
         if not values:
-            console.print(":no_entry:[bold red]  " + gl("Not_a_valid_option") + "[/]", self.choices)
+            console.print(':no_entry:[bold red]  ' + gl('Not_a_valid_option') + '[/]', self.choices)
             sys.exit(1)
 
         config = ConfigManager()
 
-        if values in ["quiet", "verbose", "force", "no_choose", "no_filter", "Season", "imdb", "path", "proxy", "nlines", "lang", "SubX"]:
+        if values in ['quiet', 'verbose', 'force', 'no_choose', 'no_filter', 'Season', 'imdb', 'path', 'proxy', 'nlines', 'lang', 'SubX']:
             config.delete(values)
 
-        console.print(gl("Done"))
+        console.print(gl('Done'))
         sys.exit(0)
 
 
@@ -829,14 +830,14 @@ class SetBypasserConfigAction(argparse.Action):
             f'[bold yellow]{gl("Browser_path")}[/]\n'
             f'[italic pale_turquoise4]{gl("Browser_path_ex")}[/]',
             show_default=True,
-            default=None
+            default=None,
         )
 
         if browser:
             try:
                 exists_browser = os.path.isfile(browser) and os.access(browser, os.X_OK)
-                assert exists_browser, gl("Not_exists_browser")
-                key, value = "browser_path", browser
+                assert exists_browser, gl('Not_exists_browser')
+                key, value = 'browser_path', browser
                 if cf.hasconfig:
                     cf.set(key, value)
                 else:
@@ -849,7 +850,7 @@ class SetBypasserConfigAction(argparse.Action):
         else:
             console.print(
                 f'\r\n:no_entry: [bold red]{gl("Not_browser_path")}[/]',
-                emoji=True, new_line_start=False
+                emoji=True, new_line_start=False,
             )
             sys.exit(1)
 
@@ -857,7 +858,7 @@ class SetBypasserConfigAction(argparse.Action):
 class BypasserAction(argparse.Action):
     """Bypasser class Action"""
     @no_type_check
-    def __init__(self, nargs='?', **kw,):
+    def __init__(self, nargs='?', **kw):
         super().__init__(nargs=nargs, **kw)
 
     @no_type_check
@@ -866,7 +867,7 @@ class BypasserAction(argparse.Action):
 
         cf = ConfigManager()
 
-        if values == "manual":
+        if values == 'manual':
             manual_bypasser()
             sys.exit(0)
 
@@ -876,13 +877,13 @@ class BypasserAction(argparse.Action):
             browser = None
 
         if browser:
-            force = True if values == "force" else False
-            proxy = cf.get("proxy", None)
+            force = bool(values == 'force')
+            proxy = cf.get('proxy', None)
             get_cf_bypass(browser, force, proxy)
         else:
             console.print(
                 f':no_entry: [bold red]{gl("Not_browser_path")}[/]',
-                emoji=True, new_line_start=True
+                emoji=True, new_line_start=True,
             )
             sys.exit(1)
 
@@ -892,7 +893,7 @@ class BypasserAction(argparse.Action):
 # Setting config language
 config = ConfigManager()
 if config.hasconfig and 'lang' in config.config:
-    set_locale(config.get("lang", "es"))
+    set_locale(config.get('lang', 'es'))
 
 # Findfiles class
 extension_pattern = '(\\.[a-zA-Z0-9]+)$'
@@ -905,7 +906,7 @@ class InvalidPath(Exception):
     pass
 
 
-class FindFiles(object):
+class FindFiles:
     """Given a file, it will verify it exists. Given a folder it will descend
     one level into it and return a list of files, unless the recursive argument
     is True, in which case it finds all files contained within the path.
@@ -936,9 +937,8 @@ class FindFiles(object):
     @staticmethod
     def split_extension(filename: str) -> str:
         """Split extension from `filename` based in extension pattern"""
-        base = re.sub(extension_pattern, "", filename)
-        ext = filename.replace(base, "")
-        return ext
+        base = re.sub(extension_pattern, '', filename)
+        return filename.replace(base, '')
 
     def findFiles(self) -> list[str]:
         """Returns list of files found at path
@@ -954,7 +954,7 @@ class FindFiles(object):
         elif os.path.isdir(self.path):
             return self._findFilesInPath(self.path)
         else:
-            raise InvalidPath("%s is not a valid file/directory" % self.path)
+            raise InvalidPath('%s is not a valid file/directory' % self.path)
 
     def _checkExtension(self, fname: str) -> bool:
         """Checks if the file extension is blacklisted in valid_extensions
@@ -965,11 +965,10 @@ class FindFiles(object):
         # don't use split_extension here (otherwise valid_extensions is useless)!
         _, extension = os.path.splitext(fname)
         for cext in self.with_extension:
-            cext = ".%s" % cext
+            cext = '.%s' % cext
             if extension == cext:
                 return True
-        else:
-            return False
+        return False
 
     def _blacklistedFilename(self, filepath: str) -> bool:
         """Checks if the filename (optionally excluding extension)
@@ -1009,24 +1008,23 @@ class FindFiles(object):
                 else:
                     continue
 
-            if "full_path" in fblacklist and fblacklist["full_path"]:
+            if fblacklist.get('full_path'):
                 to_check = filepath
             else:
-                if fblacklist.get("exclude_extension", False):
+                if fblacklist.get('exclude_extension', False):
                     to_check = fname
                 else:
                     to_check = fullname
 
-            if fblacklist.get("is_regex", False):
-                m = re.match(fblacklist["match"], to_check)
+            if fblacklist.get('is_regex', False):
+                m = re.match(fblacklist['match'], to_check)
                 if m is not None:
                     return True
             else:
-                m = fblacklist["match"] in to_check
+                m = fblacklist['match'] in to_check
                 if m:
                     return True
-        else:
-            return False
+        return False
 
     def _findFilesInPath(self, startpath: str) -> list[str]:
         """Finds files from startpath, could be called recursively
