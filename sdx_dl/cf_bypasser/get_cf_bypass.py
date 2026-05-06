@@ -56,7 +56,8 @@ def get_chromium_options(browser_path: str, arguments: list[str]) -> ChromiumOpt
     :param arguments: List of arguments for the Chromium browser.
     :return: Configured ChromiumOptions instance.
     """
-    options = ChromiumOptions().auto_port()
+    options = ChromiumOptions()
+    options.auto_port()
     options.set_paths(browser_path=browser_path)
     for argument in arguments:
         options.set_argument(argument)
@@ -64,6 +65,7 @@ def get_chromium_options(browser_path: str, arguments: list[str]) -> ChromiumOpt
     # options.no_imgs(True)
     # options.mute(True)
     # options.headless(True)
+    # options.set_argument('--no-sandbox')
     return options
 
 
@@ -75,19 +77,19 @@ def get_cf_bypass(browser: str = "", force: bool = False, proxy: str | None = No
 
     # Arguments to make the browser better for automation and less detectable.
     arguments = [
-        "-no-first-run",
-        "-force-color-profile=srgb",
-        "-metrics-recording-only",
-        "-password-store=basic",
-        "-use-mock-keychain",
-        "-export-tagged-pdf",
-        "-no-default-browser-check",
-        "-disable-background-mode",
-        "-enable-features=NetworkService,NetworkServiceInProcess,LoadCryptoTokenExtension,PermuteTLSExtensions",
-        "-disable-features=FlashDeprecationWarning,EnablePasswordsAccountStorage",
-        "-deny-permission-prompts",
-        "-disable-gpu",
-        "-accept-lang=en-US"
+        "--no-first-run",
+        "--force-color-profile=srgb",
+        "--metrics-recording-only",
+        "--password-store=basic",
+        "--use-mock-keychain",
+        "--export-tagged-pdf",
+        "--no-default-browser-check",
+        "--disable-background-mode",
+        "--enable-features=NetworkService,NetworkServiceInProcess,LoadCryptoTokenExtension,PermuteTLSExtensions",
+        "--disable-features=FlashDeprecationWarning,EnablePasswordsAccountStorage",
+        "--deny-permission-prompts",
+        "--disable-gpu",
+        "--accept-lang=en-US"
     ]
 
     options = get_chromium_options(browser_path, arguments)
@@ -104,11 +106,12 @@ def get_cf_bypass(browser: str = "", force: bool = False, proxy: str | None = No
         logger.debug(f"No cached cookies, expired or force bypasser for {cache_key}, generating new ones...")
 
         # Initialize the browser
-        console.print(
-            f':robot: [italic yellow]{gl("Getting_connection")}[/]',
-            emoji=True, new_line_start=True
-        )
-        time.sleep(3)
+        if not mute:
+            console.print(
+                f':robot: [italic yellow]{gl("Getting_connection")}[/]',
+                emoji=True, new_line_start=True
+            )
+            time.sleep(3)
         driver = ChromiumPage(addr_or_opts=options)
         Settings.set_language('en')
         try:
