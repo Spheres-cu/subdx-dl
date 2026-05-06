@@ -1,16 +1,17 @@
 # Copyright (C) 2025 Spheres-cu (https://github.com/Spheres-cu) subdx-dl
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from importlib.resources import files
-from typing import Any
-from locale import getlocale
-from sdx_dl.sdxconsole import console
 import json
 import sys
+from importlib.resources import files
+from locale import getlocale
+from typing import Any
 
-local_language = f"{getlocale()[0]}".split('_')[0] if getlocale()[0] else ""
+from sdx_dl.sdxconsole import console
 
-__all__ = ['Translator', 'set_locale', 'get_locale', 'gl']
+local_language = f'{getlocale()[0]}'.split('_')[0] if getlocale()[0] else ''
+
+__all__ = ['Translator', 'get_locale', 'gl', 'set_locale']
 
 
 class Translator:
@@ -21,7 +22,7 @@ class Translator:
         Args:
             locale: Default language code ('es', 'en')
         """
-        self.locale = locale if files('sdx_dl.language').joinpath(f"{locale}.json").is_file() else "en"
+        self.locale = locale if files('sdx_dl.language').joinpath(f'{locale}.json').is_file() else 'en'
         self._translations: dict[str, dict[str, str]] = {}
         self._loaded_locales: Any = set()
 
@@ -35,13 +36,13 @@ class Translator:
         if locale in self._loaded_locales:
             return
 
-        if files('sdx_dl.language').joinpath(f"{self.locale}.json").is_file():
-            data_file = files('sdx_dl.language').joinpath(f"{self.locale}.json").open(mode='r', encoding='utf-8')
+        if files('sdx_dl.language').joinpath(f'{self.locale}.json').is_file():
+            data_file = files('sdx_dl.language').joinpath(f'{self.locale}.json').open(mode='r', encoding='utf-8')
             try:
                 self._translations[locale] = json.load(data_file)
                 self._loaded_locales.add(locale)
             except json.JSONDecodeError:
-                raise ValueError(f"Invalid JSON in translation file for locale: {locale}")
+                raise ValueError(f'Invalid JSON in translation file for locale: {locale}')
         else:
             console.print(":no_entry: [bold red] Don't exists a language file!")
             sys.exit(1)
