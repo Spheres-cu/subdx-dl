@@ -5,8 +5,8 @@
 	"Downloading_Subtitle": "\u2193 Descargando subtítulos...",
 	"Cannot_find_a_working_tool": "No puedo encontrar una herramienta que funcione: ",
 	"Install_rar": "Por favor, instale un descompresor de archivos RAR como: unrar (preferiblemente), unar, 7zip o bsdtar.\n\r\n El archivo de subtítulos no se descomprimirá.",
-	"Searching_IMDB":"Buscando en IMDB... ",
-	"Search_terms_from_IMDB": "Resultados de la búsqueda en IMDB: ",
+	"Searching_TMDB":"Buscando en TMDB... ",
+	"Search_terms_from_TMDB": "Resultados de la búsqueda en TMDB: ",
 	"Searching_subtitles_for": "Buscando subtítulos para: ",
 	"Not_subtitles_records_found_for": "No se encontraron registros de subtítulos para: ",
 	"No_suitable_data_were_found_for": "No se encontraron datos adecuados para: ",
@@ -90,5 +90,7 @@
 	"Unexpected_error": "Error inesperado",
 	"Not_SubX_key": "Clave SubX no proporcionada",
 	"Not_SubX_key_wiki": "Vea en la página wiki SubX API",
+	"Not_tmdb_key": "Clave API TMDB no proporcionada",
+	"Not_tmdb_key_wiki": "Ver en la página wiki: Clave API de TMDB",
 	"Starting_new_connection": "Estableciendo una nueva conexión..."
 }
