@@ -38,7 +38,8 @@ from sdx_dl.cf_bypasser.utils.misc import get_public_ip, md5_hash
 from sdx_dl.sdxclasses import ConfigManager, HTML2BBCode, NoResultsError, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
-from sdx_dl.sdxparser import args as parser_args, logger
+from sdx_dl.sdxparser import args as parser_args
+from sdx_dl.sdxparser import logger
 
 __all__ = [
     'SUBDIVX_DOWNLOAD_PAGE',
@@ -111,12 +112,11 @@ def clean_text(text:str):
     # Replace '&' with 'and'
     text = text.replace('&', 'and')
     # Replace curly apostrophe and backtick with straight single quote
-    text = text.replace(str('\u2019'), "'").replace('`', "'")
+    text = text.replace('\u2019', "'").replace('`', "'")
     # Create a translation table
     chars_to_remove = ''.join(c for c in set(text) if not c.isalnum() and c not in keep_chars)
     translation = str.maketrans('', '', chars_to_remove)
-    text = text.translate(translation)
-    return text
+    return text.translate(translation)
 
 def backoff_delay(backoff_factor: float = 2, attempts: int = 2) -> None:
     """ backoff algorithm: backoff_factor * (2 ** attempts)."""
