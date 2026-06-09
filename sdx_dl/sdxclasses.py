@@ -16,6 +16,7 @@ import urllib3
 from bs4 import BeautifulSoup, Tag
 from guessit import guessit, jsonutils  # type: ignore
 from pygments.lexers import guess_lexer  # type: ignore
+from PTT import Parser, add_defaults # type: ignore
 from urllib3.exceptions import HTTPError
 
 from sdx_dl.sdxconsole import console
@@ -33,6 +34,7 @@ __all__ = [
     'ResetConfigAction',
     'SaveConfigAction',
     'SetConfigAction',
+    'PTTMetadataExtractor',
     'VideoMetadataExtractor',
     'ViewConfigAction',
     'validate_proxy',
@@ -483,6 +485,72 @@ class VideoMetadataExtractor:
         console.print_json(data=metadata, indent=4, default=str)
 
 
+class PTTMetadataExtractor:
+    """
+    A class to extract metadata from video filenames using Parsett.
+    """
+    parser = Parser()
+    add_defaults(parser)
+
+    @staticmethod
+    def media_type(pttdata: dict[str, Any]):
+        mtype = 'episode' if pttdata.get('episodes', None) or pttdata.get('seasons', None) else 'movie'
+        return {'type': mtype}
+
+    @classmethod
+    def extract_all(cls, filename: str) -> dict[str, Any]:
+        """
+        Extract all available metadata from a video filename.
+
+        Args:
+            filename (str): The video filename to parse
+
+        Returns:
+            dict: Dictionary containing all extracted properties
+        """
+        all_metadata = cls.parser.parse(filename)
+        result_dict: dict[str, Any] = {}
+        for key, value in all_metadata.items():
+            if isinstance(value, list) and value:
+                result_dict[key] = value[0]
+            elif not value:
+                result_dict[key] = None
+            else:
+                result_dict[key] = value
+        result_dict['season'] = result_dict.pop('seasons')
+        result_dict['episode'] = result_dict.pop('episodes')
+        mtype = cls.media_type(result_dict)
+        result_dict.update(mtype)
+        return result_dict
+
+    @classmethod
+    def extract_specific(cls, filename: str, *properties: str) -> dict[str, Any]:
+        """
+        Extract specific properties from a video filename.
+
+        Args:
+            filename (str): The video filename to parse
+            *properties (str): Properties to extract (e.g., 'title', 'year')
+
+        Returns:
+            dict: Dictionary containing only the requested properties
+        """
+        all_metadata = cls.parser.parse(filename) 
+        result_dict: dict[str, Any] = {}
+        for key, value in all_metadata.items():
+            if isinstance(value, list) and value:
+                result_dict[key] = value[0]
+            elif not value:
+                result_dict[key] = None
+            else:
+                result_dict[key] = value
+        mtype = cls.media_type(result_dict)
+        result_dict['season'] = result_dict.pop('seasons')
+        result_dict['episode'] = result_dict.pop('episodes')
+        result_dict.update(mtype)
+        return {prop: result_dict.get(prop) for prop in properties}
+
+
 # Class Config Settings
 class ConfigManager:
     """
@@ -528,8 +596,7 @@ class ConfigManager:
             pass
             console.print(
                 f':no_entry: [bold red]{gl("Failed_to_load_configuration")}[/]{e.__class__.__name__}\n',
-                emoji=True, new_line_start=True,
-            )
+                emoji=True, new_line_start=True)
             self._save_config()
             sys.exit(1)
 
@@ -545,8 +612,7 @@ class ConfigManager:
             pass
             console.print(
                 f':no_entry: [bold red]{gl("Failed_to_save_configuration")}[/]{e.__class__.__name__}\n',
-                emoji=True, new_line_start=True,
-            )
+                emoji=True, new_line_start=True)
             sys.exit(1)
 
     def get(self, key: str, default: Any | None = None) -> Any:
@@ -895,11 +961,8 @@ config = ConfigManager()
 if config.hasconfig and 'lang' in config.config:
     set_locale(config.get('lang', 'es'))
 
+
 # Findfiles class
-extension_pattern = '(\\.[a-zA-Z0-9]+)$'
-string_type = str
-
-
 class InvalidPath(Exception):
     """Raised when an argument is a non-existent file or directory path
     """
@@ -921,6 +984,8 @@ class FindFiles:
     filtering is done
     """
 
+    string_type = str
+
     def __init__(self, path: str, with_extension: list[str] | None = None, filename_blacklist: list[Any] | None = None, recursive: bool = False):
 
         self.path = path
@@ -937,7 +1002,7 @@ class FindFiles:
     @staticmethod
     def split_extension(filename: str) -> str:
         """Split extension from `filename` based in extension pattern"""
-        base = re.sub(extension_pattern, '', filename)
+        base = re.sub(r'(\\.[a-zA-Z0-9]+)$', '', filename)
         return filename.replace(base, '')
 
     def findFiles(self) -> list[str]:
@@ -1002,7 +1067,7 @@ class FindFiles:
         fname = self.split_extension(fullname)
 
         for fblacklist in self.with_blacklist:
-            if isinstance(fblacklist, string_type):
+            if isinstance(fblacklist, self.string_type):
                 if fullname == fblacklist:
                     return True
                 else:
@@ -1033,7 +1098,7 @@ class FindFiles:
         if not os.access(startpath, os.R_OK):
             return allfiles
 
-        for subf in os.listdir(string_type(startpath)):
+        for subf in os.listdir(self.string_type(startpath)):
             newpath = os.path.join(startpath, subf)
             newpath = os.path.abspath(newpath)
             if os.path.isfile(newpath):

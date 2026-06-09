@@ -9,13 +9,12 @@ from typing import Any
 
 from guessit import guessit  # type: ignore
 
-from sdx_dl.sdxclasses import FindFiles, NoResultsError, VideoMetadataExtractor
+from sdx_dl.sdxclasses import FindFiles, NoResultsError, PTTMetadataExtractor
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlib import get_subtitle, get_subtitle_id
 from sdx_dl.sdxlocale import gl
-from sdx_dl.sdxparser import args as parser_args
-from sdx_dl.sdxparser import logger
-from sdx_dl.sdxutils import Metadata, backoff_delay, extract_meta_data, sub_extensions
+from sdx_dl.sdxparser import args as parser_args, logger
+from sdx_dl.sdxutils import Metadata, backoff_delay, clean_text, extract_meta_data, sub_extensions
 
 _extensions = [
     'avi', 'mkv', 'mp4',
@@ -79,27 +78,12 @@ def main():
 
     def guess_search(search: str):
         """ Parse search parameter. """
-
-        def _clean_search(search_param: str):
-            """Remove special chars for `search_param`"""
-            for i in ['.', '-', '*', ':', ';', ',']:
-                search_param = search_param.replace(i, ' ')
-            return search_param
-
-        # Custom configuration
-        options: dict[str, Any] = {
-            'single_value': True,
-            'excludes': ['country', 'language', 'audio_codec', 'other', 'film', 'bonus'],
-            'output_input_string': True,
-            'name_only': True,
-        }
         properties = ('type', 'title', 'season', 'episode', 'year')
         season = bool(args.Season)
-        search = _clean_search(search)
-        info = VideoMetadataExtractor.extract_specific(search, *properties, options=options)
+        info = PTTMetadataExtractor.extract_specific(search, *properties)
+        logger.debug(f'PTT info {info}')
 
         try:
-
             year = info.get('year', 0)
             if info['type'] == 'episode':
                 if (all(i is not None for i in [info['season'], info['episode'], info['title']])):
@@ -120,17 +104,17 @@ def main():
                 number = f"({info['year']})" if all(i is not None for i in [info['year'], info['title']]) else ''
 
             if (args.title):
-                title = f'{args.title}'
+                title = clean_text(f'{args.title}')
             else:
                 if info['type'] == 'movie':
-                    title = f"{info['title'] if info['title'] is not None else _clean_search(search)}"
+                    title = f"{info['title'] if info['title'] is not None else clean_text(search)}"
                 else:
                     if (all(i is not None for i in [info['year'], info['title']])):
                         title = f"{info['title']} ({info['year']})"
                     elif (all(i is not None for i in [info['title'], info['season']])):
                         title = f"{info['title']}"
                     else:
-                        title = _clean_search(search)
+                        title = clean_text(search)
 
             inf_sub: dict[str, Any] = {
                 'type': info['type'],
@@ -138,7 +122,6 @@ def main():
                 'number': f'{number}',
                 'year': year,
             }
-
         except Exception as e:
             error = e.__class__.__name__
             msg = e.__str__()
