@@ -63,7 +63,6 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
     tmdb_search = None
     json_aaData: dict[str, Any] = {}
     list_Subs_Dicts: list[dict[str, Any]] = []
-    tv = not bool(inf_sub['type'] == 'movie')
 
     if args.imdb:
         if not args.quiet:
@@ -73,7 +72,7 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
         logger.debug(f'Searching in TMDB: {title} {number}')
         tmdb_search = get_imdb_search(title, number, inf_sub)
         if tmdb_search:
-            search = tmdb_search.orig_name if tv else tmdb_search.imdb
+            search = tmdb_search.imdb
         logger.debug(f'TMDB Search result: {search}')
         if not args.quiet and search:
             console.print(
@@ -98,9 +97,9 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
             json_aaData = sbx.from_subx_aadata()
             if json_aaData.get('iTotalRecords') == 0 and tmdb_search:
                 time.sleep(2)
-                sbx.query(tmdb_search.imdb) if tv else sbx.query(f'{tmdb_search.orig_name} {number}')
+                sbx.query(f'{tmdb_search.orig_name} {number}')
                 json_aaData = sbx.from_subx_aadata()
-                search = tmdb_search.imdb if tv else f'{tmdb_search.orig_name} {number}'
+                search = f'{tmdb_search.orig_name} {number}'
         else:
             console.print(
                 f':no_entry: {gl("Not_SubX_key")}: [italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
@@ -110,8 +109,8 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
         json_aaData = get_aadata(search)
         if json_aaData.get('iTotalRecords') == 0 and tmdb_search:
             time.sleep(4)
-            json_aaData = get_aadata(tmdb_search.imdb if tv else f'{tmdb_search.orig_name} {number}')
-            search = tmdb_search.imdb if tv else f'{tmdb_search.orig_name} {number}'
+            json_aaData = get_aadata(f'{tmdb_search.orig_name} {number}')
+            search = f'{tmdb_search.orig_name} {number}'
 
     if json_aaData.get('iTotalRecords') == 0:
         if not args.quiet:
@@ -135,7 +134,7 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
 
-    if args.imdb or args.no_filter:
+    if args.no_filter or (args.imdb and inf_sub['type'] == 'movie'):
         filtered_list_Subs_Dicts = list_Subs_Dicts
     else:
         filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)

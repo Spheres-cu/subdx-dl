@@ -10,11 +10,12 @@ import certifi
 import requests
 from requests.exceptions import HTTPError, RequestException
 
+from sdx_dl.sdxclasses import GenerateUserAgent
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
 from sdx_dl.sdxparser import args, logger
 
-ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'
+ua = GenerateUserAgent.random_browser()
 
 if args.proxy:
     proxie = f'{args.proxy}'
@@ -111,7 +112,7 @@ class SubxAPI:
 
         except HTTPError as e:
             ExceptionErrorMessage(e)
-            logger.debug(f'HTTP error occurred: {e} HTTP Error ({e.response.status_code})')
+            logger.debug(f'HTTP error occurred: {e}')
             sys.exit(1)
         except RequestException as err:
             ExceptionErrorMessage(err)
@@ -120,8 +121,7 @@ class SubxAPI:
         except Exception as err:
             console.print(
                 f':no_entry: {gl("Unexpected_error")}: {err.__str__()}',
-                emoji=True, new_line_start=True,
-            )
+                emoji=True, new_line_start=True)
             sys.exit(1)
 
         return None
@@ -160,8 +160,7 @@ class SubxAPI:
                 method,
                 url,
                 timeout=timeout,
-                verify=certifi.where(),
-            )
+                verify=certifi.where())
             response.raise_for_status()
 
             # Try to get content response or None
@@ -172,7 +171,7 @@ class SubxAPI:
 
         except HTTPError as e:
             ExceptionErrorMessage(e)
-            logger.debug(f'HTTP error occurred: {e} HTTP Error ({e.response.status_code})')
+            logger.debug(f'HTTP error occurred: {e}')
             sys.exit(1)
         except RequestException as err:
             ExceptionErrorMessage(err)
@@ -181,8 +180,7 @@ class SubxAPI:
         except Exception as err:
             console.print(
                 f':no_entry: {gl("Unexpected_error")}: {err.__str__()}',
-                emoji=True, new_line_start=True,
-            )
+                emoji=True, new_line_start=True)
             logger.debug(f'{gl("Unexpected_error")}: {err}')
             sys.exit(1)
 
@@ -197,7 +195,8 @@ class SubxAPI:
             total = int(self._data.get('total', 0))
             items: list[dict[str, Any]] = self._data.get('items') or []
             for item in items:
-                dt_object = datetime.datetime.strptime(f"{item.get('posted_at')}", '%Y-%m-%dT%H:%M:%SZ')
+                dt_object = datetime.datetime.strptime(
+                    f"{item.get('posted_at')}", '%Y-%m-%dT%H:%M:%SZ')
                 posted_at = dt_object.strftime('%Y-%m-%d %H:%M:%S')
                 data = {
                     'id': item.get('id'),

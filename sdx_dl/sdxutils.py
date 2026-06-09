@@ -38,8 +38,7 @@ from sdx_dl.cf_bypasser.utils.misc import get_public_ip, md5_hash
 from sdx_dl.sdxclasses import ConfigManager, HTML2BBCode, NoResultsError, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
-from sdx_dl.sdxparser import args as parser_args
-from sdx_dl.sdxparser import logger
+from sdx_dl.sdxparser import args as parser_args, logger
 
 __all__ = [
     'SUBDIVX_DOWNLOAD_PAGE',
@@ -106,6 +105,18 @@ def clean_screen() -> None:
     """Clean the screen"""
     os.system('clear' if os.name != 'nt' else 'cls')
 
+def clean_text(text:str):
+    """Sanitizer text chars"""
+    keep_chars="!()':. -"
+    # Replace '&' with 'and'
+    text = text.replace('&', 'and')
+    # Replace curly apostrophe and backtick with straight single quote
+    text = text.replace(str('\u2019'), "'").replace('`', "'")
+    # Create a translation table
+    chars_to_remove = ''.join(c for c in set(text) if not c.isalnum() and c not in keep_chars)
+    translation = str.maketrans('', '', chars_to_remove)
+    text = text.translate(translation)
+    return text
 
 def backoff_delay(backoff_factor: float = 2, attempts: int = 2) -> None:
     """ backoff algorithm: backoff_factor * (2 ** attempts)."""
@@ -151,8 +162,7 @@ def HTTPErrorsMessageException(e: HTTPError) -> None:
         clean_screen()
     console.print(
         f':no_entry: [bold red]{gl("Some_Network_Connection_Error_occurred")}[/]: {msg}',
-        new_line_start=True, emoji=True,
-    )
+        new_line_start=True, emoji=True)
     logger.debug(f'Some Network Connection Error occurred: {e.__cause__.__str__()}')
 
 
@@ -294,8 +304,7 @@ class DataConnection:
                     console.print(
                         f':no_entry: [bold red]{gl("Failed_to_load_cache")}[/]\n'
                         f':warning: [bold yellow] {gl("Please_run_bypasser")}[/]',
-                        emoji=True, new_line_start=True,
-                    )
+                        emoji=True, new_line_start=True)
                     sys.exit(1)
 
                 sdx_data_cache = self.__sdx_cache
@@ -346,8 +355,7 @@ class DataConnection:
                             f':no_entry: [bold red]{gl("ConnectionError")}:[/] HTTP error: {sdx_request.status}\n'
                             f'[bold red]{gl("Could_not_load_data_connection")}[/]\n'
                             f'[bold yellow]{gl("Request_new_data_connection")}[/]',
-                            emoji=True, new_line_start=True,
-                        )
+                            emoji=True, new_line_start=True)
                         sys.exit(1)
 
                 with open(self._sdx_dc_path, mode='w') as file:
@@ -359,8 +367,7 @@ class DataConnection:
                     msg = e.__str__()
                     console.print(
                         f':no_entry:  [bold red]{gl("Could_not_load_data_connection")}[/]',
-                        emoji=True, new_line_start=True,
-                    )
+                        emoji=True, new_line_start=True)
                     logger.debug(f'Error: {e.__class__.__name__}: {msg}')
                 sys.exit(1)
 
@@ -387,8 +394,7 @@ class DataConnection:
                     'GET', _url_tkn, headers=headers,
                     preload_content=False,
                     retries=retries,
-                    timeout=20,
-                )
+                    timeout=20)
                 if _r_tkn.status == 200:
                     _d_tkn = _r_tkn.data
                     _n_tkn = f"{json.loads(_d_tkn)['token']}"
@@ -411,8 +417,7 @@ class DataConnection:
                             f':no_entry: [bold red]{gl("ConnectionError")}:[/] HTTP error: {_r_tkn.status}\n'
                             f':no_entry: [bold red]{gl("Could_not_get_new_token")}[/]\n',
                             f':warning: [bold yellow] {gl("Please_run_bypasser")}[/]',
-                            emoji=True, new_line_start=True,
-                        )
+                            emoji=True, new_line_start=True)
                         sys.exit(1)
             except Exception as e:
                 if isinstance(e, (HTTPError)):
@@ -421,8 +426,7 @@ class DataConnection:
                     msg = e.__str__()
                     console.print(
                         f':no_entry:  [bold red]{gl("Could_not_load_data_connection")}[/]',
-                        emoji=True, new_line_start=True,
-                    )
+                        emoji=True, new_line_start=True)
                     logger.debug(f'Error: {e.__class__.__name__}: {msg}')
                 sys.exit(1)
 
@@ -454,8 +458,7 @@ def extract_meta_data(search: str, kword: str, is_file: bool = False) -> Metadat
     extracted_kwords = extractor.extract_specific(
         search, 'screen_size', 'video_codec',
         'release_group', 'source', 'streaming_service',
-        'other', options='-as',
-    )
+        'other', options='-as')
 
     if (all(x is None for x in extracted_kwords.values())):
         keywords = list(f'{kword}'.split()[:4]) if kword else []
@@ -553,12 +556,12 @@ def sort_results(results_list: list[dict[str, Any]], metadata: Metadata = metada
 def match_text(title: str, number: str, inf_sub: dict[str, Any], text: str):
     """Filter Search results with the best match possible"""
 
-    # Setting Patterns
-    special_char = ['`', "'", '´', ':', '.', '?']
-    for i in special_char:
-        title = title.replace(i, '')
-        text = text.replace(i, '')
+    # Sanitizer searchs text
+    title = clean_text(title)
+    text = clean_text(text)
     text = str(html2text.html2text(text)).strip()
+
+    # Setting search
     aka = 'aka'
     search = f'{title} {number}'
     match_type = None
@@ -852,7 +855,7 @@ def get_comments_data(subid: str):
         json_comments = json.loads(page)
     except Exception as e:
         if isinstance(e, (HTTPError)):
-            msg = e.__str__().split(':', maxsplit=1)[1].split('(')[0]
+            msg = f'({e.__class__.__name__})'
             logger.debug(f'Could not load comments ID:{subid}: Network Connection Error:{msg}')
         else:
             msg = e.__str__()
@@ -891,8 +894,7 @@ def make_comments_table(title: str, results: dict[str, Any], page: int, metadata
         'of [bold green]' + str(results['total']) + '[/] comment(s)',
         show_header=True, header_style='bold yellow', title_style='bold green',
         caption_style='italic bright_yellow', leading=0, show_lines=False,
-        show_edge=False, show_footer=True,
-    )
+        show_edge=False, show_footer=True)
 
     comment_table.add_column('#', justify='right', vertical='middle', style='bold green')
     comment_table.add_column('Comentarios', justify='left', vertical='middle', style='white')
@@ -1150,7 +1152,7 @@ def get_selected_subtitle_id(table_title: str, results: list[dict[str, Any]], me
                                 break
 
                             if ch_comment == key.RIGHT:
-                                cpage = min(comments['pages_no'] - 1, cpage + 1)
+                                cpage = min(int(comments['pages_no']) - 1, cpage + 1)
 
                             if ch_comment == key.LEFT:
                                 cpage = max(0, cpage - 1)
@@ -1163,7 +1165,7 @@ def get_selected_subtitle_id(table_title: str, results: list[dict[str, Any]], me
                         break
 
                 if ch == key.RIGHT:
-                    page = min(results_pages['pages_no'] - 1, page + 1)
+                    page = min(int(results_pages['pages_no']) - 1, page + 1)
                     selected = 0
 
                 if ch == key.LEFT:
@@ -1355,7 +1357,6 @@ def get_imdb_search(title: str, number: str, inf_sub: dict[str, Any]):
         if cf.hasconfig and 'tmdb_apikey' in cf.config:
             api_key = f"{cf.get('tmdb_apikey', default='')}"
         else:
-            api_key = ''
             console.print(
                 f':warning:  {gl("Not_tmdb_key")}: [italic pale_turquoise4]{gl("Not_tmdb_key_wiki")}[/]',
                 emoji=True, new_line_start=False)
@@ -1395,8 +1396,7 @@ def make_IMDB_table(title: str, results: list[dict[str, Any]], mtype: str):
         box=box.SIMPLE_HEAD, title='\n Resultados de IMDB para: ' + title, caption='[italic bright_yellow]'
         'Seleccione un resultado o enter para cancelar[/]\n',
         show_header=True, header_style='bold yellow', title_style='bold green',
-        caption_style='bold bright_yellow', leading=1, show_lines=True,
-    )
+        caption_style='bold bright_yellow', leading=1, show_lines=True)
 
     imdb_table.add_column('#', justify='right', vertical='middle', style='bold green')
     imdb_table.add_column('Título + url', justify='left', vertical='middle', style='white')
@@ -1423,9 +1423,8 @@ def make_IMDB_table(title: str, results: list[dict[str, Any]], mtype: str):
     console.print('[bold green]>> [0] Cancelar selección\n\r', new_line_start=True)
 
     res = IntPrompt.ask(
-        '[bold yellow]>> Elija un [' + '[bold green]#' + '][bold yellow]. Por defecto:',
-        show_choices=False, show_default=True, choices=choices, default=0,
-    )
+        '[bold yellow]>> Elija un [' + '[bold green]#' + '[bold yellow]]. Por defecto:',
+        show_choices=False, show_default=True, choices=choices, default=0)
 
     if res:
         return DataTMDB(

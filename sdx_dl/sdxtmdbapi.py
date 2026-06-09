@@ -84,7 +84,7 @@ class TMDBAPI:
             return response.json()
         except HTTPError as e:
             ExceptionErrorMessage(e)
-            logger.debug(f'HTTP error occurred: {e} HTTP Error ({e.response.status_code})')
+            logger.debug(f'HTTP error occurred: {e}')
             return None
         except RequestException as err:
             ExceptionErrorMessage(err)
@@ -123,7 +123,7 @@ class TMDBAPI:
                     if tv:
                         year_date = datetime.datetime.strptime(i.get('first_air_date', ''), '%Y-%m-%d').year
                     else:
-                        year_date = year or datetime.datetime.strptime(i.get('release_date', ''), '%Y-%m-%d').year
+                        year_date = datetime.datetime.strptime(i.get('release_date', ''), '%Y-%m-%d').year or year
                     if (
                         name is not None
                         and re_full_match.search(f'{name}')
