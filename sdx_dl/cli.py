@@ -13,7 +13,8 @@ from sdx_dl.sdxclasses import FindFiles, NoResultsError, PTTMetadataExtractor
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlib import get_subtitle, get_subtitle_id
 from sdx_dl.sdxlocale import gl
-from sdx_dl.sdxparser import args as parser_args, logger
+from sdx_dl.sdxparser import args as parser_args
+from sdx_dl.sdxparser import logger
 from sdx_dl.sdxutils import Metadata, backoff_delay, clean_text, extract_meta_data, sub_extensions
 
 _extensions = [
