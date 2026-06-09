@@ -1,10 +1,11 @@
 import importlib.metadata
 import pathlib
 
-def create_version_info(package_name:str="subdx-dl", github_username:str="Spheres-cu", output_file:str="version.txt"):
+
+def create_version_info(package_name:str='subdx-dl', github_username:str='Spheres-cu', output_file:str='version.txt'):
     """
     Creates a version info file for PyInstaller
-    
+
     Args:
         package_name (str): Name of your Python package
         github_username (str): Your GitHub username (for CompanyName)
@@ -13,12 +14,12 @@ def create_version_info(package_name:str="subdx-dl", github_username:str="Sphere
     try:
         # Get package version
         version = importlib.metadata.version(package_name)
-        
+
         # Split version into components
         version_parts = version.split('.')
-        file_version = ".".join(version_parts[:4])  # Takes up to 4 parts
+        file_version = '.'.join(version_parts[:4])  # Takes up to 4 parts
         product_version = version
-        
+
         # Create version info content
         #
         # For more details about fixed file info 'ffi' see:
@@ -49,21 +50,20 @@ VSVersionInfo(
         StringStruct(u'OriginalFilename', u'{package_name}.exe'),
         StringStruct(u'ProductName', u'{package_name}'),
         StringStruct(u'ProductVersion', u'{product_version}')])
-      ]), 
+      ]),
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
   ]
 )
-"""
-        
+"""  # noqa: Q001
+
         # Write to file
         pathlib.Path(output_file).write_text(content, encoding='utf-8')
-        print(f"Version info file created at: {output_file}")
-        
+
     except importlib.metadata.PackageNotFoundError:
-        print(f"Error: Package '{package_name}' not found. Make sure it's installed.")
-    except Exception as e:
-        print(f"Error creating version info: {str(e)}")
-        
+        pass
+    except Exception:
+        pass
+
 create_version_info()
 
 exit()
