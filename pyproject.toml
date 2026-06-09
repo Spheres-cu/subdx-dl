@@ -20,19 +20,19 @@ requires-python = '>=3.10'
 keywords = ['cli-tool', 'subdivx', 'subdivx-downloader', 'subtitles']
 
 dependencies = [
-  'beautifulsoup4 >= 4.14.3',
-  'html5lib  >= 1.1',
+  'beautifulsoup4 >= 4.15.0',
   'guessit >= 3.8.0',
   'rarfile >= 4.2',
-  'urllib3[brotli] == 2.6.3',
-  'certifi >= 2026.4.22',
+  'urllib3[brotli] >= 2.7.0',
+  'certifi >= 2026.5.20',
   'rich >= 15.0.0',
   'readchar >= 4.2.2',
   'html2text >= 2025.4.15',
   'lxml >= 5.4.0',
   'lxml_html_clean >= 0.4.2',
-  'DrissionPage == 4.1.1.2',
-  'requests >= 2.32.3, < 3',
+  'DrissionPage == 4.1.1.4',
+  'requests >= 2.34.2, < 3',
+  'parsett >= 1.8.5',
   'importlib-metadata; python_version<"3.10"',
 ]
 
