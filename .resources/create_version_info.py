@@ -1,5 +1,5 @@
 import importlib.metadata
-from pathlib import Path
+import pathlib
 
 def create_version_info(package_name:str="subdx-dl", github_username:str="Spheres-cu", output_file:str="version.txt"):
     """
@@ -56,7 +56,7 @@ VSVersionInfo(
 """
         
         # Write to file
-        Path(output_file).write_text(content, encoding='utf-8')
+        pathlib.Path(output_file).write_text(content, encoding='utf-8')
         print(f"Version info file created at: {output_file}")
         
     except importlib.metadata.PackageNotFoundError:
