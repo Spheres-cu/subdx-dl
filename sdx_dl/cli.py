@@ -81,7 +81,6 @@ def main():
         properties = ('type', 'title', 'season', 'episode', 'year')
         season = bool(args.Season)
         info = PTTMetadataExtractor.extract_specific(search, *properties)
-        logger.debug(f'PTT info {info}')
 
         try:
             year = info.get('year', 0)
