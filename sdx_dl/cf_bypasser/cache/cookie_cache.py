@@ -1,13 +1,13 @@
+import datetime
 import json
 import os
 import threading
-
-from sdx_dl.sdxlogger import logger
-from datetime import datetime, timedelta
 from dataclasses import dataclass
 from typing import Any
 
-__all__ = ["CachedCookies", "CookieCache"]
+from sdx_dl.sdxlogger import logger
+
+__all__ = ['CachedCookies', 'CookieCache']
 
 
 @dataclass
@@ -16,12 +16,12 @@ class CachedCookies:
     hostname: str
     cookies: dict[str, str]
     user_agent: str
-    timestamp: datetime
-    expires_at: datetime
+    timestamp: datetime.datetime
+    expires_at: datetime.datetime
 
     def is_expired(self) -> bool:
         """Check if the cached cookies are expired."""
-        return datetime.now() >= self.expires_at
+        return datetime.datetime.now() >= self.expires_at
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -30,7 +30,7 @@ class CachedCookies:
             'cookies': self.cookies,
             'user_agent': self.user_agent,
             'timestamp': self.timestamp.isoformat(),
-            'expires_at': self.expires_at.isoformat()
+            'expires_at': self.expires_at.isoformat(),
         }
 
     @classmethod
@@ -40,15 +40,15 @@ class CachedCookies:
             hostname=data['hostname'],
             cookies=data['cookies'],
             user_agent=data['user_agent'],
-            timestamp=datetime.fromisoformat(data['timestamp']),
-            expires_at=datetime.fromisoformat(data['expires_at'])
+            timestamp=datetime.datetime.fromisoformat(data['timestamp']),
+            expires_at=datetime.datetime.fromisoformat(data['expires_at']),
         )
 
 
 class CookieCache:
     """Thread-safe cache for Cloudflare clearance cookies."""
 
-    def __init__(self, cache_file: str = ""):
+    def __init__(self, cache_file: str = ''):
         self.cache_file = cache_file
         self.cache: dict[str, CachedCookies] = {}
         self.lock = threading.RLock()
@@ -58,15 +58,15 @@ class CookieCache:
         """Load cache from file."""
         try:
             if os.path.exists(self.cache_file):
-                with open(self.cache_file, 'r') as f:
+                with open(self.cache_file) as f:
                     data = json.load(f)
                     for hostname, cached_data in data.items():
                         try:
                             self.cache[hostname] = CachedCookies.from_dict(cached_data)
                         except Exception as e:
-                            logger.warning(f"Failed to load cached data for {hostname}: {e}")
+                            logger.warning(f'Failed to load cached data for {hostname}: {e}')
         except Exception as e:
-            logger.warning(f"Failed to load cache file: {e}")
+            logger.warning(f'Failed to load cache file: {e}')
 
     def _save_cache(self):
         """Save cache to file."""
@@ -75,17 +75,17 @@ class CookieCache:
                 data = {hostname: cached.to_dict() for hostname, cached in self.cache.items()}
                 json.dump(data, f, indent=2)
         except Exception as e:
-            logger.error(f"Failed to save cache file: {e}")
+            logger.error(f'Failed to save cache file: {e}')
 
     def get(self, hostname: str) -> CachedCookies | None:
         """Get cached cookies for hostname."""
         with self.lock:
             cached = self.cache.get(hostname)
             if cached and not cached.is_expired():
-                logger.info(f"Using cached cookies for {hostname}")
+                logger.info(f'Using cached cookies for {hostname}')
                 return cached
             elif cached and cached.is_expired():
-                logger.info(f"Cached cookies for {hostname} expired, removing")
+                logger.info(f'Cached cookies for {hostname} expired, removing')
                 del self.cache[hostname]
                 self._save_cache()
             return None
@@ -93,17 +93,17 @@ class CookieCache:
     def set(self, hostname: str, cookies: dict[str, str], user_agent: str, ttl_hours: int = 2):
         """Cache cookies for hostname with TTL."""
         with self.lock:
-            expires_at = datetime.now() + timedelta(hours=ttl_hours)
+            expires_at = datetime.datetime.now() + datetime.timedelta(hours=ttl_hours)
             cached = CachedCookies(
                 hostname=hostname,
                 cookies=cookies,
                 user_agent=user_agent,
-                timestamp=datetime.now(),
-                expires_at=expires_at
+                timestamp=datetime.datetime.now(),
+                expires_at=expires_at,
             )
             self.cache[hostname] = cached
             self._save_cache()
-            logger.info(f"Cached cookies for {hostname}, expires at {expires_at}")
+            logger.info(f'Cached cookies for {hostname}, expires at {expires_at}')
 
     def clear_expired(self):
         """Remove all expired entries."""
@@ -113,7 +113,7 @@ class CookieCache:
                 del self.cache[key]
             if expired_keys:
                 self._save_cache()
-                logger.info(f"Cleared {len(expired_keys)} expired cache entries")
+                logger.info(f'Cleared {len(expired_keys)} expired cache entries')
 
     def invalidate(self, hostname: str):
         """Invalidate cached cookies for a specific hostname."""
@@ -121,11 +121,11 @@ class CookieCache:
             if hostname in self.cache:
                 del self.cache[hostname]
                 self._save_cache()
-                logger.info(f"Invalidated cache for {hostname}")
+                logger.info(f'Invalidated cache for {hostname}')
 
     def clear_all(self):
         """Clear all cached entries."""
         with self.lock:
             self.cache.clear()
             self._save_cache()
-            logger.info("Cleared all cache entries")
+            logger.info('Cleared all cache entries')
