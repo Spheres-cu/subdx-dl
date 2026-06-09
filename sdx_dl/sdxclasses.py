@@ -15,8 +15,8 @@ import certifi
 import urllib3
 from bs4 import BeautifulSoup, Tag
 from guessit import guessit, jsonutils  # type: ignore
+from PTT import Parser, add_defaults  # type: ignore
 from pygments.lexers import guess_lexer  # type: ignore
-from PTT import Parser, add_defaults # type: ignore
 from urllib3.exceptions import HTTPError
 
 from sdx_dl.sdxconsole import console
@@ -31,10 +31,10 @@ __all__ = [
     'GenerateUserAgent',
     'HTML2BBCode',
     'NoResultsError',
+    'PTTMetadataExtractor',
     'ResetConfigAction',
     'SaveConfigAction',
     'SetConfigAction',
-    'PTTMetadataExtractor',
     'VideoMetadataExtractor',
     'ViewConfigAction',
     'validate_proxy',
@@ -494,7 +494,7 @@ class PTTMetadataExtractor:
 
     @staticmethod
     def media_type(pttdata: dict[str, Any]):
-        mtype = 'episode' if pttdata.get('episodes', None) or pttdata.get('seasons', None) else 'movie'
+        mtype = 'episode' if pttdata.get('episodes') or pttdata.get('seasons') else 'movie'
         return {'type': mtype}
 
     @classmethod
@@ -535,7 +535,7 @@ class PTTMetadataExtractor:
         Returns:
             dict: Dictionary containing only the requested properties
         """
-        all_metadata = cls.parser.parse(filename) 
+        all_metadata = cls.parser.parse(filename)
         result_dict: dict[str, Any] = {}
         for key, value in all_metadata.items():
             if isinstance(value, list) and value:
