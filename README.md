@@ -67,7 +67,10 @@ Write-Host "Added to PATH. Restart terminal for changes to take effect."
 ### Special case installing on Termux (Android) for first time
 
 ```bash
-pkg install python-lxml && pip install -U subdx-dl
+pkg upgrade
+pkg install python-lxml
+pkg install python-psutil
+pip install -U subdx-dl
 ```
 
 ### For testing use a virtual env and install it there
