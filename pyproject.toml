@@ -16,29 +16,32 @@ maintainers = [
 
 description = 'A command line tool to download the best matching subtitle from subdivx.com'
 readme = 'README.md'
-requires-python = '>=3.10'
+requires-python = '>=3.11'
 keywords = ['cli-tool', 'subdivx', 'subdivx-downloader', 'subtitles']
 
 dependencies = [
   'beautifulsoup4 >= 4.15.0',
-  'guessit >= 3.8.0',
-  'rarfile >= 4.2',
-  'urllib3[brotli] >= 2.7.0',
-  'certifi >= 2026.5.20',
-  'rich >= 15.0.0',
-  'readchar >= 4.2.2',
-  'html2text >= 2025.4.15',
-  'lxml >= 5.4.0',
-  'lxml_html_clean >= 0.4.2',
+  'certifi >= 2026.10.23',
   'DrissionPage == 4.1.1.4',
+  'guessit >= 4.4.0',
+  'html2text >= 2025.4.15',
+  'lxml >= 6.1.1',
+  'lxml_html_clean >= 0.4.5',
+  'rarfile >= 4.5',
+  'readchar >= 4.2.2',
   'requests >= 2.34.2, < 3',
-  'parsett >= 1.8.5',
-  'importlib-metadata; python_version<"3.10"',
+  'rich >= 15.0.0',
+  'urllib3[brotli] >= 2.8.0',
 ]
 
 classifiers = [
-    'Programming Language :: Python :: 3.10',
+    "Topic :: Multimedia :: Subtitles",
     'Development Status :: 5 - Production/Stable',
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     'Environment :: Console',
     'Operating System :: OS Independent'
 ]

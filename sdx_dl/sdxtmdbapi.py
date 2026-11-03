@@ -8,7 +8,9 @@ from typing import Any
 
 import certifi
 import requests
+from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError, RequestException
+from urllib3.util import Retry
 
 from sdx_dl.sdxclasses import GenerateUserAgent
 from sdx_dl.sdxconsole import console
@@ -31,7 +33,7 @@ __all__ = ['TMDBAPI']
 def ExceptionErrorMessage(e: Exception):
     """Parse ``Exception`` error message."""
     if isinstance(e, (HTTPError, RequestException)):
-        if e.response is not None:
+        if e.response:
             msg = e.response.json().get('status_message')
             error = e.response.status_code
         else:
@@ -53,6 +55,8 @@ class TMDBAPI:
         self.api_key = api_key
         self.default_timeout = default_timeout
         self.session = requests.Session()
+        retries = Retry(total=6, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
+        self.session.mount('https://', HTTPAdapter(max_retries=retries))
         self.session.headers.update({
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -72,7 +76,7 @@ class TMDBAPI:
     ):
         url = f"{self.base_url}/{endpoint.rstrip('/')}"
         timeout = timeout or self.default_timeout
-        response: requests.Response
+        # response: requests.Response
         try:
             response = self.session.request(
                 method,
@@ -90,9 +94,9 @@ class TMDBAPI:
             ExceptionErrorMessage(err)
             logger.debug(f'Request error occurred: {err}')
             return None
-        except Exception as err:
+        except OSError as err:
             console.print(
-                f":no_entry: {gl('Unexpected_error')}: {err.__str__()}",
+                f":no_entry: {gl('Unexpected_error')}: {err!s}",
                 emoji=True, new_line_start=True)
             return None
 
@@ -110,7 +114,7 @@ class TMDBAPI:
             'include_adult': 'false',
             'page': '1',
             'year': year or ''})
-        re_full_match = re.compile(rf'^{re.escape(title)}$', re.I)
+        re_full_match = re.compile(rf'^{re.escape(title)}$', re.IGNORECASE)
         self.__data = self.__call_api(params, endpoint)
 
         if self.__data:
@@ -121,9 +125,9 @@ class TMDBAPI:
                 for i in items:
                     name = i.get('original_name') if tv else i.get('original_title')
                     if tv:
-                        year_date = datetime.datetime.strptime(i.get('first_air_date', ''), '%Y-%m-%d').year
+                        year_date = datetime.datetime.strptime(i.get('first_air_date', ''), '%Y-%m-%d').astimezone(datetime.UTC).year
                     else:
-                        year_date = datetime.datetime.strptime(i.get('release_date', ''), '%Y-%m-%d').year or year
+                        year_date = datetime.datetime.strptime(i.get('release_date', ''), '%Y-%m-%d').astimezone(datetime.UTC).year or year
                     if (
                         name is not None
                         and re_full_match.search(f'{name}')
@@ -142,7 +146,7 @@ class TMDBAPI:
                             'id': self._get_imdb(int(i.get('id', 0)), tv)}
                         results.append(data)
                 return results or None
-            except Exception as e:
+            except OSError as e:
                 logger.debug(f'TMDB search error: {e}')
                 return None
         else:
@@ -166,7 +170,7 @@ class TMDBAPI:
                     return f"{data.get('imdb_id')}"
                 else:
                     return None
-            except Exception as e:
+            except OSError as e:
                 logger.debug(f'TMDB get imdb error: {e}')
                 return None
         else:
@@ -189,7 +193,7 @@ class TMDBAPI:
                     return f"{data.get('original_title')}"
                 else:
                     return None
-            except Exception as e:
+            except OSError as e:
                 logger.debug(f'TMDB find by id error: {e}')
                 return None
         else:

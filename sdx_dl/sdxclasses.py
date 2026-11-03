@@ -12,17 +12,16 @@ from importlib.metadata import version
 from typing import Any, no_type_check
 
 import certifi
-import urllib3
 from bs4 import BeautifulSoup, Tag
-from guessit import guessit, jsonutils  # type: ignore
-from PTT import Parser, add_defaults  # type: ignore
+from guessit import guessit
 from pygments.lexers import guess_lexer  # type: ignore
+from rebulk.match import Match
+from requests import JSONDecodeError
+from rich.markdown import Markdown
 from urllib3.exceptions import HTTPError
 
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl, set_locale
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 __all__ = [
     'ChkVersionAction',
@@ -31,7 +30,6 @@ __all__ = [
     'GenerateUserAgent',
     'HTML2BBCode',
     'NoResultsError',
-    'PTTMetadataExtractor',
     'ResetConfigAction',
     'SaveConfigAction',
     'SetConfigAction',
@@ -126,7 +124,7 @@ class HTML2BBCode:
                 # This converter cannot convert scratchblocks html to scratchblocks bbcode
                 elif 'scratchblocks' in tag['class']:  # scratchblocks
                     result = f'[scratchblocks]{tag.get_text()}[/scratchblocks]'
-            elif 'style' in list(tag.attrs.keys()):
+            elif 'style' in list(tag.attrs.keys()):  # ruff: ignore[collapsible-if]
                 if 'text-align:center;' in tag['style']:  # center
                     result = f'[center]{result}[/center]'
         return result
@@ -136,8 +134,7 @@ class HTML2BBCode:
         try:
             soup = BeautifulSoup(html, 'lxml')  # lxml is the fastest
             return cls._html_to_bbcode(soup)
-        except Exception:
-            pass
+        except OSError:
             return html
 
 
@@ -158,19 +155,19 @@ class GenerateUserAgent:
 
     @staticmethod
     def _platform() -> str:
-        _WINDOWS_PREFIX: str = 'Windows NT 10.0; Win64; x64'
-        _MAC_PREFIX: str = 'Macintosh; Intel Mac OS X'
-        _LINUX_PREFIX: str = 'X11; Ubuntu; Linux x86_64'
+        WINDOWS_PREFIX: str = 'Windows NT 10.0; Win64; x64'
+        MAC_PREFIX: str = 'Macintosh; Intel Mac OS X'
+        LINUX_PREFIX: str = 'X11; Ubuntu; Linux x86_64'
 
         if sys.platform == 'win32':
             # Windows
-            platform = _WINDOWS_PREFIX
+            platform = WINDOWS_PREFIX
         elif sys.platform == 'darwin':
             # macOS
-            platform = _MAC_PREFIX
+            platform = MAC_PREFIX
         else:
             # Linux and other UNIX-like systems
-            platform = _LINUX_PREFIX
+            platform = LINUX_PREFIX
         return f'{platform}'
 
     @classmethod
@@ -182,7 +179,7 @@ class GenerateUserAgent:
         """
         return [
             f'{cls._token()} ({cls._platform()}; rv:{version}.0) Gecko/20100101 Firefox/{version}.0'
-            for version in range(120, 138)
+            for version in range(140, 152)
         ]
 
     @classmethod
@@ -195,7 +192,7 @@ class GenerateUserAgent:
         return [
             f'{cls._token()} ({cls._platform()}) AppleWebKit/537.36 (KHTML, like Gecko) \
             Chrome/{version}.0.0.0 Safari/537.36'
-            for version in range(120, 135)
+            for version in range(144, 150)
         ]
 
     @classmethod
@@ -298,85 +295,82 @@ def validate_proxy(proxy_str: str) -> bool:
 
     protocol, _, _, host, port = match.groups()
 
-    if not (re.match(ip_pattern, host) or re.match(host_pattern, host)):
-        return False
-    elif (port is None) or (not (0 < int(port) <= 65535)):
-        return False
-    elif protocol not in ['http', 'https', None]:
-        return False
-
-    return True
+    return not (
+        not (re.match(ip_pattern, host) or re.match(host_pattern, host))
+        or port is None
+        or not 0 < int(port) <= 65535
+        or protocol not in ['http', 'https', None])
 
 
 # Check version
 def ExceptionErrorMessage(e: Exception):
     """Parse ``Exception`` error message."""
     if isinstance(e, (HTTPError)):
-        msg = e.__str__().split(':', maxsplit=1)[1].split('(')[0]
+        msg = str(e).split(':', maxsplit=1)[1].split('(')[0]
     else:
-        msg = e.__str__()
+        msg = str(e)
     error_class = e.__class__.__name__
     console.print(gl('Error_occurred') + error_class + ':' + msg)
     sys.exit(1)
 
 
-def _check_version(version: str, proxy: str):
+def _check_version(version: str, proxy: str | None = None):
     """Check for new version."""
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util import Retry
+
     ua = GenerateUserAgent.random_browser()
-    headers = {'user-agent': ua}
     PYPI_API_URL = 'https://pypi.org/pypi/subdx-dl/json'
     GITHUB_API_URL = 'https://api.github.com/repos/spheres-cu/subdx-dl/releases/latest'
-    msg = ''
 
-    if (proxy):
-        if not (any(p in proxy for p in ['http', 'https'])):
-            proxy = 'http://' + proxy
-        session = urllib3.ProxyManager(
-            proxy, headers=headers, cert_reqs='CERT_REQUIRED',
-            ca_certs=certifi.where(), retries=2, timeout=10,
-        )
-    else:
-        session = urllib3.PoolManager(
-            headers=headers, cert_reqs='CERT_REQUIRED',
-            ca_certs=certifi.where(), retries=2, timeout=10,
-        )
+    session = requests.Session()
+    retries = Retry(total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
+    session.mount('https://', HTTPAdapter(max_retries=retries))
+    session.headers.update({
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'User-Agent': ua,
+        'verify': certifi.where(),
+    })
+    if (proxy) and not (any(p in proxy for p in ['http', 'https'])):
+        proxy = 'http://' + proxy
+        proxies = {'http': proxy, 'https': proxy}
+        session.proxies.update(proxies)
 
     def get_version_description():
         """Get new `version` description."""
         data: dict[str, Any] = {}
         try:
-            response = session.request('GET', GITHUB_API_URL).data
+            response = session.request('GET', GITHUB_API_URL, timeout=15).content
             data = json.loads(response)
-        except (HTTPError, Exception) as e:
+        except (HTTPError, JSONDecodeError) as e:
             ExceptionErrorMessage(e)
         if bool(data):
-            description = f'{data.get("body", "")}'.replace('- ', '\u25cf ')
+            description = f'{data.get("body", "")}'
         else:
             description = ''
 
         return description
 
     try:
-        _dt_version = session.request('GET', PYPI_API_URL).data
-        data: dict[str, Any] = json.loads(_dt_version)['info']
-        _pypi_version = f'{data.get("version", "")}'
+        dt_version = session.request('GET', PYPI_API_URL, timeout=15).content
+        data: dict[str, Any] = json.loads(dt_version)['info']
+        pypi_version = f'{data.get("version", "")}'
 
-        if _pypi_version > version:
-
-            msg = (
-                f'{gl("New_version_available")}{_pypi_version}\r\n\r\n'
-                f'{get_version_description()}\n'
-                f'\n{gl("Please_update_your_current_version")}{version}\n'
-            )
+        if pypi_version > version:
+            console.print(
+                gl('New_version_available') + pypi_version,
+                Markdown(get_version_description()),
+                '\r\n' + gl('Please_update_your_current_version') + version,
+                new_line_start=False)
         else:
-            msg = (
-                f'{gl("No_new_version_available")}'
-                f'{gl("Current_version")} {version}\r\n'
-            )
-    except (HTTPError, Exception) as e:
-        ExceptionErrorMessage(e)
+            console.print(
+                gl('No_new_version_available'),
+                '\r\n' + gl('Current_version') + version)
 
-    return msg
+    except (HTTPError, JSONDecodeError) as e:
+        ExceptionErrorMessage(e)
 
 
 # Get Remaining arguments
@@ -408,7 +402,7 @@ class ChkVersionAction(argparse.Action):
         else:
             proxy = p if validate_proxy(p) else None
 
-        console.print(_check_version(version('subdx-dl'), proxy))
+        _check_version(version('subdx-dl'), proxy)
         sys.exit(0)
 
 
@@ -419,7 +413,7 @@ class VideoMetadataExtractor:
     """
     @no_type_check
     @staticmethod
-    def extract_all(filename: str, options: str | dict[str, Any] = {}) -> dict[str, Any]:
+    def extract_all(filename: str, options: str | dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Extract all available metadata from a video filename.
 
@@ -432,10 +426,12 @@ class VideoMetadataExtractor:
         Returns:
             dict: Dictionary containing all extracted properties
         """
+        if options is None:
+            options = {}
         all_metadata = guessit(filename, options)
         result_dict: dict[str, Any] = {}
         for key, value in all_metadata.items():
-            if isinstance(value, jsonutils.Match):
+            if isinstance(value, Match):
                 result_dict[key] = {
                     'value': value.value,
                     'raw': value.raw,
@@ -445,7 +441,7 @@ class VideoMetadataExtractor:
         return result_dict
 
     @staticmethod
-    def extract_specific(filename: str, *properties: str, options: str | dict[str, Any] = {}) -> dict[str, Any]:
+    def extract_specific(filename: str, *properties: str, options: str | dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Extract specific properties from a video filename.
 
@@ -459,15 +455,17 @@ class VideoMetadataExtractor:
         Returns:
             dict: Dictionary containing only the requested properties
         """
-        all_metadata: dict[str, Any] = {}
-        all_metadata = guessit(filename, options)  # type: ignore
+        if options is None:
+            options = {}
+        all_metadata = guessit(filename, options)
         result_dict: dict[str, Any] = {}
-        for key, value in all_metadata.items():  # type: ignore
-            if isinstance(value, jsonutils.Match):
+        for key, value in all_metadata.items():
+            if isinstance(value, Match):
                 result_dict[key] = {
-                    'value': value.value,  # type: ignore
-                    'raw': value.raw,  # type: ignore
-                }
+                    'value': value.value,
+                    'raw': value.raw}
+            elif isinstance(value, list):
+                result_dict[key] = value[0]
             else:
                 result_dict[key] = value
 
@@ -485,79 +483,12 @@ class VideoMetadataExtractor:
         console.print_json(data=metadata, indent=4, default=str)
 
 
-class PTTMetadataExtractor:
-    """
-    A class to extract metadata from video filenames using Parsett.
-    """
-    parser = Parser()
-    add_defaults(parser)
-
-    @staticmethod
-    def media_type(pttdata: dict[str, Any]):
-        mtype = 'episode' if pttdata.get('episodes') or pttdata.get('seasons') else 'movie'
-        return {'type': mtype}
-
-    @classmethod
-    def extract_all(cls, filename: str) -> dict[str, Any]:
-        """
-        Extract all available metadata from a video filename.
-
-        Args:
-            filename (str): The video filename to parse
-
-        Returns:
-            dict: Dictionary containing all extracted properties
-        """
-        all_metadata = cls.parser.parse(filename)
-        result_dict: dict[str, Any] = {}
-        for key, value in all_metadata.items():
-            if isinstance(value, list) and value:
-                result_dict[key] = value[0]
-            elif not value:
-                result_dict[key] = None
-            else:
-                result_dict[key] = value
-        result_dict['season'] = result_dict.pop('seasons')
-        result_dict['episode'] = result_dict.pop('episodes')
-        mtype = cls.media_type(result_dict)
-        result_dict.update(mtype)
-        return result_dict
-
-    @classmethod
-    def extract_specific(cls, filename: str, *properties: str) -> dict[str, Any]:
-        """
-        Extract specific properties from a video filename.
-
-        Args:
-            filename (str): The video filename to parse
-            *properties (str): Properties to extract (e.g., 'title', 'year')
-
-        Returns:
-            dict: Dictionary containing only the requested properties
-        """
-        all_metadata = cls.parser.parse(filename)
-        result_dict: dict[str, Any] = {}
-        for key, value in all_metadata.items():
-            if isinstance(value, list) and value:
-                result_dict[key] = value[0]
-            elif not value:
-                result_dict[key] = None
-            else:
-                result_dict[key] = value
-        mtype = cls.media_type(result_dict)
-        result_dict['season'] = result_dict.pop('seasons')
-        result_dict['episode'] = result_dict.pop('episodes')
-        result_dict.update(mtype)
-        return {prop: result_dict.get(prop) for prop in properties}
-
-
 # Class Config Settings
 class ConfigManager:
     """
     A class to manage application configuration settings in a JSON file.
 
     Attributes:
-        config_path (str): Path to the configuration file
         config (dict): Dictionary containing the configuration settings
     """
 
@@ -566,9 +497,9 @@ class ConfigManager:
         Initialize the ConfigManager with a path to the configuration file.
 
         Args:
-            config_path (str): Path to the configuration file. Defaults to None.
+            config_path (str): Path to the configuration file. Defaults empty.
         """
-        self.config_path = config_path if config_path else self.get_path()
+        self.config_path = config_path or self.get_path()
         self.config = {}
 
         # Load existing config if it exists
@@ -588,12 +519,11 @@ class ConfigManager:
         """Load the configuration from file or create a new one if it doesn't exist."""
         try:
             if self.exists:
-                with open(self.config_path) as f:
+                with open(self.config_path, encoding='utf-8') as f:
                     self.config = json.load(f)
             else:
                 self.config = {}
         except (OSError, json.JSONDecodeError) as e:
-            pass
             console.print(
                 f':no_entry: [bold red]{gl("Failed_to_load_configuration")}[/]{e.__class__.__name__}\n',
                 emoji=True, new_line_start=True)
@@ -606,10 +536,9 @@ class ConfigManager:
             config_dir = pathlib.Path(os.path.dirname(self.config_path))
             config_dir.mkdir(parents=True, exist_ok=True)
         try:
-            with open(self.config_path, 'w') as f:
+            with open(self.config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4)
         except OSError as e:
-            pass
             console.print(
                 f':no_entry: [bold red]{gl("Failed_to_save_configuration")}[/]{e.__class__.__name__}\n',
                 emoji=True, new_line_start=True)
@@ -712,7 +641,7 @@ class ConfigManager:
 
     @staticmethod
     def get_path(app_name: str = 'subdx-dl', file_name: str | None = 'sdx-config.json'):
-        """
+        r"""
         Get the appropriate local configuration path for the current platform.
 
         Args:
@@ -772,7 +701,7 @@ class SaveConfigAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         allowed_values = ['quiet', 'verbose', 'force', 'no_choose', 'no_filter', 'nlines', 'path', 'proxy', 'Season', 'imdb', 'lang']
         copied_config = namespace.__dict__.copy()
-        updated_config = {k: v for k, v in copied_config.items() if k in allowed_values and bool(copied_config[k])}
+        updated_config = {k: v for k, v in copied_config.items() if k in allowed_values and bool(v)}
         config = ConfigManager()
 
         if updated_config:
@@ -896,8 +825,7 @@ class SetBypasserConfigAction(argparse.Action):
             f'[bold yellow]{gl("Browser_path")}[/]\n'
             f'[italic pale_turquoise4]{gl("Browser_path_ex")}[/]',
             show_default=True,
-            default=None,
-        )
+            default=None)
 
         if browser:
             try:
@@ -916,8 +844,7 @@ class SetBypasserConfigAction(argparse.Action):
         else:
             console.print(
                 f'\r\n:no_entry: [bold red]{gl("Not_browser_path")}[/]',
-                emoji=True, new_line_start=False,
-            )
+                emoji=True, new_line_start=False)
             sys.exit(1)
 
 
@@ -949,8 +876,7 @@ class BypasserAction(argparse.Action):
         else:
             console.print(
                 f':no_entry: [bold red]{gl("Not_browser_path")}[/]',
-                emoji=True, new_line_start=True,
-            )
+                emoji=True, new_line_start=True)
             sys.exit(1)
 
         sys.exit(0)
@@ -966,7 +892,6 @@ if config.hasconfig and 'lang' in config.config:
 class InvalidPath(Exception):
     """Raised when an argument is a non-existent file or directory path
     """
-    pass
 
 
 class FindFiles:
@@ -1019,7 +944,7 @@ class FindFiles:
         elif os.path.isdir(self.path):
             return self._findFilesInPath(self.path)
         else:
-            raise InvalidPath('%s is not a valid file/directory' % self.path)
+            raise InvalidPath(f'{self.path} is not a valid file/directory')
 
     def _checkExtension(self, fname: str) -> bool:
         """Checks if the file extension is blacklisted in valid_extensions
@@ -1030,7 +955,7 @@ class FindFiles:
         # don't use split_extension here (otherwise valid_extensions is useless)!
         _, extension = os.path.splitext(fname)
         for cext in self.with_extension:
-            cext = '.%s' % cext
+            cext = f'.{cext}'
             if extension == cext:
                 return True
         return False
@@ -1102,9 +1027,7 @@ class FindFiles:
             newpath = os.path.join(startpath, subf)
             newpath = os.path.abspath(newpath)
             if os.path.isfile(newpath):
-                if not self._checkExtension(subf):
-                    continue
-                elif self._blacklistedFilename(subf):
+                if not self._checkExtension(subf) or self._blacklistedFilename(subf):
                     continue
                 else:
                     allfiles.append(newpath)

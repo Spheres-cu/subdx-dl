@@ -99,23 +99,22 @@ parser = create_parser()
 args = parser.parse_args()
 cf = ConfigManager()
 
-if args.load_config:
-    if cf.exists and cf.hasconfig:
-        copied_args = args.__dict__.copy()
-        excluded = ['browser_path', 'SubX_key', 'tmdb_apikey']
-        copy_conf = {k: v for k, v in cf.config.items() if k not in excluded}
-        new_args: dict[str, Any] = {**copied_args, **{k: v for k, v in copy_conf.items() if not copied_args[k]}}
-        if new_args:
-            for k, v in new_args.items():
-                args.__setattr__(k, v)
+if args.load_config and cf.exists and cf.hasconfig:
+    copied_args = args.__dict__.copy()
+    excluded = ['browser_path', 'SubX_key', 'tmdb_apikey']
+    copy_conf = {k: v for k, v in cf.config.items() if k not in excluded}
+    new_args: dict[str, Any] = {**copied_args, **{k: v for k, v in copy_conf.items() if not copied_args[k]}}
+    if new_args:
+        for k, v in new_args.items():
+            setattr(args, k, v)
 
 if args.verbose:
-    args.__setattr__('quiet', True)
+    args.quiet = True
 
 logger = create_logger(verbose=args.verbose)
 
 if cf.hasconfig and 'SubX' in cf.config:
-    args.__setattr__('SubX', cf.get('SubX'))
+    args.SubX = cf.get('SubX')
 
 if args.load_config:
     logger.debug('Config loaded!')
@@ -126,15 +125,14 @@ else:
     if cf.hasconfig and 'lang' in cf.config:
         set_locale(cf.get('lang', 'es'))
 
-if args.path:
-    if not (os.path.isdir(args.path) and os.access(args.path, os.W_OK)):
-        if args.quiet:
-            logger.debug(f'Directory {args.path} do not exists')
-        else:
-            console.print(
-                f':no_entry: [bold red]{gl("Directory")}[/]{args.path} [bold red]{gl("Directory_not_exists")}[/]',
-                new_line_start=True, emoji=True)
-        sys.exit(1)
+if args.path and not (os.path.isdir(args.path) and os.access(args.path, os.W_OK)):
+    if args.quiet:
+        logger.debug(f'Directory {args.path} do not exists')
+    else:
+        console.print(
+            f':no_entry: [bold red]{gl("Directory")}[/]{args.path} [bold red]{gl("Directory_not_exists")}[/]',
+            new_line_start=True, emoji=True)
+    sys.exit(1)
 
 if (args.proxy and not validate_proxy(args.proxy)):
     if args.quiet:
@@ -146,4 +144,4 @@ if (args.proxy and not validate_proxy(args.proxy)):
     sys.exit(1)
 else:
     if cf.hasconfig and 'proxy' in cf.config:
-        args.__setattr__('proxy', cf.get('proxy'))
+        args.proxy = cf.get('proxy')

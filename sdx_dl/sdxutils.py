@@ -9,6 +9,7 @@ import pathlib
 import re
 import shutil
 import signal
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -22,6 +23,7 @@ import urllib3.util
 from bs4 import BeautifulSoup
 from rarfile import RarFile, is_rarfile  # type: ignore
 from readchar import key, readkey
+from requests import JSONDecodeError
 from rich import box
 from rich.align import Align
 from rich.console import Group
@@ -35,7 +37,12 @@ from urllib3.exceptions import HTTPError
 
 from sdx_dl.cf_bypasser.get_cf_bypass import get_cf_bypass
 from sdx_dl.cf_bypasser.utils.misc import get_public_ip, md5_hash
-from sdx_dl.sdxclasses import ConfigManager, HTML2BBCode, NoResultsError, VideoMetadataExtractor
+from sdx_dl.sdxclasses import (
+    ConfigManager,
+    HTML2BBCode,
+    NoResultsError,
+    VideoMetadataExtractor,
+)
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlocale import gl
 from sdx_dl.sdxparser import args as parser_args
@@ -85,6 +92,14 @@ class Metadata(NamedTuple):
     hasdata: bool
 
 
+class InfoSub(NamedTuple):
+    type: str
+    season: bool
+    number: str
+    year: int | None
+    imdb: bool
+
+
 class DataConn(NamedTuple):
     user_agent: str
     cookie: str
@@ -104,11 +119,14 @@ signal.signal(signal.SIGINT, lambda _, __: sys.exit(0))
 
 def clean_screen() -> None:
     """Clean the screen"""
-    os.system('clear' if os.name != 'nt' else 'cls')
+    subprocess.run(
+        'clear' if os.name != 'nt' else 'cls',
+        shell=bool(os.name == 'nt'), check=False)
 
-def clean_text(text:str):
+
+def clean_text(text: str):
     """Sanitizer text chars"""
-    keep_chars="!()':. -"
+    keep_chars = "!()':. -"
     # Replace '&' with 'and'
     text = text.replace('&', 'and')
     # Replace curly apostrophe and backtick with straight single quote
@@ -117,6 +135,7 @@ def clean_text(text:str):
     chars_to_remove = ''.join(c for c in set(text) if not c.isalnum() and c not in keep_chars)
     translation = str.maketrans('', '', chars_to_remove)
     return text.translate(translation)
+
 
 def backoff_delay(backoff_factor: float = 2, attempts: int = 2) -> None:
     """ backoff algorithm: backoff_factor * (2 ** attempts)."""
@@ -163,7 +182,7 @@ def HTTPErrorsMessageException(e: HTTPError) -> None:
     console.print(
         f':no_entry: [bold red]{gl("Some_Network_Connection_Error_occurred")}[/]: {msg}',
         new_line_start=True, emoji=True)
-    logger.debug(f'Some Network Connection Error occurred: {e.__cause__.__str__()}')
+    logger.debug(f'Some Network Connection Error occurred: {e.__cause__!s}')
 
 
 # Setting data connection
@@ -223,7 +242,7 @@ class DataConnection:
         if file_name:
             cache_dir = cache_dir / file_name
             if not os.path.isfile(cache_dir):
-                with open(cache_dir, 'w') as file:
+                with open(cache_dir, 'w', encoding='utf-8') as file:
                     file.write('')
                     file.close()
 
@@ -237,9 +256,9 @@ class DataConnection:
 
     def __set_headers(self):
         sdx_data_cache = self.__sdx_cache
-        sdx_data_connection = sdx_data_cache[self.__sdx_cache_key]
-        user_agent = f"{sdx_data_connection['user_agent']}"
-        cookies: dict[str, Any] = sdx_data_connection['cookies']
+        sdx_conn_cache = sdx_data_cache[self.__sdx_cache_key]
+        user_agent = f"{sdx_conn_cache['user_agent']}"
+        cookies: dict[str, Any] = sdx_conn_cache['cookies']
         cookie = '; '.join(f'{key}={value}' for key, value in cookies.items())
         headers['Cookie'] = cookie
         headers['User-Agent'] = user_agent
@@ -249,12 +268,12 @@ class DataConnection:
         def _load_cache():
             try:
                 cache: dict[str, Any] = {}
-                with open(self.__sdx_cache_path) as file:
+                with open(self.__sdx_cache_path, encoding='utf-8') as file:
                     data = file.read()
                 if data:
                     cache = json.loads(data)
                 return cache
-            except Exception as e:
+            except (OSError, json.JSONDecodeError) as e:
                 console.print(
                     f':no_entry: [bold red]{gl("Failed_to_load_cache")}: [/]{e}',
                     emoji=True, new_line_start=True)
@@ -262,7 +281,7 @@ class DataConnection:
                 sys.exit(1)
 
         def _get_bypass(browser: str):
-            get_cf_bypass(browser=browser, mute=True)
+            get_cf_bypass(browser=browser, proxy=proxie, mute=True)
             sdx_data_cache = _load_cache()
             if cache_key and cache_key in sdx_data_cache:
                 self.__sdx_cache_key = cache_key
@@ -273,10 +292,9 @@ class DataConnection:
         sdx_data_cache = _load_cache()
 
         try:
-            if bool(sdx_data_cache):
-                if cache_key and cache_key in sdx_data_cache:
-                    self.__sdx_cache_key = cache_key
-                    self.__sdx_cache = sdx_data_cache
+            if bool(sdx_data_cache) and cache_key and cache_key in sdx_data_cache:
+                self.__sdx_cache_key = cache_key
+                self.__sdx_cache = sdx_data_cache
 
             if not self.__sdx_cache_key or self._exp_data_connection():
                 cf = ConfigManager()
@@ -308,7 +326,7 @@ class DataConnection:
                     sys.exit(1)
 
                 sdx_data_cache = self.__sdx_cache
-        except Exception as e:
+        except OSError as e:
             console.print(
                 f':no_entry: [bold red]{gl("Failed_to_load_cache")}: [/]{e}',
                 emoji=True, new_line_start=True)
@@ -323,13 +341,12 @@ class DataConnection:
     def _get_connection_data(self):
         """Return data connection"""
         user_agent, cookie, token, f_search = '', '', '', ''
-        sdx_data_connection: dict[str, Any] = {}
-        sdx_data_connection = self.__sdx_cache[self.__sdx_cache_key]
+        sdx_conn_cache = self.__sdx_cache[self.__sdx_cache_key]
 
         def _get_search() -> str:
             try:
                 dt_conn: dict[str, Any] = {}
-                with open(self._sdx_dc_path) as file:
+                with open(self._sdx_dc_path, encoding='utf-8') as file:
                     data = file.read()
                 if data:
                     dt_conn = json.loads(data)
@@ -337,12 +354,12 @@ class DataConnection:
 
                 resolve = False
                 attempts = 0
-                _f_search = ''
+                f_search_ = ''
                 while not resolve and attempts <= 5:
                     sdx_request = conn.request('GET', SUBDIVX_DOWNLOAD_PAGE, headers=headers)
                     if sdx_request.status == 200:
-                        _vdata = BeautifulSoup(sdx_request.data.decode(), 'lxml')
-                        _f_search = str(_vdata('div', id='vs')[0].text.replace('v', '').replace('.', ''))
+                        vdata = BeautifulSoup(sdx_request.data.decode(), 'lxml')
+                        f_search_ = str(vdata('div', id='vs')[0].text.replace('v', '').replace('.', ''))
                         resolve = True
                     else:
                         attempts = attempts + 1
@@ -358,23 +375,23 @@ class DataConnection:
                             emoji=True, new_line_start=True)
                         sys.exit(1)
 
-                with open(self._sdx_dc_path, mode='w') as file:
-                    json.dump({'search': _f_search}, file, indent=2)
-            except Exception as e:
+                with open(self._sdx_dc_path, encoding='utf-8', mode='w') as file:
+                    json.dump({'search': f_search_}, file, indent=2)
+            except (HTTPError, json.JSONDecodeError) as e:
                 if isinstance(e, (HTTPError)):
                     HTTPErrorsMessageException(e)
                 else:
-                    msg = e.__str__()
+                    msg = str(e)
                     console.print(
                         f':no_entry:  [bold red]{gl("Could_not_load_data_connection")}[/]',
                         emoji=True, new_line_start=True)
                     logger.debug(f'Error: {e.__class__.__name__}: {msg}')
                 sys.exit(1)
 
-            return _f_search
+            return f_search_
 
-        user_agent = f"{sdx_data_connection['user_agent']}"
-        cookies: dict[str, Any] = sdx_data_connection['cookies']
+        user_agent = f"{sdx_conn_cache['user_agent']}"
+        cookies: dict[str, Any] = sdx_conn_cache['cookies']
         cookie = '; '.join(f'{key}={value}' for key, value in cookies.items())
         f_search = _get_search()
         token = self.get_token()
@@ -384,22 +401,22 @@ class DataConnection:
 
     def get_token(self) -> str:
         """Get new connection token"""
-        _url_tkn = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
+        url_tkn = SUBDIVX_SEARCH_URL[:-8] + 'gt.php?gt=1'
         attempts = 0
-        _n_tkn = ''
+        n_tkn = ''
         resolve = False
         while not resolve and attempts <= 10:
             try:
-                _r_tkn = conn.request(
-                    'GET', _url_tkn, headers=headers,
+                r_tkn = conn.request(
+                    'GET', url_tkn, headers=headers,
                     preload_content=False,
                     retries=retries,
                     timeout=20)
-                if _r_tkn.status == 200:
-                    _d_tkn = _r_tkn.data
-                    _n_tkn = f"{json.loads(_d_tkn)['token']}"
+                if r_tkn.status == 200:
+                    d_tkn = r_tkn.data
+                    n_tkn = f"{json.loads(d_tkn)['token']}"
                     resolve = True
-                elif _r_tkn.status in (401, 403) and _r_tkn.data:
+                elif r_tkn.status in (401, 403) and r_tkn.data:
                     cache_key = self.__get_cache_key()
                     if (
                         cache_key != self.__sdx_cache_key
@@ -411,34 +428,34 @@ class DataConnection:
                     logger.debug(f'New token attempts: {attempts}')
                     backoff_delay(backoff_factor=2, attempts=2)
                     if attempts == 10:
-                        logger.debug(f'{gl("ConnectionError")}: HTTP error: {_r_tkn.status}')
+                        logger.debug(f'{gl("ConnectionError")}: HTTP error: {r_tkn.status}')
                         clean_screen()
                         console.print(
-                            f':no_entry: [bold red]{gl("ConnectionError")}:[/] HTTP error: {_r_tkn.status}\n'
+                            f':no_entry: [bold red]{gl("ConnectionError")}:[/] HTTP error: {r_tkn.status}\n'
                             f':no_entry: [bold red]{gl("Could_not_get_new_token")}[/]\n',
                             f':warning: [bold yellow] {gl("Please_run_bypasser")}[/]',
                             emoji=True, new_line_start=True)
                         sys.exit(1)
-            except Exception as e:
+            except (HTTPError, json.JSONDecodeError) as e:
                 if isinstance(e, (HTTPError)):
                     HTTPErrorsMessageException(e)
                 else:
-                    msg = e.__str__()
+                    msg = str(e)
                     console.print(
                         f':no_entry:  [bold red]{gl("Could_not_load_data_connection")}[/]',
                         emoji=True, new_line_start=True)
                     logger.debug(f'Error: {e.__class__.__name__}: {msg}')
                 sys.exit(1)
 
-        return _n_tkn
+        return n_tkn
 
     def _exp_data_connection(self) -> bool:
         """Check if cached data connection is expired."""
 
         cache_data = self.__sdx_cache[self.__sdx_cache_key]
-        expires_at = datetime.datetime.fromisoformat(cache_data['expires_at'])
+        expires_at = datetime.datetime.fromisoformat(cache_data['expires_at']).astimezone(datetime.UTC)
 
-        return datetime.datetime.now() >= expires_at
+        return datetime.datetime.now().astimezone(datetime.UTC) >= expires_at
 
 
 if not args.SubX:
@@ -458,7 +475,7 @@ def extract_meta_data(search: str, kword: str, is_file: bool = False) -> Metadat
     extracted_kwords = extractor.extract_specific(
         search, 'screen_size', 'video_codec',
         'release_group', 'source', 'streaming_service',
-        'other', options='-as')
+        'other', 'edition', options='-as')
 
     if (all(x is None for x in extracted_kwords.values())):
         keywords = list(f'{kword}'.split()[:4]) if kword else []
@@ -474,7 +491,7 @@ def extract_meta_data(search: str, kword: str, is_file: bool = False) -> Metadat
             word = word.lower().replace(i, '')
         return word
 
-    for k in ['release_group', 'source', 'streaming_service', 'other']:
+    for k in ['release_group', 'source', 'streaming_service', 'other', 'edition']:
         value = extracted_kwords[k]['raw'] if extracted_kwords[k] else None
         if (value):
             words += f'{value} ' if k not in 'source' else f'{clean_words(value)} '
@@ -512,14 +529,14 @@ def sort_results(results_list: list[dict[str, Any]], metadata: Metadata = metada
 
     `Score`-->`Metadata`: 0.125 --> 1 , 0.25 --> 2 , ... 0.50 --> 4
     """
-    max_dl = max([int(x['descargas']) for x in results_list])
+    max_dl = max(int(x['descargas']) for x in results_list)
     results = listDict([])
 
     # compile patterns
-    compile_keywords = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.keywords, key=len, reverse=True))) + r')\b', flags=re.I)
-    compile_quality = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.quality, key=len, reverse=True))) + r')\b', flags=re.I)
-    compile_codec = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.codec, key=len, reverse=True))) + r')\b', flags=re.I)
-    compile_audio = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.audio, key=len, reverse=True))) + r')\b', flags=re.I)
+    compile_keywords = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.keywords, key=len, reverse=True))) + r')\b', flags=re.IGNORECASE)
+    compile_quality = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.quality, key=len, reverse=True))) + r')\b', flags=re.IGNORECASE)
+    compile_codec = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.codec, key=len, reverse=True))) + r')\b', flags=re.IGNORECASE)
+    compile_audio = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(metadata.audio, key=len, reverse=True))) + r')\b', flags=re.IGNORECASE)
 
     for subs_dict in results_list:
         description = f"{subs_dict['descripcion']}"
@@ -553,7 +570,7 @@ def sort_results(results_list: list[dict[str, Any]], metadata: Metadata = metada
 
 
 # Filters searchs functions
-def match_text(title: str, number: str, inf_sub: dict[str, Any], text: str):
+def match_text(title: str, number: str, inf_sub: InfoSub, text: str):
     """Filter Search results with the best match possible"""
 
     # Sanitizer searchs text
@@ -569,12 +586,12 @@ def match_text(title: str, number: str, inf_sub: dict[str, Any], text: str):
     raka = False
 
     # Setting searchs Patterns
-    re_full_match = re.compile(rf'^{re.escape(search)}$', re.I)
-    if inf_sub['type'] == 'movie':
-        re_full_pattern = re.compile(rf'^{re.escape(title)}.*{number}.*$', re.I)
+    re_full_match = re.compile(rf'^{re.escape(search)}$', re.IGNORECASE)
+    if inf_sub.type == 'movie':
+        re_full_pattern = re.compile(rf'^{re.escape(title)}.*{number}.*$', re.IGNORECASE)
     else:
-        re_full_pattern = re.compile(rf'^{re.escape(title.split()[0])}.*{number}.*$', re.I)
-    re_title_pattern = re.compile(rf'^{re.escape(title)}\b', re.I)
+        re_full_pattern = re.compile(rf'^{re.escape(title.split()[0])}.*{number}.*$', re.IGNORECASE)
+    re_title_pattern = re.compile(rf'^{re.escape(title)}\b', re.IGNORECASE)
 
     # Perform searches
     r = bool(re_full_match.search(text.strip()))
@@ -587,12 +604,12 @@ def match_text(title: str, number: str, inf_sub: dict[str, Any], text: str):
     if not r:
         rtitle = bool(re_title_pattern.search(text.strip()))
         for num in number.split(' '):
-            if not inf_sub['season']:
-                rnumber = bool(re.search(rf'\b{num}\b', text, re.I))
+            if not inf_sub.season:
+                rnumber = bool(re.search(rf'\b{num}\b', text, re.IGNORECASE))
             else:
-                rnumber = bool(re.search(rf'\b{num}.*\b', text, re.I))
+                rnumber = bool(re.search(rf'\b{num}.*\b', text, re.IGNORECASE))
 
-        raka = bool(re.search(rf'\b{aka}\b', text, re.I))
+        raka = bool(re.search(rf'\b{aka}\b', text, re.IGNORECASE))
 
         if raka:
             r = bool(rtitle and rnumber and raka)
@@ -601,15 +618,13 @@ def match_text(title: str, number: str, inf_sub: dict[str, Any], text: str):
             r = bool(rtitle and rnumber)
             match_type = 'partial' if r else None
 
-    if not r:
-        if all(re.search(rf'\b{word}\b', text, re.I) for word in search.split()):
-            r = bool(rnumber and raka)
-            match_type = 'partial' if r else None
+    if not r and all(re.search(rf'\b{word}\b', text, re.IGNORECASE) for word in search.split()):
+        r = bool(rnumber and raka)
+        match_type = 'partial' if r else None
 
-    if not r:
-        if all(re.search(rf'\b{word}\b', text, re.I) for word in title.split()):
-            r = bool(rnumber)
-            match_type = 'partial' if r else None
+    if not r and all(re.search(rf'\b{word}\b', text, re.IGNORECASE) for word in title.split()):
+        r = bool(rnumber)
+        match_type = 'partial' if r else None
 
     if not r:
         match_type = 'any'
@@ -617,7 +632,7 @@ def match_text(title: str, number: str, inf_sub: dict[str, Any], text: str):
     return match_type
 
 
-def get_filtered_results(title: str, number: str, inf_sub: dict[str, Any], list_subs_dicts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def get_filtered_results(title: str, number: str, inf_sub: InfoSub, list_subs_dicts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Filter subtitles search for the best match results"""
 
     filtered_results = listDict([])
@@ -626,7 +641,7 @@ def get_filtered_results(title: str, number: str, inf_sub: dict[str, Any], list_
     lst_partial = listDict([])
     lst_any = listDict([])
 
-    if inf_sub['type'] == 'movie' and inf_sub['year'] == '':
+    if inf_sub.type == 'movie' and not inf_sub.year:
         return list_subs_dicts
 
     for subs_dict in list_subs_dicts:
@@ -641,11 +656,11 @@ def get_filtered_results(title: str, number: str, inf_sub: dict[str, Any], list_
             if mtype == 'any':
                 lst_any.append(subs_dict)
 
-    if inf_sub['season']:
+    if inf_sub.season:
         filtered_results = lst_full + lst_partial if len(lst_partial) != 0 else lst_full + lst_pattern
 
-    if inf_sub['type'] == 'episode':
-        if (inf_sub['season']):
+    if inf_sub.type == 'episode':
+        if (inf_sub.season):
             if len(lst_full) != 0:
                 filtered_results = lst_full + lst_pattern
         else:
@@ -658,14 +673,16 @@ def get_filtered_results(title: str, number: str, inf_sub: dict[str, Any], list_
             else:
                 filtered_results = lst_any
 
-    if inf_sub['type'] == 'movie':
-
+    if inf_sub.type == 'movie':
         if len(lst_full) != 0 or len(lst_pattern) != 0:
             filtered_results = lst_full + lst_pattern
         elif len(lst_partial) != 0:
             filtered_results = lst_partial
         else:
             filtered_results = lst_any
+
+    if not any(lst for lst in [lst_full, lst_partial, lst_pattern]):
+        return list_subs_dicts
 
     return sorted(filtered_results, key=lambda item: item['id'], reverse=True)
 
@@ -677,7 +694,7 @@ def highlight_text(text: str, metadata: Metadata = metadata) -> str:
     keywords = list(itertools.chain(*metadata[:4]))
 
     # compile a pattern
-    matches_compile = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(keywords, key=len, reverse=True))) + r')\b', flags=re.I)
+    matches_compile = re.compile(r'\b(?:' + '|'.join(map(re.escape, sorted(keywords, key=len, reverse=True))) + r')\b', flags=re.IGNORECASE)
 
     def _highlight(matches: re.Match[str]) -> str:
         return f'[white on green4]{matches.group(0)}[default on default]'
@@ -693,8 +710,8 @@ def convert_datetime(string_datetime: str):
     """
 
     try:
-        date_obj = datetime.datetime.strptime(string_datetime, '%Y-%m-%d %H:%M:%S').date()
-        time_obj = datetime.datetime.strptime(string_datetime, '%Y-%m-%d %H:%M:%S').time()
+        date_obj = datetime.datetime.strptime(string_datetime, '%Y-%m-%d %H:%M:%S').astimezone(datetime.UTC).date()
+        time_obj = datetime.datetime.strptime(string_datetime, '%Y-%m-%d %H:%M:%S').astimezone(datetime.UTC).time()
         date_time_str = datetime.datetime.combine(date_obj, time_obj).strftime('%d/%m/%Y %H:%M')
 
     except ValueError:
@@ -719,13 +736,13 @@ def get_aadata(search: str) -> Any:
 
     with console.status(f'{gl("Searching_subtitles_for")}{search}') as status:
         status.start() if not args.quiet else status.stop()
-        try:
-            fields: dict[str, Any] = {
-                'buscar' + conn_data.search: search,
-                'filtros': '', 'tabla': 'resultados',
-                'token': conn_data.token,
-            }
 
+        fields: dict[str, Any] = {
+            'buscar' + conn_data.search: search,
+            'filtros': '', 'tabla': 'resultados',
+            'token': conn_data.token,
+        }
+        try:
             response = conn.request(
                 'POST',
                 SUBDIVX_SEARCH_URL,
@@ -783,11 +800,11 @@ def get_aadata(search: str) -> Any:
                 )
                 sys.exit(1)
 
-        except Exception as e:
+        except (HTTPError, JSONDecodeError) as e:
             if isinstance(e, (HTTPError)):
                 HTTPErrorsMessageException(e)
             else:
-                msg = e.__str__()
+                msg = str(e)
                 logger.debug(f'Error: {e.__class__.__name__}: {msg}')
                 console.print(
                     f':no_entry: 2-[bold red]{gl("Could_not_load_results_page")}[/]',
@@ -853,12 +870,12 @@ def get_comments_data(subid: str):
     try:
         page = conn.request('POST', SUBDIVX_SEARCH_URL, fields=fields, headers=headers).data
         json_comments = json.loads(page)
-    except Exception as e:
+    except (HTTPError, JSONDecodeError) as e:
         if isinstance(e, (HTTPError)):
             msg = f'({e.__class__.__name__})'
             logger.debug(f'Could not load comments ID:{subid}: Network Connection Error:{msg}')
         else:
-            msg = e.__str__()
+            msg = str(e)
             logger.debug(f'Could not load comments ID:{subid}: Error: {e.__class__.__name__}: {msg}')
         return None
 
@@ -1037,155 +1054,162 @@ def get_comments_rows() -> int:
 
 def get_selected_subtitle_id(table_title: str, results: list[dict[str, Any]], metadata: Metadata = metadata) -> str:
     """Show subtitles search results for obtain download id."""
-
     results_pages = paginate(results, get_rows())
     selected = 0
     page = 0
     res = ''
+    ch = None
+    ch_exit = None
+    ch_comment = None
 
-    try:
-        with Live(
-            generate_results(table_title, results_pages, page, selected, metadata),
-            auto_refresh=False, screen=False, transient=True,
-        ) as live:
-            while True:
-                live.console.show_cursor(False)
-
-                ch = readkey()
-                if ch == key.UP:
-                    selected = max(0, selected - 1)
-
-                if ch == key.PAGE_UP:
-                    results_pages = sorted(
-                        results, key=lambda item: (
-                            datetime.datetime.strptime(item['fecha_subida'], '%d/%m/%Y %H:%M')
-                            if item['fecha_subida'] != '--- --' else datetime.datetime.min),
-                        reverse=False)
-                    results_pages = paginate(results_pages, get_rows())
-
-                if ch == key.PAGE_DOWN:
-                    results_pages = sorted(
-                        results, key=lambda item: (
-                            datetime.datetime.strptime(item['fecha_subida'], '%d/%m/%Y %H:%M')
-                            if item['fecha_subida'] != '--- --' else datetime.datetime.min),
-                        reverse=True)
-                    results_pages = paginate(results_pages, get_rows())
-
-                if ch in ['F', 'f']:
-                    results_pages = paginate(results, get_rows())
-
-                if ch == key.DOWN:
-                    selected = min(len(results_pages['pages'][page]) - 1, selected + 1)
-
-                if ch in ['D', 'd']:
-                    description_selected = str(results_pages['pages'][page][selected]['descripcion'])
-                    subtitle_selected = results_pages['pages'][page][selected]['titulo']
-                    parser = HTML2BBCode()
-                    description = parser.html_to_bbcode(description_selected)
-                    description = highlight_text(description, metadata) if metadata.hasdata else description
-
-                    layout_description = make_screen_layout()
-                    layout_description['description'].update(make_description_panel(description))
-                    layout_description['subtitle'].update(
-                        Align.center(
-                            html2text.html2text(subtitle_selected).strip(),
-                            vertical='middle',
-                            style='italic bold green'))
-
-                    with console.screen(hide_cursor=True) as screen:
-                        while True:
-                            screen.console.show_cursor(False)
-                            screen.update(layout_description)
-
-                            ch_exit = readkey()
-                            if ch_exit in ['A', 'a']:
-                                break
-
-                            if ch_exit in ['D', 'd']:
-                                res = f"{results_pages['pages'][page][selected]['id']}"
-                                break
-
-                    if res != '':
-                        break
-
-                if ch in ['C', 'c']:
-                    cpage = 0
-                    subtitle_selected = results_pages['pages'][page][selected]['titulo']
-                    subid = str(results_pages['pages'][page][selected]['id'])
-                    layout_comments = make_layout()
-                    title = html2text.html2text(subtitle_selected).strip()
-                    show_comments = bool(results_pages['pages'][page][selected]['comentarios'] != 0)
-                    if not show_comments:
-                        comment_msg = ':neutral_face: [bold red][i]¡No hay comentarios para este subtítulo![/]'
-                    else:
-                        comment_msg = ''
-                    comments = {}
-
-                    with console.screen(hide_cursor=True) as screen_comments:
-                        if show_comments:
-                            with console.status('[bold yellow][i]CARGANDO COMENTARIOS...[/]', spinner='aesthetic'):
-                                aaData = get_comments_data(subid)
-                            if aaData:
-                                comments = aaData['aaData']
-                                comments = parse_list_comments(comments)
-                                comments = paginate(comments, get_comments_rows())
-
-                            if not comments:
-                                show_comments = False
-                                comment_msg = ':neutral_face: [bold red][i]¡No se pudieron cargar los comentarios![/]'
-
-                        while True:
-                            if show_comments:
-                                layout_comments['table'].update(
-                                    Align.center(Group(Align.center(make_comments_table(
-                                        title, comments, cpage, metadata),
-                                        vertical='top')), vertical='top'))
-                            else:
-                                layout_comments['table'].update(not_comments(comment_msg))
-
-                            screen_comments.console.show_cursor(False)
-                            screen_comments.update(layout_comments)
-
-                            ch_comment = readkey()
-
-                            if ch_comment in ['A', 'a']:
-                                break
-
-                            if ch_comment == key.RIGHT:
-                                cpage = min(int(comments['pages_no']) - 1, cpage + 1)
-
-                            if ch_comment == key.LEFT:
-                                cpage = max(0, cpage - 1)
-
-                            if ch_comment in ['D', 'd']:
-                                res = subid
-                                break
-
-                    if res != '':
-                        break
-
-                if ch == key.RIGHT:
-                    page = min(int(results_pages['pages_no']) - 1, page + 1)
-                    selected = 0
-
-                if ch == key.LEFT:
-                    page = max(0, page - 1)
-                    selected = 0
-
-                if ch == key.ENTER:
-                    res = f"{results_pages['pages'][page][selected]['id']}"
-                    break
-
-                if ch in ['S', 's']:
-                    res = -1
-                    break
-                live.update(generate_results(table_title, results_pages, page, selected, metadata), refresh=True)
-
-    except KeyboardInterrupt:
+    def KeyInterrupt() -> None:
+        """Exit on user key interrupt"""
         if not args.verbose:
             clean_screen()
         logger.debug('Interrupted by user')
         sys.exit(1)
+
+    with Live(
+        generate_results(table_title, results_pages, page, selected, metadata),
+        auto_refresh=False, screen=False, transient=True,
+    ) as live:
+        while True:
+            live.console.show_cursor(False)
+            try:
+                ch = readkey()
+            except KeyboardInterrupt:
+                KeyInterrupt()
+
+            if ch == key.UP:
+                selected = max(0, selected - 1)
+
+            if ch == key.PAGE_UP:
+                results_pages = sorted(
+                    results, key=lambda item: (
+                        datetime.datetime.strptime(item['fecha_subida'], '%d/%m/%Y %H:%M').astimezone(datetime.UTC)
+                        if item['fecha_subida'] != '--- --' else datetime.datetime.min.replace(tzinfo=datetime.UTC)),
+                    reverse=False)
+                results_pages = paginate(results_pages, get_rows())
+
+            if ch == key.PAGE_DOWN:
+                results_pages = sorted(
+                    results, key=lambda item: (
+                        datetime.datetime.strptime(item['fecha_subida'], '%d/%m/%Y %H:%M').astimezone(datetime.UTC)
+                        if item['fecha_subida'] != '--- --' else datetime.datetime.min.replace(tzinfo=datetime.UTC)),
+                    reverse=True)
+                results_pages = paginate(results_pages, get_rows())
+
+            if ch in ['F', 'f']:
+                results_pages = paginate(results, get_rows())
+
+            if ch == key.DOWN:
+                selected = min(len(results_pages['pages'][page]) - 1, selected + 1)
+
+            if ch in ['D', 'd']:
+                description_selected = str(results_pages['pages'][page][selected]['descripcion'])
+                subtitle_selected = results_pages['pages'][page][selected]['titulo']
+                parser = HTML2BBCode()
+                description = parser.html_to_bbcode(description_selected)
+                description = highlight_text(description, metadata) if metadata.hasdata else description
+                layout_description = make_screen_layout()
+                layout_description['description'].update(make_description_panel(description))
+                layout_description['subtitle'].update(
+                    Align.center(
+                        html2text.html2text(subtitle_selected).strip(),
+                        vertical='middle',
+                        style='italic bold green'))
+
+                with console.screen(hide_cursor=True) as screen:
+                    while True:
+                        screen.console.show_cursor(False)
+                        screen.update(layout_description)
+
+                        try:
+                            ch_exit = readkey()
+                        except KeyboardInterrupt:
+                            KeyInterrupt()
+
+                        if ch_exit in ['A', 'a']:
+                            break
+
+                        if ch_exit in ['D', 'd']:
+                            res = f"{results_pages['pages'][page][selected]['id']}"
+                            break
+                if res:
+                    break
+
+            if ch in ['C', 'c']:
+                cpage = 0
+                subtitle_selected = results_pages['pages'][page][selected]['titulo']
+                subid = str(results_pages['pages'][page][selected]['id'])
+                layout_comments = make_layout()
+                title = html2text.html2text(subtitle_selected).strip()
+                show_comments = bool(results_pages['pages'][page][selected]['comentarios'] != 0)
+                if not show_comments:
+                    comment_msg = ':neutral_face: [bold red][i]¡No hay comentarios para este subtítulo![/]'
+                else:
+                    comment_msg = ''
+                comments = {}
+                with console.screen(hide_cursor=True) as screen_comments:
+                    if show_comments:
+                        with console.status('[bold yellow][i]CARGANDO COMENTARIOS...[/]', spinner='aesthetic'):
+                            aaData = get_comments_data(subid)
+                        if aaData:
+                            comments = aaData['aaData']
+                            comments = parse_list_comments(comments)
+                            comments = paginate(comments, get_comments_rows())
+
+                        if not comments:
+                            show_comments = False
+                            comment_msg = ':neutral_face: [bold red][i]¡No se pudieron cargar los comentarios![/]'
+                    while True:
+                        if show_comments:
+                            layout_comments['table'].update(
+                                Align.center(Group(Align.center(make_comments_table(
+                                    title, comments, cpage, metadata),
+                                    vertical='top')), vertical='top'))
+                        else:
+                            layout_comments['table'].update(not_comments(comment_msg))
+
+                        screen_comments.console.show_cursor(False)
+                        screen_comments.update(layout_comments)
+
+                        try:
+                            ch_comment = readkey()
+                        except KeyboardInterrupt:
+                            KeyInterrupt()
+
+                        if ch_comment in ['A', 'a']:
+                            break
+
+                        if ch_comment == key.RIGHT:
+                            cpage = min(int(comments['pages_no']) - 1, cpage + 1)
+
+                        if ch_comment == key.LEFT:
+                            cpage = max(0, cpage - 1)
+
+                        if ch_comment in ['D', 'd']:
+                            res = subid
+                            break
+                if res:
+                    break
+
+            if ch == key.RIGHT:
+                page = min(int(results_pages['pages_no']) - 1, page + 1)
+                selected = 0
+
+            if ch == key.LEFT:
+                page = max(0, page - 1)
+                selected = 0
+
+            if ch == key.ENTER:
+                res = f"{results_pages['pages'][page][selected]['id']}"
+                break
+
+            if ch in ['S', 's']:
+                res = -1
+                break
+            live.update(generate_results(table_title, results_pages, page, selected, metadata), refresh=True)
 
     if (res == -1):
         if not args.verbose:
@@ -1212,7 +1236,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath: str) -> No
                 # PyInstaller creates a temp folder and stores path in _MEIPASS
                 if hasattr(sys, '_MEIPASS'):
                     base_path = sys._MEIPASS
-            except Exception:
+            except OSError:
                 base_path = os.path.abspath('.')
 
             return os.path.join(base_path, relative_path)
@@ -1304,12 +1328,12 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath: str) -> No
             with compressed_sub_file as csf:
                 for sub in csf.infolist():
                     if _is_supported(f'{sub.filename}') and not sub.is_dir():
-                        logger.debug(' '.join(['Decompressing subtitle:', sub.filename, 'to', topath]))
+                        logger.debug(f'Decompressing subtitle: {sub.filename} to {topath}')
                         csf.extract(sub, topath)
                     elif _is_compressed(f'{sub.filename}'):
                         with csf.open(sub) as source:
                             _uncompress(source, topath)
-                        logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))
+                        logger.debug(f'Decompressed file: {sub.filename} to {topath}')
             compressed_sub_file.close()
         else:
             selected = f'{list_sub[res - 1]}'
@@ -1317,12 +1341,12 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath: str) -> No
                 for sub in csf.infolist():
                     if selected == os.path.basename(sub.filename):
                         if _is_supported(f'{sub.filename}'):
-                            logger.debug(' '.join(['Decompressing subtitle:', selected, 'to', topath]))
+                            logger.debug(f'Decompressing subtitle: {selected} to {topath}')
                             csf.extract(sub, topath)
                         elif _is_compressed(f'{sub.filename}'):
                             with csf.open(sub) as source:
                                 _uncompress(source, topath=topath)
-                            logger.debug(' '.join(['Decompressed file:', sub.filename, 'to', topath]))
+                            logger.debug(f'Decompressed file: {sub.filename} to {topath}')
                         break
             compressed_sub_file.close()
 
@@ -1335,12 +1359,12 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath: str) -> No
         for name in compressed_sub_file.infolist():
             # don't unzip stub __MACOSX folders
             if _is_supported(f'{name.filename}'):
-                logger.debug(' '.join(['Decompressing subtitle:', name.filename, 'to', topath]))
+                logger.debug(f'Decompressing subtitle: {name.filename} to {topath}')
                 compressed_sub_file.extract(name, topath)
             elif _is_compressed(f'{name.filename}'):
                 with compressed_sub_file.open(name) as source:
                     _uncompress(source, topath=topath)
-                logger.debug(' '.join(['Decompressed file:', name.filename, 'to', topath]))
+                logger.debug(f'Decompressed file: {name.filename} to {topath}')
         compressed_sub_file.close()
 
         logger.debug('Done extract subtitle!')
@@ -1349,7 +1373,7 @@ def extract_subtitles(compressed_sub_file: ZipFile | RarFile, topath: str) -> No
 
 
 # Search TMDB
-def get_imdb_search(title: str, number: str, inf_sub: dict[str, Any]):
+def get_imdb_search(title: str, number: str, inf_sub: InfoSub):
     """Get the IMDB ``id`` or ``title`` for search subtitles"""
     from sdx_dl.sdxtmdbapi import TMDBAPI
     try:
@@ -1363,15 +1387,14 @@ def get_imdb_search(title: str, number: str, inf_sub: dict[str, Any]):
             time.sleep(0.5)
             return None
         tmdb = TMDBAPI(api_key)
-        title = re.sub(r'\(\d+\)', '', title) if number != '' else title
-        year = int(inf_sub['year']) if inf_sub['year'] else None
-        tv = not bool(inf_sub['type'] == 'movie')
+        title = re.sub(r'\(\d+\)', '', title) if number else title
+        year = inf_sub.year
+        tv = bool(inf_sub.type == 'episode')
         res = tmdb.search(title, year, tv=tv) if year else tmdb.search(title, tv=tv)
         if not res:
             return None
-    except Exception as e:
+    except OSError as e:
         logger.debug(f'TMDB search error: {e}')
-        pass
         return None
 
     if len(res) == 1:
@@ -1379,7 +1402,7 @@ def get_imdb_search(title: str, number: str, inf_sub: dict[str, Any]):
             f"{res[0].get('original_name')} {number}" if tv else f"{res[0].get('original_name')}",
             f"{res[0].get('id')}")
     elif len(res) > 1:
-        return make_IMDB_table(title, res, inf_sub['type']) or None
+        return make_IMDB_table(title, res, inf_sub.type) or None
 
 
 def make_IMDB_table(title: str, results: list[dict[str, Any]], mtype: str):

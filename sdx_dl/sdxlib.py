@@ -6,7 +6,8 @@ import shutil
 import sys
 import tempfile
 import time
-from tempfile import NamedTemporaryFile
+
+# from tempfile import NamedTemporaryFile
 from typing import Any
 from zipfile import ZipFile, is_zipfile
 
@@ -27,6 +28,7 @@ from sdx_dl.sdxutils import (
     SUBDIVX_DOWNLOAD_PAGE,
     HTTPError,
     HTTPErrorsMessageException,
+    InfoSub,
     Metadata,
     clean_screen,
     conn,
@@ -45,7 +47,7 @@ from sdx_dl.sdxutils import (
 __all__ = ['get_subtitle', 'get_subtitle_id']
 
 
-def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: Metadata = metadata):
+def get_subtitle_id(title: str, number: str, inf_sub: InfoSub, metadata: Metadata = metadata):
 
     """
     Get a list of subtitles of subtitles searched by ``title`` and season/episode
@@ -85,7 +87,7 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
 
     if not args.quiet:
         console.print('\r')
-    logger.debug(f'Searching subtitles for: {title} {number.upper()}')
+    logger.debug(f'Searching subtitles for: {search}')
 
     if args.SubX:
         cf = ConfigManager()
@@ -93,13 +95,17 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
             sbx = SubxAPI(cf.get('SubX_key', default=''))
             with console.status(f'{gl("Searching_subtitles_for")}{title} {number.upper()}') as status:
                 status.start() if not args.quiet else status.stop()
-                sbx.query(search)
+                if tmdb_search or inf_sub.imdb:
+                    sbx.search(search, 'imdb_id')
+                else:
+                    sbx.search(search, year=inf_sub.year, video_type=inf_sub.type)
             json_aaData = sbx.from_subx_aadata()
             if json_aaData.get('iTotalRecords') == 0 and tmdb_search:
+                logger.debug(f'Not subtitles found for imdb: {search}')
                 time.sleep(2)
-                sbx.query(f'{tmdb_search.orig_name} {number}')
+                search = f'{tmdb_search.orig_name}'
+                sbx.search(search, year=inf_sub.year, video_type=inf_sub.type)
                 json_aaData = sbx.from_subx_aadata()
-                search = f'{tmdb_search.orig_name} {number}'
         else:
             console.print(
                 f':no_entry: {gl("Not_SubX_key")}: [italic pale_turquoise4]{gl("Not_SubX_key_wiki")}[/]',
@@ -108,9 +114,10 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
     else:
         json_aaData = get_aadata(search)
         if json_aaData.get('iTotalRecords') == 0 and tmdb_search:
+            logger.debug(f'Not subtitles found for imdb: {search}')
             time.sleep(4)
-            json_aaData = get_aadata(f'{tmdb_search.orig_name} {number}')
             search = f'{tmdb_search.orig_name} {number}'
+            json_aaData = get_aadata(search)
 
     if json_aaData.get('iTotalRecords') == 0:
         if not args.quiet:
@@ -134,7 +141,7 @@ def get_subtitle_id(title: str, number: str, inf_sub: dict[str, Any], metadata: 
     # only include results for this specific serie / episode
     # ie. search terms are in the title of the result item
 
-    if args.no_filter or (args.imdb and inf_sub['type'] == 'movie'):
+    if args.no_filter or (args.imdb and inf_sub.type == 'movie'):
         filtered_list_Subs_Dicts = list_Subs_Dicts
     else:
         filtered_list_Subs_Dicts = get_filtered_results(title, number, inf_sub, list_Subs_Dicts)
@@ -172,68 +179,64 @@ def get_subtitle(subid: str, topath: str):
     if not args.quiet:
         clean_screen()
 
-    temp_file = NamedTemporaryFile(delete=False)
-    download_url = None
-    data: bytes = b''
+    with tempfile.NamedTemporaryFile() as temp_file:
+        download_url = None
+        data: bytes = b''
 
-    # get direct download link
-    if not args.quiet:
-        console.print(gl('Downloading_Subtitle'), emoji=True, new_line_start=True)
-    logger.debug(f'Trying Download from link: {url if not args.SubX else subx_url}')
-
-    if args.SubX:
-        cf = ConfigManager()
-        if cf.hasconfig and 'SubX_key' in cf.config:
-            sbx = SubxAPI(cf.get('SubX_key', default=''))
-            download_url = sbx.get(subid)
-    else:
-        try:
-            download_url = conn.request('GET', url, headers=headers)
-        except HTTPError as e:
-            HTTPErrorsMessageException(e)
-            sys.exit(1)
-
-    if download_url:
-        if not args.SubX and isinstance(download_url, HTTPResponse):
-            logger.debug(f'Downloaded from: {SUBDIVX_DOWNLOAD_PAGE}{download_url.geturl()}')
-            data = download_url.data
-        elif isinstance(download_url, Response):
-            logger.debug(f'Downloaded from: SubX: {subx_url}')
-            data = download_url.content
-
-        temp_file.write(data)
-        temp_file.seek(0)
-        # Checking if the file is zip or rar then decompress
-        try:
-            if is_zipfile(temp_file):
-                compressed_sub_file = ZipFile(temp_file)
-                extract_subtitles(compressed_sub_file, topath)
-            elif is_rarfile(temp_file):
-                compressed_sub_file = RarFile(temp_file)
-                extract_subtitles(compressed_sub_file, topath)
-        except (Error):
-            console.clear()
-            temp_dir = tempfile.gettempdir()
-            shutil.copyfile(os.path.join(temp_dir, temp_file.name), os.path.join(topath, f'{subid}.rar'))
-
-            console.print(
-                f':warning:  [bold red]{gl("Cannot_find_a_working_tool")}[bold yellow]{gl("Install_rar")}[/]',
-                emoji=True, new_line_start=True,
-            )
-            logger.debug('Cannot find a working tool, please install rar decompressor tool')
-            logger.debug(f"File downloaded to: {os.path.join(topath, f'{subid}.rar')}")
-    else:
-        temp_file.close()
-        os.unlink(temp_file.name)
-        logger.error(f'No suitable subtitle download for : "{url}"')
+        # get direct download link
         if not args.quiet:
-            console.print(
-                f':cross_mark:  [bold red]{gl("No_suitable_subtitle_to_download")}[/]',
-                emoji=True, new_line_start=True,
-            )
-        sys.exit(1)
-        time.sleep(2)
+            console.print(gl('Downloading_Subtitle'), emoji=True, new_line_start=True)
+        logger.debug(f'Trying Download from link: {url if not args.SubX else subx_url}')
 
-    # Cleaning
-    temp_file.close()
-    os.unlink(temp_file.name)
+        if args.SubX:
+            cf = ConfigManager()
+            if cf.hasconfig and 'SubX_key' in cf.config:
+                sbx = SubxAPI(cf.get('SubX_key', default=''))
+                download_url = sbx.get(subid)
+        else:
+            try:
+                download_url = conn.request('GET', url, headers=headers)
+            except HTTPError as e:
+                HTTPErrorsMessageException(e)
+                sys.exit(1)
+
+        if download_url:
+            if not args.SubX and isinstance(download_url, HTTPResponse):
+                logger.debug(f'Downloaded from: {SUBDIVX_DOWNLOAD_PAGE}{download_url.geturl()}')
+                data = download_url.data
+            elif isinstance(download_url, Response):
+                logger.debug(f'Downloaded from: SubX: {subx_url}')
+                data = download_url.content
+
+            temp_file.write(data)
+            temp_file.seek(0)
+            # Checking if the file is zip or rar then decompress
+            try:
+                if is_zipfile(temp_file):
+                    compressed_sub_file = ZipFile(temp_file)
+                    extract_subtitles(compressed_sub_file, topath)
+                elif is_rarfile(temp_file):
+                    compressed_sub_file = RarFile(temp_file)
+                    extract_subtitles(compressed_sub_file, topath)
+            except (Error):
+                console.clear()
+                temp_dir = tempfile.gettempdir()
+                shutil.copyfile(os.path.join(temp_dir, temp_file.name), os.path.join(topath, f'{subid}.rar'))
+
+                console.print(
+                    f':warning:  [bold red]{gl("Cannot_find_a_working_tool")}[bold yellow]{gl("Install_rar")}[/]',
+                    emoji=True, new_line_start=True,
+                )
+                logger.debug('Cannot find a working tool, please install rar decompressor tool')
+                logger.debug(f"File downloaded to: {os.path.join(topath, f'{subid}.rar')}")
+        else:
+            # temp_file.close()
+            # os.unlink(temp_file.name)
+            logger.error(f'No suitable subtitle download for : "{url}"')
+            if not args.quiet:
+                console.print(
+                    f':cross_mark:  [bold red]{gl("No_suitable_subtitle_to_download")}[/]',
+                    emoji=True, new_line_start=True,
+                )
+            sys.exit(1)
+            time.sleep(2)

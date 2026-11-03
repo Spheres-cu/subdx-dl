@@ -1,5 +1,6 @@
 import hashlib
 import os
+import subprocess
 
 import certifi
 import requests
@@ -47,4 +48,6 @@ def get_public_ip(proxy: str | None = None):
 
 def clean_screen() -> None:
     """Clean the screen"""
-    os.system('clear' if os.name != 'nt' else 'cls')
+    subprocess.run(
+        'clear' if os.name != 'nt' else 'cls',
+        shell=bool(os.name == 'nt'), check=False)

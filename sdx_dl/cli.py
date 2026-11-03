@@ -3,19 +3,26 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import os
+import re
 import sys
 from contextlib import contextmanager
-from typing import Any
 
-from guessit import guessit  # type: ignore
+from guessit import guessit
 
-from sdx_dl.sdxclasses import FindFiles, NoResultsError, PTTMetadataExtractor
+from sdx_dl.sdxclasses import FindFiles, NoResultsError, VideoMetadataExtractor
 from sdx_dl.sdxconsole import console
 from sdx_dl.sdxlib import get_subtitle, get_subtitle_id
 from sdx_dl.sdxlocale import gl
 from sdx_dl.sdxparser import args as parser_args
 from sdx_dl.sdxparser import logger
-from sdx_dl.sdxutils import Metadata, backoff_delay, clean_text, extract_meta_data, sub_extensions
+from sdx_dl.sdxutils import (
+    InfoSub,
+    Metadata,
+    backoff_delay,
+    clean_text,
+    extract_meta_data,
+    sub_extensions,
+)
 
 _extensions = [
     'avi', 'mkv', 'mp4',
@@ -26,7 +33,7 @@ _extensions = [
 
 
 @contextmanager
-def subtitle_renamer(filepath: str, inf_sub: dict[str, Any]):
+def subtitle_renamer(filepath: str, inf_sub: InfoSub):
     """Dectect new subtitles files in a directory and rename with
        filepath basename."""
 
@@ -40,8 +47,10 @@ def subtitle_renamer(filepath: str, inf_sub: dict[str, Any]):
     dirpath = os.path.dirname(filepath)
     filename = os.path.basename(filepath)
     before = set(os.listdir(dirpath))
-    yield
-    after = set(os.listdir(dirpath))
+    try:
+        yield
+    finally:
+        after = set(os.listdir(dirpath))
 
     # Fixed error for rename various subtitles with same filename
     info = {}
@@ -57,10 +66,10 @@ def subtitle_renamer(filepath: str, inf_sub: dict[str, Any]):
             if os.path.exists(filename + new_ext):
                 continue
             else:
-                if inf_sub['type'] == 'episode' and inf_sub['season']:
+                if inf_sub.type == 'episode' and inf_sub.season:
                     info = guessit(new_file)  # type: ignore
                     number = f"s{info['season']:02}e{info['episode']:02}" if 'season' in info and 'episode' in info else None
-                    if number == inf_sub['number']:
+                    if number == inf_sub.number:
                         os.rename(new_file_dirpath, filename + new_ext)
                     else:
                         continue
@@ -75,16 +84,17 @@ def subtitle_renamer(filepath: str, inf_sub: dict[str, Any]):
 
 def main():
     args = parser_args
-    inf_sub: dict[str, Any] = {}
 
     def guess_search(search: str):
         """ Parse search parameter. """
         properties = ('type', 'title', 'season', 'episode', 'year')
         season = bool(args.Season)
-        info = PTTMetadataExtractor.extract_specific(search, *properties)
+        info = VideoMetadataExtractor.extract_specific(
+            search, *properties,
+            options={'excludes': ['alternative_title']})
 
         try:
-            year = info.get('year', 0)
+            year = info.get('year')
             if info['type'] == 'episode':
                 if (all(i is not None for i in [info['season'], info['episode'], info['title']])):
                     if info['year'] != info['season']:
@@ -116,15 +126,16 @@ def main():
                     else:
                         title = clean_text(search)
 
-            inf_sub: dict[str, Any] = {
-                'type': info['type'],
-                'season': season,
-                'number': f'{number}',
-                'year': year,
-            }
-        except Exception as e:
+            inf_sub = InfoSub(
+                f"{info['type']}",
+                season,
+                f'{number}',
+                int(year) if year else None,
+                bool(re.match(r'tt\d{7,8}', search)))
+
+        except (TypeError, ValueError) as e:
             error = e.__class__.__name__
-            msg = e.__str__()
+            msg = str(e)
             logger.debug(f'Failed to parse search argument: {search} {error}: {msg}')
             console.print(f':no_entry: [bold red] {gl("Failed_to_parse_search_argument")} [/] ', search, emoji=True)
             console.print(f'[red]{error}[/]: {msg}', emoji=True)
@@ -150,9 +161,8 @@ def main():
         return exists_sub
 
     if not os.path.isdir(args.search):
-        if not args.path:
-            if _exists_sub(str(args.search)):
-                sys.exit(1)
+        if not args.path and _exists_sub(str(args.search)):
+            sys.exit(1)
         try:
             search = f'{os.path.basename(args.search)}'
             title, number, inf_sub = guess_search(search)
@@ -213,11 +223,10 @@ def main():
                 with subtitle_renamer(filepath, inf_sub):
                     get_subtitle(subid, topath)
 
-            if search_files != 0:
+            if search_files != 0 and not args.SubX:
                 console.print(
                     f':watch:  [yellow]{gl("site_message")}[/]',
-                    emoji=True, new_line_start=True,
-                )
+                    emoji=True, new_line_start=True)
                 backoff_delay(backoff_factor=1.5)
 
 

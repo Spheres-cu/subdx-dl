@@ -3,6 +3,7 @@ import json
 import os
 import threading
 from dataclasses import dataclass
+from json import JSONDecodeError
 from typing import Any
 
 from sdx_dl.sdxlogger import logger
@@ -21,7 +22,7 @@ class CachedCookies:
 
     def is_expired(self) -> bool:
         """Check if the cached cookies are expired."""
-        return datetime.datetime.now() >= self.expires_at
+        return datetime.datetime.now().astimezone(datetime.UTC) >= self.expires_at.astimezone(datetime.UTC)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -40,8 +41,8 @@ class CachedCookies:
             hostname=data['hostname'],
             cookies=data['cookies'],
             user_agent=data['user_agent'],
-            timestamp=datetime.datetime.fromisoformat(data['timestamp']),
-            expires_at=datetime.datetime.fromisoformat(data['expires_at']),
+            timestamp=datetime.datetime.fromisoformat(data['timestamp']).astimezone(datetime.UTC),
+            expires_at=datetime.datetime.fromisoformat(data['expires_at']).astimezone(datetime.UTC),
         )
 
 
@@ -58,23 +59,23 @@ class CookieCache:
         """Load cache from file."""
         try:
             if os.path.exists(self.cache_file):
-                with open(self.cache_file) as f:
+                with open(self.cache_file, encoding='utf-8') as f:
                     data = json.load(f)
                     for hostname, cached_data in data.items():
                         try:
                             self.cache[hostname] = CachedCookies.from_dict(cached_data)
-                        except Exception as e:
+                        except OSError as e:
                             logger.warning(f'Failed to load cached data for {hostname}: {e}')
-        except Exception as e:
+        except JSONDecodeError as e:
             logger.warning(f'Failed to load cache file: {e}')
 
     def _save_cache(self):
         """Save cache to file."""
         try:
-            with open(self.cache_file, 'w') as f:
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
                 data = {hostname: cached.to_dict() for hostname, cached in self.cache.items()}
                 json.dump(data, f, indent=2)
-        except Exception as e:
+        except JSONDecodeError as e:
             logger.error(f'Failed to save cache file: {e}')
 
     def get(self, hostname: str) -> CachedCookies | None:
@@ -93,12 +94,12 @@ class CookieCache:
     def set(self, hostname: str, cookies: dict[str, str], user_agent: str, ttl_hours: int = 2):
         """Cache cookies for hostname with TTL."""
         with self.lock:
-            expires_at = datetime.datetime.now() + datetime.timedelta(hours=ttl_hours)
+            expires_at = datetime.datetime.now().astimezone(datetime.UTC) + datetime.timedelta(hours=ttl_hours)
             cached = CachedCookies(
                 hostname=hostname,
                 cookies=cookies,
                 user_agent=user_agent,
-                timestamp=datetime.datetime.now(),
+                timestamp=datetime.datetime.now().astimezone(datetime.UTC),
                 expires_at=expires_at,
             )
             self.cache[hostname] = cached

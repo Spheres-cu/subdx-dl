@@ -92,5 +92,6 @@
 	"Not_SubX_key_wiki": "Vea en la página wiki SubX API",
 	"Not_tmdb_key": "Clave API TMDB no proporcionada",
 	"Not_tmdb_key_wiki": "Ver en la página wiki: Clave API de TMDB",
-	"Starting_new_connection": "Estableciendo una nueva conexión..."
+	"Starting_new_connection": "Estableciendo una nueva conexión...",
+	"SubX_API_Health": "No se puede acceder a la API SubX, inténtelo más tarde."
 }
