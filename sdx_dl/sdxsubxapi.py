@@ -148,7 +148,6 @@ class SubxAPI:
             params.update({'year': year})
         if video_type:
             params.update({'video_type': video_type})
-        logger.debug(f'SubX search params: {params}')
 
         if self._health_ok:
             response = self.__call_api(params, endpoint, timeout=timeout)
