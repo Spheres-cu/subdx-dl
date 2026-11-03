@@ -8,7 +8,7 @@
 [![latest release linux binario](https://img.shields.io/github/downloads/Spheres-cu/subdx-dl/subdx-dl?logo=linux&logoColor=1f1f23&label=%20&labelColor=fbfbfb)](https://github.com/Spheres-cu/subdx-dl/releases/latest/download/subdx-dl)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/subdx-dl?logo=pypi&logoColor=1f1f23&labelColor=fbfbfb&label=%20)](https://pypistats.org/packages/subdx-dl)
 
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl?logo=python&logoSize=auto&label=%20&labelColor=1f1f23)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/subdx-dl?logo=python&logoSize=auto&labelColor=1f1f23)
 ![GitHub Release](https://img.shields.io/github/v/release/Spheres-cu/subdx-dl?logo=github&logoSize=auto&label=%20&labelColor=1f1f23)
 [![PyPI - Version](https://img.shields.io/pypi/v/subdx-dl?logo=pypi&logoSize=auto&label=%20&labelColor=1f1f23)](https://pypi.org/project/subdx-dl/)
 ![GitHub License](https://img.shields.io/github/license/Spheres-cu/subdx-dl)
