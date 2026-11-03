@@ -35,7 +35,6 @@ dependencies = [
 ]
 
 classifiers = [
-    "Topic :: Multimedia :: Subtitles",
     'Development Status :: 5 - Production/Stable',
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
